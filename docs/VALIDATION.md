@@ -78,3 +78,8 @@
 - [ ] Assinatura Release estável por Secrets quando a primeira distribuição for definida.
 
 Importante: aprovação local de arquivos, testes Java unitários isolados e integridade ZIP **não equivale** a build Android aprovado.
+
+
+## 1.0.8
+- Validação estrutural do ZIP, workflow atualizado para split APK por ABI e Activity principal redesenhada para o layout mobile XP.
+- Necessário validar no GitHub Actions a geração dos APKs separados por arquitetura e o visual em aparelho real.

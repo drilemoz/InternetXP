@@ -1,12 +1,11 @@
 # Regras Internet XP
-- Versionamento sequencial em toda alteração: subir versionCode e versionName e sincronizar README/CHANGELOG/docs.
+- Versionamento sequencial em toda alteração: subir `versionCode` e `versionName` e sincronizar README/CHANGELOG/docs.
 - GeckoView é obrigatório; não trocar por WebView.
-- Fidelidade à interface XP do screenshot do Explorador XP.
-- Publicar APK direto no GitHub Release: `Internet XP.v1.0.7.apk`, sem upload-artifact/ZIP.
-- Secrets: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD. Nunca inserir credenciais em commit.
-- Não declarar APK disponível antes de build bem-sucedido e asset da Release confirmado.
-- Nunca desativar Lint ou alterar o `minSdk` apenas para ocultar problemas de compatibilidade.
-
-- Para GeckoView 158 manter compileSdk 37, AGP 9.1.1, Gradle 9.3.1 ou combinação comprovadamente compatível; targetSdk 35 permanece distinto.
-
-- GeckoView 158 requer minSdk 26 (Android 8.0+): nao usar tools:overrideLibrary para forcar APIs nao suportadas.
+- Prioridade atual de design: **layout mobile para telefone**, fiel ao mockup aprovado pelo usuário, preservando identidade visual XP.
+- Publicar APKs **direto no GitHub Release**, sem `upload-artifact` e sem Artifact ZIP de workflow.
+- A partir da v1.0.8, o build deve gerar **APKs separados por ABI** (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) em vez de um único APK universal pesado.
+- Secrets exigidos: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Nunca inserir credenciais em commit.
+- Não declarar APK disponível antes de build bem-sucedido e assets da Release confirmados.
+- Nunca desativar Lint ou alterar `minSdk` apenas para ocultar problemas de compatibilidade.
+- Para GeckoView 158 manter `compileSdk 37`, AGP `9.1.1`, Gradle `9.3.1` ou combinação comprovadamente compatível; `targetSdk 35` permanece distinto.
+- GeckoView 158 requer `minSdk 26` (Android 8.0+): não usar `tools:overrideLibrary` para forçar APIs não suportadas.

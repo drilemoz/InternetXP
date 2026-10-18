@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.7
+  group: internet-xp-v1.0.8
   cancel-in-progress: false
 jobs:
   apk:
@@ -26,22 +26,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Android 17 usa identificador com sufixo .0 (nao 'android-37').
           sdkmanager --install 'platforms;android-37.0' 'build-tools;36.0.0'
           sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           if [[ -z "$sdk_root" || ! -f "$sdk_root/platforms/android-37.0/android.jar" ]]; then
             echo '::error::Android SDK 37.0 nao foi instalado corretamente.'
             exit 1
           fi
-          # Algumas versoes do Gradle procuram 'android-37' mesmo com SDK 37.0.
-          # Cria apenas um alias de diretorio para o mesmo SDK, sem falsificar arquivos.
           if [[ ! -e "$sdk_root/platforms/android-37" ]]; then
             ln -s android-37.0 "$sdk_root/platforms/android-37"
           fi
           test -f "$sdk_root/platforms/android-37/android.jar"
           test -f "$sdk_root/build-tools/36.0.0/aapt2"
-          echo 'SDK Android 37.0 validado:'
-          ls -ld "$sdk_root/platforms/android-37" "$sdk_root/platforms/android-37.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
@@ -69,9 +64,9 @@ jobs:
             echo 'mode=release' >> "$GITHUB_OUTPUT"
           else
             echo 'mode=debug' >> "$GITHUB_OUTPUT"
-            echo '::warning::Sem Secrets: APK Debug não garante atualização futura com assinatura Release.'
+            echo '::warning::Sem Secrets: serão publicados APKs Debug por ABI, sem garantia de atualização futura.'
           fi
-      - name: Testes, lint e compilação Android
+      - name: Testes, lint e compilação Debug por ABI
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
       - name: Exibir relatório completo do Lint em caso de falha
         if: failure()
@@ -85,7 +80,7 @@ jobs:
           else
             echo 'Relatório Lint em texto não disponível. O Gradle pode ter falhado antes do Lint.'
           fi
-      - name: Compilar Release assinado
+      - name: Compilar Release assinado por ABI
         if: steps.signing.outputs.mode == 'release'
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/assinatura.p12
@@ -93,34 +88,61 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle --no-daemon --stacktrace :app:assembleRelease
-      - name: Preparar APK sem Artifact ZIP
+      - name: Preparar APKs por arquitetura sem Artifact ZIP
         shell: bash
         run: |
           set -euo pipefail
-          if [[ '${{ steps.signing.outputs.mode }}' == 'release' ]]; then src=app/build/outputs/apk/release/app-release.apk
-          else src=app/build/outputs/apk/debug/app-debug.apk; fi
-          test -s "$src"
-          cp "$src" 'Internet XP.v1.0.7.apk'
-          # Bloqueia publicacao de APK com versao ou minSdk inesperados.
-          apk_file='Internet XP.v1.0.7.apk'
+          mode='${{ steps.signing.outputs.mode }}'
+          if [[ "$mode" == 'release' ]]; then
+            src_dir='app/build/outputs/apk/release'
+            suffix='release'
+            debug_suffix=''
+          else
+            src_dir='app/build/outputs/apk/debug'
+            suffix='debug'
+            debug_suffix='-debug'
+          fi
+          shopt -s nullglob
+          files=("$src_dir"/*.apk)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "::error::Nenhum APK gerado em $src_dir"
+            exit 1
+          fi
           aapt_bin="${ANDROID_SDK_ROOT:-${ANDROID_HOME}}/build-tools/36.0.0/aapt"
           test -x "$aapt_bin"
-          "$aapt_bin" dump badging "$apk_file" | tee "$RUNNER_TEMP/internetxp-badging.txt"
-          grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/internetxp-badging.txt"
-          grep -Fq "versionCode='8' versionName='1.0.7'" "$RUNNER_TEMP/internetxp-badging.txt"
-          sha256sum "$apk_file" > "$apk_file.sha256"
-      - name: Publicar APK diretamente na Release GitHub
+          : > "$RUNNER_TEMP/release-assets.txt"
+          for src in "${files[@]}"; do
+            base="$(basename "$src")"
+            abi='unknown'
+            case "$base" in
+              *armeabi-v7a*) abi='armeabi-v7a' ;;
+              *arm64-v8a*) abi='arm64-v8a' ;;
+              *x86_64*) abi='x86_64' ;;
+              *x86*) abi='x86' ;;
+            esac
+            out="Internet XP.v1.0.8-${abi}${debug_suffix}.apk"
+            cp "$src" "$out"
+            "$aapt_bin" dump badging "$out" | tee "$RUNNER_TEMP/${abi}-${suffix}-badging.txt"
+            grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-${suffix}-badging.txt"
+            grep -Fq "versionCode='9' versionName='1.0.8'" "$RUNNER_TEMP/${abi}-${suffix}-badging.txt"
+            sha256sum "$out" > "$out.sha256"
+            printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
+          done
+          echo 'Arquivos preparados:'
+          cat "$RUNNER_TEMP/release-assets.txt"
+      - name: Publicar APKs diretamente na Release GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v1.0.7 >/dev/null 2>&1; then
-            gh release upload v1.0.7 'Internet XP.v1.0.7.apk' 'Internet XP.v1.0.7.apk.sha256' --clobber
+          mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
+          if gh release view v1.0.8 >/dev/null 2>&1; then
+            gh release upload v1.0.8 "${assets[@]}" --clobber
           else
-            gh release create v1.0.7 'Internet XP.v1.0.7.apk' 'Internet XP.v1.0.7.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.7' --notes 'Internet XP 1.0.7: barra XP compacta com icones menores e acesso a Downloads. Compilacao e publicacao verificadas pelo workflow.'
+            gh release create v1.0.8 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.8' --notes 'Internet XP 1.0.8: novo layout mobile XP baseado no mockup do usuário e publicação de APKs separados por arquitetura (armeabi-v7a, arm64-v8a, x86 e x86_64), sem Artifact ZIP.'
           fi
-          gh release view v1.0.7 --json url,assets
+          gh release view v1.0.8 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

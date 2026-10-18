@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.0.8 (versionCode 9) - layout mobile XP e APKs por ABI
+- Reorganiza a interface para celular conforme o mockup do usuário: cabeçalho azul compacto, barra de endereço destacada, GeckoView central amplo e navegação principal fixa na parte inferior.
+- Remove a antiga composição com menu clássico e barra superior extensa, priorizando uso em telas de telefone sem perder a identidade visual XP.
+- Mantém as funções centrais em seis ações inferiores: Voltar, Avançar, Início, Baixar, Abas e Menu.
+- O botão Abas agora abre um seletor em diálogo; Menu concentra favoritos, histórico, compartilhar, downloads, extensões e ações de aba.
+- Build atualizado para gerar APKs separados por arquitetura: `armeabi-v7a`, `arm64-v8a`, `x86` e `x86_64`, reduzindo o tamanho de cada arquivo.
+- Workflow continua publicando diretamente na Release do GitHub, sem Artifact ZIP; com Secrets publica Release assinada por ABI, sem Secrets publica Debug por ABI.
+- Sincronizados `versionName` 1.0.8, `versionCode` 9, README, AGENTS e workflow. Build Android completo ainda depende de nova execução no GitHub Actions.
+
+# CHANGELOG
+
 ## 1.0.7 (versionCode 8) - barra de ferramentas mais compacta e Downloads
 - Ícones de 31 sp para 20 sp; botões de 66 dp para 49 dp, com legendas menores de 9 sp e espaçamento reduzido.
 - Ícone vetorial de Downloads na barra XP, abrindo o gerenciador de downloads do sistema Android; permanece a limitação de downloads com autenticação do GeckoView.
