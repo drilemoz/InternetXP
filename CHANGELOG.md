@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 1.0.15 (versionCode 16) - abas visuais, restauração leve e histórico pesquisável
+- Seletor visual de abas em cartões com título, URL, indicação da aba ativa, abertura por toque, criação e fechamento individual.
+- Persistência local de URLs, títulos e aba ativa; restaura até 8 abas com abertura diferida das inativas para reduzir pico de memória.
+- Tratamento de índice ativo ao fechar abas em segundo plano e persistência adicional no ciclo de vida `onStop`.
+- Histórico enriquecido com títulos e horários reais, pesquisa por título/domínio/URL, agrupamento por datas e exclusão de registros individuais.
+- Migração conservadora do histórico antigo sem atribuir data ou título inventado a páginas já visitadas.
+- Novas classes Java testáveis `TabSessionStore` e `HistoryRecords` e testes de restauração, filtragem e limites.
+- Mantidos downloads, seleção automática de URL, GeckoView e 3 APKs Release assinados por ABI, publicados no GitHub Releases sem Artifact ZIP.
+- Compilação Gradle/Android e testes de interface no aparelho permanecem pendentes.
+
+# CHANGELOG
+
 ## 1.0.14 (versionCode 15) - Downloads 2.0
 - Progresso horizontal por transferência, velocidade calculada por amostras reais e ETA aproximada apenas se o tamanho total for conhecido.
 - Filtros Todos/Ativos/Finalizados, resumo de transferências, detalhes e motivos de falha do Android DownloadManager.

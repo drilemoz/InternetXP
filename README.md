@@ -1,6 +1,14 @@
-# Internet XP v1.0.14
+# Internet XP v1.0.15
 
 Navegador Android com Mozilla GeckoView 158, visual mobile XP e três APKs assinados por ABI.
+
+## Abas e histórico 1.0.15
+- **Seletor visual de abas:** cartões com título e URL, indicação da aba ativa, toque para alternar e botão para fechar individualmente. Até oito abas.
+- **Restauração leve:** salva URLs, títulos e índice da aba ativa no armazenamento local. Ao reabrir o aplicativo, somente a aba ativa abre imediatamente; outras sessões ficam pendentes até o primeiro acesso.
+- **Histórico pesquisável:** pesquisa pelo título ou endereço, agrupa por dia real da visita e permite apagar páginas individualmente.
+- **Migração sem falsificar datas:** endereços armazenados nas versões antigas são preservados com o indicador "Data não registrada".
+- **Limite:** restauração de URLs/títulos não significa restauração de formulários preenchidos, scroll, estado JavaScript ou histórico interno de cada aba. As páginas serão recarregadas quando acessadas novamente.
+- **Mantidos:** seleção integral de URL ao tocar, Downloads 2.0, favoritos, GeckoView 158 e estilo XP mobile.
 
 ## Downloads 2.0
 - Painel interno acima da barra de navegação, oculto fora de uso. Filtros **Todos / Ativos / Finalizados**, resumo e ação de limpeza dos registros finalizados (não exclui os arquivos reais).
@@ -24,4 +32,4 @@ Mantém barra de endereço compacta, seta para histórico, sugestões e seleçã
 - Requisitos: Java 17, Gradle 9.3.1, AGP 9.1.1, `compileSdk 37`, `targetSdk 35`, `minSdk 26`.
 
 ## Release
-Arquivo-fonte ZIP e publicação direta na Release `v1.0.14` de **três APKs assinados**: `Internet XP.v1.0.14-armeabi-v7a.apk`, `Internet XP.v1.0.14-arm64-v8a.apk`, `Internet XP.v1.0.14-x86_64.apk`, mais checksums, sem upload-artifact. Exige os quatro Secrets existentes; não coloque Secrets ou `.p12` no GitHub.
+Arquivo-fonte ZIP e publicação direta na Release `v1.0.15` de **três APKs assinados**: `Internet XP.v1.0.15-armeabi-v7a.apk`, `Internet XP.v1.0.15-arm64-v8a.apk`, `Internet XP.v1.0.15-x86_64.apk`, mais checksums, sem upload-artifact. Exige os quatro Secrets existentes; não coloque Secrets ou `.p12` no GitHub.

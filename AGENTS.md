@@ -14,4 +14,8 @@
 
 - Na v1.0.14, Downloads 2.0 usa apenas `DownloadManager`: não prometer pausa/retomada manual; não compartilhar `file://`; não inventar ETA sem leituras reais e tamanho conhecido.
 - Preferência de rede não tarifada deve respeitar política real do Android e bloquear roaming quando configurado.
-- `versionCode 15` / `versionName 1.0.14`.
+- `versionCode 16` / `versionName 1.0.15`.
+
+- Na v1.0.15, salvar URLs/títulos e aba ativa, mas restaurar somente a página ativa imediatamente. Nunca prometer restauração completa de formulário/scroll ou do estado JavaScript.
+- Endereços de abas restaurados devem restringir-se a `http`, `https` e `about:blank`; históricos antigos não devem ganhar horários fictícios.
+- Seleção integral do endereço ao toque e Downloads 2.0 devem continuar funcionais.

@@ -121,3 +121,10 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - Novos testes JVM de velocidade real, ETA desconhecida, formatos de tamanho e duração.
 - Validação estática do workflow de assinatura e ABI, XML de recursos e integridade ZIP.
 - Não verificado neste ambiente: compilação Android Gradle/GeckoView, funcionamento de download HTTP real e aparência final no aparelho.
+
+
+## 1.0.15
+- Testes de normalização de URLs restauráveis, índice da aba ativa, histórico com título/data e migração sem datas falsas.
+- Verificação estática da persistência de até oito abas e abertura diferida; a compilação Android/GeckoView completa continua pendente.
+- Cenários físicos a conferir: abrir 3 abas, fechar uma inativa antes da ativa, reiniciar o app, verificar aba ativa e sugestões; pesquisar por título e apagar item isolado.
+- Validar desempenho/RAM no aparelho e confirmar que não há restauração automática de estado de formulários e JS.

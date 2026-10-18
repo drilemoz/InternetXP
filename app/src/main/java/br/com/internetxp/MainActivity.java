@@ -27,6 +27,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -51,6 +52,10 @@ import org.mozilla.geckoview.WebResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Calendar;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 /** Navegador Android com GeckoView e layout XP compacto para tela de telefone. */
 public final class MainActivity extends Activity {
@@ -65,12 +70,15 @@ public final class MainActivity extends Activity {
     private static final String PREF_BOOKMARKS = "bookmarks";
     private static final String PREF_HISTORY = "history";
     private static final String PREF_DOWNLOADS = "downloads";
+    private static final String PREF_HISTORY_DETAILS = "history_details";
+    private static final String PREF_OPEN_TABS = "open_tabs_v1";
 
     private static GeckoRuntime runtime;
 
     private final ArrayList<Tab> tabs = new ArrayList<>();
     private final ArrayList<String> bookmarks = new ArrayList<>();
     private final ArrayList<String> history = new ArrayList<>();
+    private final ArrayList<HistoryRecords.Entry> historyDetails = new ArrayList<>();
     private final ArrayList<DownloadItem> downloads = new ArrayList<>();
 
     private SharedPreferences storage;
@@ -108,6 +116,8 @@ public final class MainActivity extends Activity {
         String title = "Nova aba";
         boolean back;
         boolean forward;
+        boolean opened;
+        boolean loaded;
         Tab(GeckoSession s) { session = s; }
     }
 
@@ -161,13 +171,14 @@ public final class MainActivity extends Activity {
         storage = getSharedPreferences("local", MODE_PRIVATE);
         loadStringList(PREF_BOOKMARKS, bookmarks);
         loadStringList(PREF_HISTORY, history);
+        loadHistoryDetails();
         loadDownloads();
         createLayout();
         refreshSuggestionAdapter("");
         try {
             if (runtime == null) runtime = GeckoRuntime.create(getApplicationContext());
             extensionPrompts();
-            addTab(HOME);
+            if (!restoreTabs()) addTab(HOME);
         } catch (RuntimeException e) {
             showError(e);
         }
@@ -408,12 +419,12 @@ public final class MainActivity extends Activity {
         item(p, "Compartilhar página", this::share);
         item(p, "Favoritos", this::showBookmarks);
         item(p, "Adicionar/remover favorito", this::toggleBookmark);
-        item(p, "Histórico", this::showHistory);
+        item(p, "Histórico pesquisável", this::showHistory);
         item(p, "Downloads", this::showDownloads);
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.14")
+                .setTitle("Internet XP 1.0.15")
                 .setMessage("Interface mobile XP compacta, com sugestões de histórico, lista interna de downloads e GeckoView. Projeto independente, sem vínculo com Microsoft ou Mozilla.")
                 .setPositiveButton("OK", null).show());
         p.show();
@@ -454,16 +465,19 @@ public final class MainActivity extends Activity {
         if (t != null) t.session.loadUri(url);
     }
 
-    private void addTab(String url) {
-        if (tabs.size() >= 8) {
-            Toast.makeText(this, "Limite de 8 abas para poupar memória", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private Tab createTab(String restoredUrl, String restoredTitle) {
         GeckoSession session = new GeckoSession();
         Tab tab = new Tab(session);
+        tab.url = TabSessionStore.restorable(restoredUrl) ? restoredUrl : HOME;
+        tab.title = TabSessionStore.safeTitle(restoredTitle);
         session.setContentDelegate(new GeckoSession.ContentDelegate() {
             @Override public void onTitleChange(GeckoSession s, String title) {
-                if (title != null && !title.trim().isEmpty()) tab.title = title;
+                if (title != null && !title.trim().isEmpty()) {
+                    tab.title = TabSessionStore.safeTitle(title);
+                    HistoryRecords.updateTitle(historyDetails, tab.url, tab.title);
+                    saveHistoryDetails();
+                    saveTabs();
+                }
                 if (tab == current()) updateChrome();
             }
             @Override public void onCrash(GeckoSession s) {
@@ -474,40 +488,110 @@ public final class MainActivity extends Activity {
             }
         });
         session.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
-            @Override
-            public void onLocationChange(GeckoSession s, String uri, List<GeckoSession.PermissionDelegate.ContentPermission> perms, Boolean gesture) {
+            @Override public void onLocationChange(GeckoSession s, String uri,
+                    List<GeckoSession.PermissionDelegate.ContentPermission> perms, Boolean gesture) {
                 if (uri == null) return;
+                if (!uri.equals(tab.url)) tab.title = "Nova aba";
                 tab.url = uri;
                 if (tab == current()) {
                     if (!urlBox.hasFocus()) setUrlBoxText(uri.equals(HOME) ? "" : uri);
                     updateSecurity(uri);
                 }
-                if (uri.startsWith("http://") || uri.startsWith("https://")) rememberHistory(uri);
+                if (uri.startsWith("http://") || uri.startsWith("https://")) rememberHistory(uri, tab.title);
+                saveTabs();
             }
-            @Override public void onCanGoBack(GeckoSession s, boolean b) { tab.back = b; if (tab == current()) updateArrows(); }
-            @Override public void onCanGoForward(GeckoSession s, boolean b) { tab.forward = b; if (tab == current()) updateArrows(); }
+            @Override public void onCanGoBack(GeckoSession s, boolean b) {
+                tab.back = b;
+                if (tab == current()) updateArrows();
+            }
+            @Override public void onCanGoForward(GeckoSession s, boolean b) {
+                tab.forward = b;
+                if (tab == current()) updateArrows();
+            }
         });
         session.setProgressDelegate(new GeckoSession.ProgressDelegate() {
-            @Override public void onPageStart(GeckoSession s, String uri) { if (tab == current()) status.setText("Carregando…"); }
-            @Override public void onPageStop(GeckoSession s, boolean success) { if (tab == current()) status.setText(success ? "Concluído" : "Erro ao carregar"); }
+            @Override public void onPageStart(GeckoSession s, String uri) {
+                if (tab == current()) status.setText("Carregando…");
+            }
+            @Override public void onPageStop(GeckoSession s, boolean success) {
+                if (tab == current()) status.setText(success ? "Concluído" : "Erro ao carregar");
+            }
         });
-        session.open(runtime);
-        tabs.add(tab);
+        return tab;
+    }
+
+    private void addTab(String url) {
+        if (tabs.size() >= TabSessionStore.MAX_TABS) {
+            Toast.makeText(this, "Limite de 8 abas para poupar memória", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        tabs.add(createTab(url, "Nova aba"));
         selectTab(tabs.size() - 1);
-        session.loadUri(url);
     }
 
     private void selectTab(int index) {
         if (index < 0 || index >= tabs.size()) return;
+        if (active == index && view.getSession() == tabs.get(index).session) return;
         GeckoSession old = view.releaseSession();
         if (old != null) old.setActive(false);
         active = index;
         Tab tab = current();
+        if (!tab.opened) {
+            tab.session.open(runtime);
+            tab.opened = true;
+        }
         tab.session.setActive(true);
         view.setSession(tab.session);
         if (!urlBox.hasFocus()) setUrlBoxText(tab.url.equals(HOME) ? "" : tab.url);
         updateSecurity(tab.url);
         updateChrome();
+        // Abas restauradas inativas não abrem motor nem página até serem selecionadas.
+        if (!tab.loaded) {
+            tab.loaded = true;
+            tab.session.loadUri(tab.url);
+        }
+        saveTabs();
+    }
+
+    private boolean restoreTabs() {
+        try {
+            JSONObject saved = new JSONObject(storage.getString(PREF_OPEN_TABS, "{}"));
+            JSONArray storedTabs = saved.optJSONArray("tabs");
+            if (storedTabs == null) return false;
+            for (int i = 0; i < storedTabs.length() && tabs.size() < TabSessionStore.MAX_TABS; i++) {
+                JSONObject item = storedTabs.optJSONObject(i);
+                if (item == null) continue;
+                String url = item.optString("url", HOME);
+                if (!TabSessionStore.restorable(url)) continue;
+                tabs.add(createTab(url, item.optString("title", "Nova aba")));
+            }
+            if (tabs.isEmpty()) return false;
+            active = -1;
+            selectTab(TabSessionStore.activeIndex(saved.optInt("active", 0), tabs.size()));
+            return true;
+        } catch (Exception ignored) {
+            for (Tab tab : tabs) if (tab.opened) tab.session.close();
+            tabs.clear();
+            active = -1;
+            return false;
+        }
+    }
+
+    private void saveTabs() {
+        if (storage == null || tabs.isEmpty()) return;
+        JSONObject root = new JSONObject();
+        JSONArray array = new JSONArray();
+        try {
+            for (Tab tab : tabs) {
+                JSONObject item = new JSONObject();
+                item.put("url", TabSessionStore.restorable(tab.url) ? tab.url : HOME);
+                item.put("title", TabSessionStore.safeTitle(tab.title));
+                array.put(item);
+            }
+            root.put("tabs", array);
+            root.put("active", TabSessionStore.activeIndex(active, tabs.size()));
+            storage.edit().putString(PREF_OPEN_TABS, root.toString()).apply();
+        } catch (Exception ignored) { }
     }
 
     private void updateSecurity(String url) {
@@ -525,14 +609,24 @@ public final class MainActivity extends Activity {
 
     private void closeTab(int index) {
         if (index < 0 || index >= tabs.size()) return;
-        Tab t = tabs.remove(index);
-        if (view.getSession() == t.session) view.releaseSession();
-        t.session.close();
+        Tab closing = tabs.get(index);
+        boolean isActive = index == active;
+        if (isActive) {
+            GeckoSession released = view.releaseSession();
+            if (released != null) released.setActive(false);
+        }
+        tabs.remove(index);
+        if (closing.opened) closing.session.close();
         if (tabs.isEmpty()) {
             active = -1;
             addTab(HOME);
-        } else {
+        } else if (isActive) {
+            active = -1;
             selectTab(Math.min(index, tabs.size() - 1));
+        } else {
+            if (index < active) active--;
+            updateChrome();
+            saveTabs();
         }
     }
 
@@ -544,25 +638,63 @@ public final class MainActivity extends Activity {
 
     private void drawTabs() {
         if (tabsBadge == null) return;
+        tabsBadge.setText("▤" + tabs.size());
         tabsBadge.setContentDescription(tabs.size() == 1 ? "1 aba" : tabs.size() + " abas");
     }
 
     private void showTabs() {
-        if (tabs.isEmpty()) return;
-        String[] items = new String[tabs.size()];
-        for (int i = 0; i < tabs.size(); i++) {
-            Tab t = tabs.get(i);
-            String label = t.title == null || t.title.trim().isEmpty() ? t.url : t.title;
-            if (label == null || label.trim().isEmpty()) label = "Nova aba";
-            items[i] = (i == active ? "✓ " : "○ ") + trim(label, 40);
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("Abas abertas")
-                .setItems(items, (d, n) -> selectTab(n))
-                .setPositiveButton("Nova aba", (d, n) -> addTab(HOME))
-                .setNeutralButton("Fechar atual", (d, n) -> closeTab(active))
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(8), dp(8), dp(8), dp(8));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(list);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Abas abertas • " + tabs.size())
+                .setView(scroll)
+                .setPositiveButton("+ Nova aba", (d, n) -> addTab(HOME))
                 .setNegativeButton("Fechar", null)
-                .show();
+                .create();
+        populateTabCards(list, dialog);
+        dialog.show();
+    }
+
+    private void populateTabCards(LinearLayout container, AlertDialog dialog) {
+        container.removeAllViews();
+        for (int i = 0; i < tabs.size(); i++) {
+            final int index = i;
+            Tab tab = tabs.get(i);
+            LinearLayout card = new LinearLayout(this);
+            card.setGravity(Gravity.CENTER_VERTICAL);
+            card.setPadding(dp(10), dp(7), dp(3), dp(7));
+            card.setBackground(rounded(index == active ? 0xffe5f0ff : Color.WHITE, BORDER, 2));
+
+            LinearLayout info = new LinearLayout(this);
+            info.setOrientation(LinearLayout.VERTICAL);
+            TextView title = text((index == active ? "● " : "▣ ") + trim(tab.title, 36), 14, TEXT);
+            title.setTypeface(Typeface.DEFAULT_BOLD);
+            info.addView(title);
+            TextView address = text(trim(tab.url.equals(HOME) ? "Página inicial" : tab.url, 56), 11, SUBTLE);
+            address.setSingleLine(true);
+            info.addView(address);
+            info.setContentDescription("Abrir aba: " + tab.title);
+            info.setOnClickListener(v -> {
+                selectTab(index);
+                dialog.dismiss();
+            });
+            card.addView(info, new LinearLayout.LayoutParams(0, dp(54), 1));
+            TextView close = text("×", 24, XP_BLUE);
+            close.setGravity(Gravity.CENTER);
+            close.setContentDescription("Fechar aba: " + tab.title);
+            close.setOnClickListener(v -> {
+                closeTab(index);
+                populateTabCards(container, dialog);
+                dialog.setTitle("Abas abertas • " + tabs.size());
+            });
+            card.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(7);
+            container.addView(card, params);
+        }
     }
 
     private String trim(String value, int max) {
@@ -573,6 +705,51 @@ public final class MainActivity extends Activity {
         try {
             JSONArray array = new JSONArray(storage.getString(key, "[]"));
             for (int i = 0; i < array.length(); i++) list.add(array.getString(i));
+        } catch (Exception ignored) { }
+    }
+
+    private void loadHistoryDetails() {
+        historyDetails.clear();
+        try {
+            JSONArray data = new JSONArray(storage.getString(PREF_HISTORY_DETAILS, "[]"));
+            for (int i = 0; i < data.length() && historyDetails.size() < HistoryRecords.LIMIT; i++) {
+                JSONObject item = data.optJSONObject(i);
+                if (item == null) continue;
+                String url = item.optString("url", "");
+                if (TabSessionStore.restorable(url) && !HOME.equals(url)) {
+                    historyDetails.add(new HistoryRecords.Entry(url,
+                            item.optString("title", ""), item.optLong("visitedAt", 0)));
+                }
+            }
+        } catch (Exception ignored) { }
+        // Migração conservadora: histórico antigo não recebe datas inventadas.
+        for (String url : history) {
+            boolean found = false;
+            for (HistoryRecords.Entry entry : historyDetails) {
+                if (entry.url.equals(url)) { found = true; break; }
+            }
+            if (!found && TabSessionStore.restorable(url) && !HOME.equals(url)) {
+                historyDetails.add(new HistoryRecords.Entry(url, "", 0));
+            }
+        }
+        while (historyDetails.size() > HistoryRecords.LIMIT) {
+            historyDetails.remove(historyDetails.size() - 1);
+        }
+        saveHistoryDetails();
+    }
+
+    private void saveHistoryDetails() {
+        if (storage == null) return;
+        JSONArray result = new JSONArray();
+        try {
+            for (HistoryRecords.Entry entry : historyDetails) {
+                JSONObject row = new JSONObject();
+                row.put("url", entry.url);
+                row.put("title", entry.title);
+                row.put("visitedAt", entry.visitedAt);
+                result.put(row);
+            }
+            storage.edit().putString(PREF_HISTORY_DETAILS, result.toString()).apply();
         } catch (Exception ignored) { }
     }
 
@@ -625,11 +802,14 @@ public final class MainActivity extends Activity {
         storage.edit().putString(PREF_DOWNLOADS, array.toString()).apply();
     }
 
-    private void rememberHistory(String url) {
+    private void rememberHistory(String url, String pageTitle) {
+        if (!TabSessionStore.restorable(url) || HOME.equals(url)) return;
         history.remove(url);
         history.add(0, url);
-        while (history.size() > 200) history.remove(history.size() - 1);
+        while (history.size() > HistoryRecords.LIMIT) history.remove(history.size() - 1);
+        HistoryRecords.visited(historyDetails, url, pageTitle, System.currentTimeMillis());
         saveStringList(PREF_HISTORY, history);
+        saveHistoryDetails();
         refreshSuggestionAdapter(urlBox == null ? "" : urlBox.getText().toString());
     }
 
@@ -673,17 +853,103 @@ public final class MainActivity extends Activity {
     }
 
     private void showHistory() {
-        if (history.isEmpty()) {
-            Toast.makeText(this, "Histórico vazio", Toast.LENGTH_SHORT).show();
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setPadding(dp(10), dp(6), dp(10), dp(4));
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setTextSize(14);
+        search.setHint("Pesquisar título ou endereço");
+        column.addView(search, new LinearLayout.LayoutParams(-1, dp(48)));
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(results);
+        column.addView(scroll, new LinearLayout.LayoutParams(-1, dp(350)));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Histórico de navegação")
+                .setView(column)
+                .setPositiveButton("Limpar histórico", (d, n) -> clearHistory())
+                .setNegativeButton("Fechar", null)
+                .create();
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                populateHistoryRows(results, s.toString(), dialog);
+            }
+            @Override public void afterTextChanged(Editable editable) { }
+        });
+        populateHistoryRows(results, "", dialog);
+        dialog.show();
+        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+    }
+
+    private void populateHistoryRows(LinearLayout container, String query, AlertDialog dialog) {
+        container.removeAllViews();
+        ArrayList<HistoryRecords.Entry> entries = HistoryRecords.filter(historyDetails, query, 200);
+        if (entries.isEmpty()) {
+            TextView empty = text("Nenhuma página encontrada.", 13, SUBTLE);
+            empty.setPadding(dp(8), dp(20), dp(8), dp(20));
+            container.addView(empty);
             return;
         }
-        String[] items = history.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Histórico")
-                .setItems(items, (d, n) -> navigate(items[n]))
-                .setPositiveButton("Limpar", (d, n) -> clearHistory())
-                .setNegativeButton("Fechar", null)
-                .show();
+        String lastDate = "";
+        for (HistoryRecords.Entry entry : entries) {
+            String group = historyDay(entry.visitedAt);
+            if (!group.equals(lastDate)) {
+                TextView header = text(group, 12, XP_BLUE);
+                header.setTypeface(Typeface.DEFAULT_BOLD);
+                header.setPadding(dp(4), dp(8), dp(4), dp(4));
+                container.addView(header);
+                lastDate = group;
+            }
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(7), dp(3), dp(2), dp(3));
+            row.setBackground(rounded(Color.WHITE, BORDER, 1));
+            LinearLayout labels = new LinearLayout(this);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            TextView title = text(trim(entry.title.isEmpty() ? entry.url : entry.title, 52), 13, TEXT);
+            title.setTypeface(Typeface.DEFAULT_BOLD);
+            title.setSingleLine(true);
+            labels.addView(title);
+            TextView url = text(trim(entry.url, 60), 11, SUBTLE);
+            url.setSingleLine(true);
+            labels.addView(url);
+            labels.setOnClickListener(v -> {
+                navigate(entry.url);
+                dialog.dismiss();
+            });
+            row.addView(labels, new LinearLayout.LayoutParams(0, dp(52), 1));
+            TextView remove = text("×", 21, XP_BLUE);
+            remove.setGravity(Gravity.CENTER);
+            remove.setContentDescription("Remover do histórico: " + entry.url);
+            remove.setOnClickListener(v -> {
+                history.remove(entry.url);
+                historyDetails.removeIf(item -> item.url.equals(entry.url));
+                saveStringList(PREF_HISTORY, history);
+                saveHistoryDetails();
+                refreshSuggestionAdapter("");
+                populateHistoryRows(container, query, dialog);
+            });
+            row.addView(remove, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(4);
+            container.addView(row, params);
+        }
+    }
+
+    private String historyDay(long timestamp) {
+        if (timestamp <= 0) return "Data não registrada";
+        Calendar today = Calendar.getInstance();
+        Calendar visited = Calendar.getInstance();
+        visited.setTimeInMillis(timestamp);
+        if (today.get(Calendar.YEAR) == visited.get(Calendar.YEAR) &&
+                today.get(Calendar.DAY_OF_YEAR) == visited.get(Calendar.DAY_OF_YEAR)) return "Hoje";
+        today.add(Calendar.DAY_OF_YEAR, -1);
+        if (today.get(Calendar.YEAR) == visited.get(Calendar.YEAR) &&
+                today.get(Calendar.DAY_OF_YEAR) == visited.get(Calendar.DAY_OF_YEAR)) return "Ontem";
+        return new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date(timestamp));
     }
 
     private void clearHistory() {
@@ -692,7 +958,9 @@ public final class MainActivity extends Activity {
                 .setMessage("Cookies e cache do GeckoView não serão apagados.")
                 .setPositiveButton("Apagar", (d, n) -> {
                     history.clear();
+                    historyDetails.clear();
                     saveStringList(PREF_HISTORY, history);
+                    saveHistoryDetails();
                     refreshSuggestionAdapter("");
                 })
                 .setNegativeButton("Cancelar", null)
@@ -1275,10 +1543,16 @@ public final class MainActivity extends Activity {
     }
 
     @Override
+    protected void onStop() {
+        saveTabs();
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         uiHandler.removeCallbacks(downloadRefresh);
         if (view != null) view.releaseSession();
-        for (Tab t : tabs) t.session.close();
+        for (Tab t : tabs) if (t.opened) t.session.close();
         tabs.clear();
         super.onDestroy();
     }
