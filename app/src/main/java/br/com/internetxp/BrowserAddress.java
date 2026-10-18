@@ -1,6 +1,6 @@
 package br.com.internetxp;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -13,6 +13,12 @@ public final class BrowserAddress {
   String lower = s.toLowerCase(Locale.ROOT);
   if ((lower.startsWith("https://") || lower.startsWith("http://")) && !s.matches("(?s).*\\s+.*") && !s.contains("\\")) return s;
   if (!s.contains("://") && HOST.matcher(s).matches()) return "https://" + s;
-  return "https://www.google.com/search?q=" + URLEncoder.encode(s, StandardCharsets.UTF_8);
+  // The Charset overload is available only from Android API 33.
+  // The String charset-name overload works from Android API 26 (our minSdk).
+  try {
+   return "https://www.google.com/search?q=" + URLEncoder.encode(s, "UTF-8");
+  } catch (UnsupportedEncodingException impossible) {
+   throw new IllegalStateException("UTF-8 ausente na JVM", impossible);
+  }
  }
 }

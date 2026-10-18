@@ -1,3 +1,17 @@
+# Validação v1.0.5
+
+- [x] Logs do workflow 5 analisados: Java compilado e testes executados. `:app:lintDebug` falhou com 3 erros e 9 avisos; único erro detalhado é `BrowserAddress.java:16` com sobrecarga de API 33, incompatível com minSdk 26.
+- [x] Encoding de buscas corrigido usando sobrecarga presente em APIs antigas (`URLEncoder.encode(String, "UTF-8")`).
+- [x] Corrigido defeito de aspas na geração do checksum SHA-256 do APK que seria executado após o Lint.
+- [x] Workflow agora mostra o relatório completo do Lint após falha, incluindo erros que antes ficavam ocultos.
+- [x] Versão 1.0.5 / versionCode 6 e notas sincronizadas; APK somente na Release, sem `upload-artifact`.
+- [ ] Rodar `:app:testDebugUnitTest :app:lintDebug :app:assembleDebug` no GitHub Actions para identificar/solucionar os demais erros de lint, se persistirem.
+- [ ] Verificar relatório `aapt dump badging`, asset `Internet XP.v1.0.5.apk` publicado e assinatura.
+- [ ] Testar instalação/navegação/extensões em smartphone Android 8+ ARM64.
+- [ ] Configurar Secrets de assinatura estável antes da distribuição.
+
+---
+
 # Validação v1.0.4
 
 - [x] Logs da execução 4 lidos no ZIP enviado: a instalação do Android SDK 37.0 concluiu, `:app:checkDebugAarMetadata` passou e `:app:compileDebugJavaWithJavac` concluiu com aviso de API obsoleta (sem erro).

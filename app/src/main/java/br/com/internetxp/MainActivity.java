@@ -130,7 +130,7 @@ public final class MainActivity extends Activity {
    case "Exibir": item(p,"Atualizar",()->{Tab t=current(); if(t!=null)t.session.reload();}); item(p,"Histórico",this::showHistory); break;
    case "Favoritos": item(p,"Adicionar ou remover favorito",this::toggleBookmark); item(p,"Ver favoritos",this::showBookmarks); break;
    case "Ferramentas": item(p,"Extensões",this::showExtensions); item(p,"Downloads",this::showDownloads); item(p,"Limpar histórico local",this::clearHistory); break;
-   default:item(p,"Sobre Internet XP",()->new AlertDialog.Builder(this).setTitle("Internet XP 1.0.4").setMessage("GeckoView e interface clássica XP. Projeto independente, sem vínculo com Microsoft ou Mozilla.").setPositiveButton("OK",null).show());
+   default:item(p,"Sobre Internet XP",()->new AlertDialog.Builder(this).setTitle("Internet XP 1.0.5").setMessage("GeckoView e interface clássica XP. Projeto independente, sem vínculo com Microsoft ou Mozilla.").setPositiveButton("OK",null).show());
   } p.show();
  }
  private void item(PopupMenu p,String caption,Runnable run) { p.getMenu().add(caption).setOnMenuItemClickListener(m->{run.run();return true;}); }

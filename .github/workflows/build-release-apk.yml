@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.4
+  group: internet-xp-v1.0.5
   cancel-in-progress: false
 jobs:
   apk:
@@ -73,6 +73,18 @@ jobs:
           fi
       - name: Testes, lint e compilação Android
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Exibir relatório completo do Lint em caso de falha
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          report="$(find app/build -type f -name 'lint-results-debug.txt' -print -quit 2>/dev/null || true)"
+          if [[ -n "$report" && -f "$report" ]]; then
+            echo '======== RELATORIO ANDROID LINT COMPLETO ========'
+            cat "$report"
+          else
+            echo 'Relatório Lint em texto não disponível. O Gradle pode ter falhado antes do Lint.'
+          fi
       - name: Compilar Release assinado
         if: steps.signing.outputs.mode == 'release'
         env:
@@ -88,27 +100,27 @@ jobs:
           if [[ '${{ steps.signing.outputs.mode }}' == 'release' ]]; then src=app/build/outputs/apk/release/app-release.apk
           else src=app/build/outputs/apk/debug/app-debug.apk; fi
           test -s "$src"
-          cp "$src" 'Internet XP.v1.0.4.apk'
+          cp "$src" 'Internet XP.v1.0.5.apk'
           # Bloqueia publicacao de APK com versao ou minSdk inesperados.
-          apk_file='Internet XP.v1.0.4.apk'
+          apk_file='Internet XP.v1.0.5.apk'
           aapt_bin="${ANDROID_SDK_ROOT:-${ANDROID_HOME}}/build-tools/36.0.0/aapt"
           test -x "$aapt_bin"
           "$aapt_bin" dump badging "$apk_file" | tee "$RUNNER_TEMP/internetxp-badging.txt"
           grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/internetxp-badging.txt"
-          grep -Fq "versionCode='5' versionName='1.0.4'" "$RUNNER_TEMP/internetxp-badging.txt"
-          sha256sum "$apk_file" > "$apk_file.sha256
+          grep -Fq "versionCode='6' versionName='1.0.5'" "$RUNNER_TEMP/internetxp-badging.txt"
+          sha256sum "$apk_file" > "$apk_file.sha256"
       - name: Publicar APK diretamente na Release GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v1.0.4 >/dev/null 2>&1; then
-            gh release upload v1.0.4 'Internet XP.v1.0.4.apk' 'Internet XP.v1.0.4.apk.sha256' --clobber
+          if gh release view v1.0.5 >/dev/null 2>&1; then
+            gh release upload v1.0.5 'Internet XP.v1.0.5.apk' 'Internet XP.v1.0.5.apk.sha256' --clobber
           else
-            gh release create v1.0.4 'Internet XP.v1.0.4.apk' 'Internet XP.v1.0.4.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.4' --notes 'Internet XP 1.0.4: corrige minSdk 24 para 26, exigencia do GeckoView 158 para Android 8.0 ou superior. Compilacao e assinatura devem ser verificadas antes da distribuicao.'
+            gh release create v1.0.5 'Internet XP.v1.0.5.apk' 'Internet XP.v1.0.5.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.5' --notes 'Internet XP 1.0.5: corrige URL encoding incompatível com Android 8 a 12, conserta geração SHA-256 do APK e adiciona logs completos do Lint. APK depende da verificação do build.'
           fi
-          gh release view v1.0.4 --json url,assets
+          gh release view v1.0.5 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

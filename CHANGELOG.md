@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.0.5 (versionCode 6) - correção do workflow 5
+- Logs da quinta execução: `:app:compileDebugJavaWithJavac` e `:app:testDebugUnitTest` concluíram; `:app:lintDebug` falhou com 3 erros e 9 avisos. Apenas o primeiro erro aparece detalhado no ZIP enviado.
+- Corrige a chamada `URLEncoder.encode(String, Charset)`, exclusiva da API 33, para `URLEncoder.encode(String, "UTF-8")`, presente no Android 8.0 (API 26), com tratamento de `UnsupportedEncodingException`. Preserva Unicode e encoding de consultas.
+- Corrige aspa ausente na linha `sha256sum` do workflow de Release, que impediria gerar o checksum do APK.
+- Em caso de falha no Android Lint, imprime o relatório texto completo no log da execução para diagnosticar outros erros sem mascará-los.
+- Atualiza `versionName` para 1.0.5, `versionCode` para 6, menu Sobre, workflow, documentação e nome do APK da Release `Internet XP.v1.0.5.apk`.
+- Sem desativar Lint, sem elevar minSdk, sem trocar GeckoView nem publicar Artifacts ZIP.
+- Build e Release 1.0.5 ainda não verificados no GitHub Actions.
+
+
 ## 1.0.4 (versionCode 5) - correção do workflow 4
 - Logs da quarta execução: SDK 37.0 instalado, `:app:checkDebugAarMetadata` e `:app:compileDebugJavaWithJavac` aprovados; falha na tarefa `:app:processDebugMainManifest`.
 - Causa exata: o GeckoView `158.0.20261007201254` declara minSdk 26, enquanto o aplicativo mantinha minSdk 24.
