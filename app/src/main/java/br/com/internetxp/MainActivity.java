@@ -446,7 +446,7 @@ public final class MainActivity extends Activity {
         item(p, "Novidades desta versão", () ->
                 startActivity(new Intent(this, WhatsNewActivity.class)));
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.18")
+                .setTitle("Internet XP 1.0.19")
                 .setMessage("Compatibilidade com sites: envio de arquivos, tela cheia, permissões de localização e mídia, links externos e novas abas. Usa GeckoView. Projeto independente.")
                 .setPositiveButton("OK", null).show());
         p.show();

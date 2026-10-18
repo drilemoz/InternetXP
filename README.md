@@ -1,11 +1,13 @@
-# Internet XP v1.0.18
+# Internet XP v1.0.19
 
 ## Novidades nesta versão
-- Corrigido o erro de Android Lint `UnsafeOptInUsageError` da execução 18: `ContentPermission.notifyShown()` do GeckoView 158 utiliza opt-in explícito na rotina que apresenta o diálogo de localização, mantendo a comunicação com o motor de navegação.
-- Nova tela **Novidades**: abertura automática uma vez por `versionCode` novo (inclusive a primeira instalação), visual XP próprio com globo oficial, cabeçalho azul e cartões legíveis.
-- Botão **Começar a navegar** para fechar a tela; opção **Menu > Novidades desta versão** para consultar novamente.
-- Ícone monocromático para temas de ícones do launcher Android.
-- `ReleaseNotes.java` é a fonte dos destaques e deve ser atualizada em toda versão futura. `tools/validate_project.py` exige versão sincronizada e a presença da tela.
+- Corrige a falha da execução 19 (`cannot find symbol: androidx.annotation.OptIn`) incluindo `androidx.annotation:annotation-experimental:1.6.0` e `androidx.annotation:annotation:1.11.0` explicitamente no Gradle, como orienta a documentação AndroidX.
+- Mantém o opt-in localizado em `ContentPermission.notifyShown()`, sem suprimir o Lint ou reduzir as confirmações de permissões do usuário.
+- Atualiza a tela **Novidades** para 1.0.19: texto e cartões específicos desta correção, exibidos uma única vez após atualizar e disponíveis pelo menu.
+- Acrescenta validação de regressão das bibliotecas AndroidX/opt-in em `tools/validate_project.py`, executada no começo do workflow.
+- Mantém o GeckoView, o ícone com globo azul, a assinatura existente e os três APKs por arquitetura.
+
+**Observação:** esta entrega corrige o código-fonte da falha relatada. A compilação Android, o Lint e a instalação ainda precisam ser validados no GitHub Actions e em aparelho.
 
 Navegador Android com GeckoView 158 e interface mobile inspirada no Windows XP/Internet Explorer.
 
@@ -27,7 +29,7 @@ Globo azul com anel dourado, integrado ao Android como ícone tradicional e adap
 
 ## Build e distribuição
 Três APKs Release assinados por ABI: `armeabi-v7a`, `arm64-v8a`, `x86_64`.
-Versão 1.0.18 / `versionCode` 19. Workflow publica APKs na GitHub Release (não Artifacts ZIP).
+Versão 1.0.19 / `versionCode` 20. Workflow publica APKs na GitHub Release (não Artifacts ZIP).
 Secrets de assinatura necessários: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
 ## Descrição curta para o GitHub

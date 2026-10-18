@@ -41,3 +41,10 @@
 - Execução 18 falhou em `lintDebug` por uso de `ContentPermission.notifyShown()` experimental; solução é opt-in localizado, sem desativar Lint.
 - Tela de Novidades e teste de conteúdo/versionamento adicionados; atualização automática por versionCode.
 - O recurso de privacidade planejado fica para a próxima versão após validar o build 1.0.18.
+
+## 1.0.19: correção de build da execução 19
+- `@OptIn` é fornecido por `androidx.annotation:annotation-experimental`, dependência EXPLÍCITA obrigatória no `app/build.gradle` enquanto o GeckoView usar `ContentPermission.notifyShown()` experimental.
+- Manter também `androidx.annotation:annotation` em versão compatível para evitar aviso de `RequiresOptIn$Level` ausente.
+- `tools/validate_project.py` DEVE verificar ambas dependências, o uso localizado de @OptIn, e as notas reais da versão.
+- Qualquer mudança futura DEVE atualizar `ReleaseNotes`, README, CHANGELOG, docs/VALIDATION e notas da Release.
+- Próxima etapa planejada de privacidade permanece adiada até validar compilação/instalação real.

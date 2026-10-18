@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 19" in gradle
-assert "versionName '1.0.18'" in gradle
+assert "versionCode 20" in gradle
+assert "versionName '1.0.19'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -21,10 +21,10 @@ assert 'R.drawable.ic_refresh_ie_xp' in activity
 assert 'downloadsPanel.setVisibility(View.VISIBLE)' in activity
 assert 'rememberHistory(' in activity
 assert 'buildSuggestions(' in activity
-assert 'Internet XP 1.0.18' in activity
-assert "Internet XP.v1.0.18-${abi}.apk" in workflow_text
+assert 'Internet XP 1.0.19' in activity
+assert "Internet XP.v1.0.19-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.18' in workflow_text
+assert 'gh release create v1.0.19' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 assert 'name: Compilar APK e publicar na Release' in workflow_text
@@ -41,9 +41,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='19' versionName='1.0.18'" in workflow_text
+assert "versionCode='20' versionName='1.0.19'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.18-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.19-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -93,9 +93,9 @@ for name in ('ic_launcher.xml','ic_launcher_round.xml'):
     ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
 assert (root/'branding/internet_xp_icon_master.png').exists()
 
-assert '1.0.18' in (root/'README.md').read_text()
-assert '1.0.18' in (root/'CHANGELOG.md').read_text()
-assert '1.0.18' in (root/'docs/VALIDATION.md').read_text()
+assert '1.0.19' in (root/'README.md').read_text()
+assert '1.0.19' in (root/'CHANGELOG.md').read_text()
+assert '1.0.19' in (root/'docs/VALIDATION.md').read_text()
 
 # Mandatory per-update release notes: failed checks block CI before Android build.
 import ast
@@ -132,3 +132,13 @@ assert 'upload-artifact' not in workflow_text
 assert 'gradle --no-daemon --stacktrace :app:assembleRelease' in workflow_text
 assert 'python3 tools/validate_project.py' in workflow_text
 print('Tela de Novidades, versão e regra permanente: OK')
+
+# Regressão do workflow 19: annotation-experimental contém a @OptIn Java
+# e seu @RequiresOptIn$Level, ausentes na compilação da v1.0.18.
+assert "implementation 'androidx.annotation:annotation-experimental:1.6.0'" in gradle, 'Dependencia @OptIn ausente'
+assert "implementation 'androidx.annotation:annotation:1.11.0'" in gradle, 'Dependencia base AndroidX ausente'
+assert 'import androidx.annotation.OptIn;' in activity
+assert '@OptIn(markerClass = ExperimentalGeckoViewApi.class)' in activity
+assert 'permission.notifyShown();' in activity
+assert 'new Feature("01", "Compilação corrigida"' in notes, 'Novidades desatualizadas'
+print('Dependencia AndroidX @OptIn e notas da versão atual: OK')

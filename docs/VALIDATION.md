@@ -152,3 +152,11 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - [x] Ícones adaptativos receberam camada monocromática; testes novos verificam os destaques e política de versão.
 - [ ] Rodar `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleRelease` reais no GitHub Actions; esta validação não substitui a compilação Android.
 - [ ] Testar primeira instalação/atualização, fechamento e reabertura, voltar e ícone instalado no Android.
+
+## 1.0.19: log do workflow 19 e correção de @OptIn
+- [x] ZIP de logs da execução 19 inspecionado: SDK, configuração Gradle, `tools/validate_project.py` e testes Python OK; falha em `:app:compileDebugJavaWithJavac` com 2 símbolos ausentes: import e anotação `androidx.annotation.OptIn`; aviso de `RequiresOptIn$Level` ausente.
+- [x] Adicionada dependência `androidx.annotation:annotation-experimental:1.6.0` (contém `@OptIn`) e `androidx.annotation:annotation:1.11.0` de acordo com a documentação oficial. `settings.gradle` já inclui o repositório `google()`.
+- [x] Mantida a notificação experimental `permission.notifyShown()` com opt-in localizado, sem supressão global de Lint.
+- [x] `ReleaseNotes.VERSION_CODE=20`, `VERSION_NAME=1.0.19` e textos de novidades atualizados; teste Java e validador de projeto sincronizados.
+- [ ] Compilar no GitHub Actions, observar `:app:compileDebugJavaWithJavac`, `:app:lintDebug`, `:app:assembleRelease`, publicação dos três APKs.
+- [ ] Instalar no Android e verificar tela de Novidades uma única vez na atualização, permissão de localização e navegador.

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.0.19 (versionCode 20) - corrige dependência @OptIn (workflow 19)
+- Logs da execução 19: `:app:compileDebugJavaWithJavac` falhou por falta de `androidx.annotation.OptIn` e `androidx.annotation.RequiresOptIn$Level`; o Lint nem chegou a executar.
+- Adicionadas dependências explícitas `androidx.annotation:annotation:1.11.0` e `androidx.annotation:annotation-experimental:1.6.0`, conforme documentação oficial AndroidX, para compilar @OptIn no código Java com GeckoView.
+- Preservado `@OptIn(markerClass = ExperimentalGeckoViewApi.class)` somente no método que chama `permission.notifyShown()`; não desabilita Lint.
+- Tela de Novidades atualizada com destaques reais da versão 1.0.19; teste de versão e checagens estruturais atualizados.
+- README, AGENTS, VALIDATION, Gradle, GitHub workflow e notas de release sincronizados; permanece a publicação de três APKs Release assinados por ABI.
+- Compilação Android/Gradle, Lint, testes de instalação e release pendentes de execução real.
+
+
 ## 1.0.18 (versionCode 19) - correção de Lint e tela de Novidades
 - Logs da execução 18: compilação Java passou, mas o `:app:lintDebug` falhou com `UnsafeOptInUsageError` em `permission.notifyShown()` na linha 1598.
 - Aplicado opt-in explícito com `@OptIn(markerClass = ExperimentalGeckoViewApi.class)` no método de diálogo de localização. A chamada de `notifyShown()` é preservada.
