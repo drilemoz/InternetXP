@@ -6,8 +6,8 @@ android {
   applicationId 'br.com.internetxp'
   minSdk 26
   targetSdk 35
-  versionCode 9
-  versionName '1.0.8'
+  versionCode 10
+  versionName '1.0.9'
  }
 
  splits {
@@ -17,6 +17,12 @@ android {
    include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
    universalApk false
   }
+ }
+
+ // Para distribuição fora da Play: compacta bibliotecas .so dentro do APK.
+ // Reduz o download, mas ocupa mais armazenamento após extração na instalação.
+ packaging {
+  jniLibs { useLegacyPackaging = true }
  }
 
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
@@ -35,7 +41,12 @@ android {
  } }
  buildTypes {
   debug { }
-  release { minifyEnabled false; if (signed) signingConfig signingConfigs.release }
+  release {
+   minifyEnabled true
+   shrinkResources true
+   proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+   if (signed) signingConfig signingConfigs.release
+  }
  }
  lint { abortOnError true }
 }

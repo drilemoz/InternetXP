@@ -42,7 +42,6 @@ import java.util.List;
 /** Layout mobile XP inspirado no mockup do usuário, mantendo GeckoView e recursos atuais. */
 public final class MainActivity extends Activity {
     private static final int XP_BLUE = 0xff0d68c8;
-    private static final int XP_BLUE_DARK = 0xff0a56a8;
     private static final int LIGHT_BG = 0xfff1f2f6;
     private static final int PANEL_BG = 0xffedf0f5;
     private static final int BORDER = 0xffbcc8d6;
@@ -65,6 +64,8 @@ public final class MainActivity extends Activity {
     private TextView backIcon;
     private TextView forwardIcon;
     private TextView tabsBadge;
+    private ImageView securityIcon;
+    private View menuAnchor;
 
     private static final class Tab {
         final GeckoSession session;
@@ -130,36 +131,8 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(LIGHT_BG);
         setContentView(root);
 
-        // Barra superior azul compacta.
-        LinearLayout titleBar = new LinearLayout(this);
-        titleBar.setGravity(Gravity.CENTER_VERTICAL);
-        titleBar.setPadding(dp(14), dp(8), dp(14), dp(8));
-        titleBar.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{XP_BLUE, XP_BLUE_DARK}));
-
-        TextView globe = text("◎", 18, Color.WHITE);
-        globe.setTypeface(Typeface.DEFAULT_BOLD);
-        globe.setGravity(Gravity.CENTER);
-        titleBar.addView(globe, new LinearLayout.LayoutParams(dp(28), dp(28)));
-
-        TextView app = text("Internet XP", 18, Color.WHITE);
-        app.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams appParams = new LinearLayout.LayoutParams(0, dp(28), 1);
-        appParams.leftMargin = dp(10);
-        titleBar.addView(app, appParams);
-
-        TextView minimize = text("−", 18, Color.WHITE);
-        minimize.setGravity(Gravity.CENTER);
-        titleBar.addView(minimize, new LinearLayout.LayoutParams(dp(28), dp(28)));
-
-        TextView maximize = text("▢", 16, Color.WHITE);
-        maximize.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams maxParams = new LinearLayout.LayoutParams(dp(28), dp(28));
-        maxParams.leftMargin = dp(8);
-        titleBar.addView(maximize, maxParams);
-
-        root.addView(titleBar, new LinearLayout.LayoutParams(-1, dp(54)));
-        divider(root, 1);
+        // A barra de título foi removida. A faixa azul restante é a própria status bar do Android.
+        // O endereço é o primeiro controle visível, conforme solicitado para telas pequenas.
 
         // Painel de endereço.
         LinearLayout addressPanel = new LinearLayout(this);
@@ -173,9 +146,12 @@ public final class MainActivity extends Activity {
         addressBox.setBackground(rounded(Color.WHITE, BORDER, 0));
         addressBox.setPadding(dp(12), 0, dp(8), 0);
 
-        TextView secure = text("🔒", 16, SUCCESS);
-        secure.setGravity(Gravity.CENTER);
-        addressBox.addView(secure, new LinearLayout.LayoutParams(dp(26), dp(44)));
+        securityIcon = new ImageView(this);
+        securityIcon.setImageResource(R.drawable.ic_globe_xp);
+        securityIcon.setColorFilter(SUBTLE);
+        securityIcon.setContentDescription("Segurança da conexão ainda não verificada");
+        securityIcon.setPadding(dp(3), dp(11), dp(3), dp(11));
+        addressBox.addView(securityIcon, new LinearLayout.LayoutParams(dp(28), dp(44)));
 
         urlBox = new EditText(this);
         urlBox.setSingleLine();
@@ -202,8 +178,11 @@ public final class MainActivity extends Activity {
 
         addressPanel.addView(addressBox, new LinearLayout.LayoutParams(0, dp(46), 1));
 
-        TextView refresh = text("↻", 28, XP_BLUE);
-        refresh.setGravity(Gravity.CENTER);
+        ImageView refresh = new ImageView(this);
+        refresh.setImageResource(R.drawable.ic_refresh_xp);
+        refresh.setColorFilter(XP_BLUE);
+        refresh.setPadding(dp(13), dp(11), dp(13), dp(11));
+        refresh.setContentDescription("Atualizar página");
         refresh.setOnClickListener(v -> {
             Tab t = current();
             if (t != null) t.session.reload();
@@ -254,8 +233,9 @@ public final class MainActivity extends Activity {
         navImage(bottomBar, R.drawable.ic_download_xp, "Baixar", this::showDownloads);
         tabsBadge = navText(bottomBar, "▤", "Abas", this::showTabs);
         navText(bottomBar, "≡", "Menu", this::showMainMenu);
+        menuAnchor = bottomBar.getChildAt(bottomBar.getChildCount() - 1);
 
-        root.addView(bottomBar, new LinearLayout.LayoutParams(-1, dp(86)));
+        root.addView(bottomBar, new LinearLayout.LayoutParams(-1, dp(72)));
     }
 
     private LinearLayout navCell(LinearLayout parent, String caption, Runnable action) {
@@ -295,8 +275,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showMainMenu() {
-        View anchor = findViewById(android.R.id.content);
-        PopupMenu p = new PopupMenu(this, anchor, Gravity.BOTTOM);
+        PopupMenu p = new PopupMenu(this, menuAnchor, Gravity.END);
         item(p, "Nova aba", () -> addTab(HOME));
         item(p, "Fechar aba atual", () -> closeTab(active));
         item(p, "Atualizar", () -> { Tab t = current(); if (t != null) t.session.reload(); });
@@ -309,7 +288,7 @@ public final class MainActivity extends Activity {
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.8")
+                .setTitle("Internet XP 1.0.9")
                 .setMessage("Layout mobile XP baseado no mockup do usuário, usando GeckoView. Projeto independente, sem vínculo com Microsoft ou Mozilla.")
                 .setPositiveButton("OK", null).show());
         p.show();
@@ -358,7 +337,10 @@ public final class MainActivity extends Activity {
             public void onLocationChange(GeckoSession s, String uri, List<GeckoSession.PermissionDelegate.ContentPermission> perms, Boolean gesture) {
                 if (uri == null) return;
                 tab.url = uri;
-                if (tab == current() && !urlBox.hasFocus()) urlBox.setText(uri.equals(HOME) ? "" : uri);
+                if (tab == current()) {
+                    if (!urlBox.hasFocus()) urlBox.setText(uri.equals(HOME) ? "" : uri);
+                    updateSecurity(uri);
+                }
                 if (uri.startsWith("http://") || uri.startsWith("https://")) rememberHistory(uri);
             }
             @Override public void onCanGoBack(GeckoSession s, boolean b) { tab.back = b; if (tab == current()) updateArrows(); }
@@ -383,7 +365,16 @@ public final class MainActivity extends Activity {
         tab.session.setActive(true);
         view.setSession(tab.session);
         if (!urlBox.hasFocus()) urlBox.setText(tab.url.equals(HOME) ? "" : tab.url);
+        updateSecurity(tab.url);
         updateChrome();
+    }
+
+    private void updateSecurity(String url) {
+        if (securityIcon == null) return;
+        boolean secure = url != null && url.startsWith("https://");
+        securityIcon.setImageResource(secure ? R.drawable.ic_lock_xp : R.drawable.ic_globe_xp);
+        securityIcon.setColorFilter(secure ? SUCCESS : SUBTLE);
+        securityIcon.setContentDescription(secure ? "Endereço HTTPS" : "Conexão não indicada como HTTPS");
     }
 
     private void updateChrome() {

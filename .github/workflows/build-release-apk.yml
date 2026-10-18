@@ -2,17 +2,17 @@ name: Compilar APK e publicar na Release
 on:
   push:
     branches: [main, master]
-    paths: ['app/**', 'build.gradle', 'settings.gradle', 'gradle.properties', '.github/workflows/build-release-apk.yml']
+    paths: ['app/**', 'tools/**', 'build.gradle', 'settings.gradle', 'gradle.properties', '.github/workflows/build-release-apk.yml']
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.8
+  group: internet-xp-v1.0.9
   cancel-in-progress: false
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -40,8 +40,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - name: Preparar assinatura opcional
-        id: signing
+      - name: Preparar assinatura obrigatória para Release
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -50,24 +49,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          count=0
-          for key in "$KEYSTORE_BASE64" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD"; do
-            if [[ -n "$key" ]]; then count=$((count+1)); fi
-          done
-          if [[ "$count" -gt 0 && "$count" -lt 4 ]]; then
-            echo '::error::Assinatura parcialmente configurada: informe os quatro Secrets ou nenhum.'
+          if [[ -z "$KEYSTORE_BASE64" || -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            echo '::error::Configure os quatro Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD). A v1.0.9 publica somente APKs Release otimizados e assinados.'
             exit 1
           fi
-          if [[ "$count" -eq 4 ]]; then
-            printf %s "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/assinatura.p12"
-            chmod 600 "$RUNNER_TEMP/assinatura.p12"
-            echo 'mode=release' >> "$GITHUB_OUTPUT"
-          else
-            echo 'mode=debug' >> "$GITHUB_OUTPUT"
-            echo '::warning::Sem Secrets: serão publicados APKs Debug por ABI, sem garantia de atualização futura.'
-          fi
-      - name: Testes, lint e compilação Debug por ABI
-        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+          printf %s "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/assinatura.p12"
+          chmod 600 "$RUNNER_TEMP/assinatura.p12"
+      - name: Testar validador de tamanho e arquitetura
+        run: python3 -m unittest discover -s tools -p 'test_*.py' -v
+      - name: Testes, lint e compilação Debug (não publicada)
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug
       - name: Exibir relatório completo do Lint em caso de falha
         if: failure()
         shell: bash
@@ -75,56 +66,44 @@ jobs:
           set -euo pipefail
           report="$(find app/build -type f -name 'lint-results-debug.txt' -print -quit 2>/dev/null || true)"
           if [[ -n "$report" && -f "$report" ]]; then
-            echo '======== RELATORIO ANDROID LINT COMPLETO ========'
             cat "$report"
           else
-            echo 'Relatório Lint em texto não disponível. O Gradle pode ter falhado antes do Lint.'
+            echo 'Relatório Lint indisponível; veja o erro Gradle acima.'
           fi
-      - name: Compilar Release assinado por ABI
-        if: steps.signing.outputs.mode == 'release'
+      - name: Compilar Release otimizada por ABI
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/assinatura.p12
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle --no-daemon --stacktrace :app:assembleRelease
-      - name: Preparar APKs por arquitetura sem Artifact ZIP
+      - name: Validar arquitetura, medir tamanho e preparar Release
         shell: bash
         run: |
           set -euo pipefail
-          mode='${{ steps.signing.outputs.mode }}'
-          if [[ "$mode" == 'release' ]]; then
-            src_dir='app/build/outputs/apk/release'
-            suffix='release'
-            debug_suffix=''
-          else
-            src_dir='app/build/outputs/apk/debug'
-            suffix='debug'
-            debug_suffix='-debug'
-          fi
-          shopt -s nullglob
-          files=("$src_dir"/*.apk)
-          if [[ ${#files[@]} -eq 0 ]]; then
-            echo "::error::Nenhum APK gerado em $src_dir"
-            exit 1
-          fi
+          src_dir='app/build/outputs/apk/release'
           aapt_bin="${ANDROID_SDK_ROOT:-${ANDROID_HOME}}/build-tools/36.0.0/aapt"
           test -x "$aapt_bin"
           : > "$RUNNER_TEMP/release-assets.txt"
-          for src in "${files[@]}"; do
-            base="$(basename "$src")"
-            abi='unknown'
-            case "$base" in
-              *armeabi-v7a*) abi='armeabi-v7a' ;;
-              *arm64-v8a*) abi='arm64-v8a' ;;
-              *x86_64*) abi='x86_64' ;;
-              *x86*) abi='x86' ;;
-            esac
-            out="Internet XP.v1.0.8-${abi}${debug_suffix}.apk"
+          shopt -s nullglob
+          all_apks=("$src_dir"/*.apk)
+          if [[ ${#all_apks[@]} -ne 4 ]]; then
+            echo "::error::Esperados 4 APKs por ABI; encontrados ${#all_apks[@]} em $src_dir"
+            exit 1
+          fi
+          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+            candidates=("$src_dir"/*"$abi"*-release.apk)
+            if [[ ${#candidates[@]} -ne 1 ]]; then
+              echo "::error::Esperado 1 APK da arquitetura $abi; encontrados ${#candidates[@]}"
+              exit 1
+            fi
+            src="${candidates[0]}"
+            out="Internet XP.v1.0.9-${abi}.apk"
             cp "$src" "$out"
-            "$aapt_bin" dump badging "$out" | tee "$RUNNER_TEMP/${abi}-${suffix}-badging.txt"
-            grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-${suffix}-badging.txt"
-            grep -Fq "versionCode='9' versionName='1.0.8'" "$RUNNER_TEMP/${abi}-${suffix}-badging.txt"
+            "$aapt_bin" dump badging "$out" > "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "versionCode='10' versionName='1.0.9'" "$RUNNER_TEMP/${abi}-badging.txt"
+            python3 tools/report_apk.py "$out" "$abi"
             sha256sum "$out" > "$out.sha256"
             printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
           done
@@ -137,12 +116,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
-          if gh release view v1.0.8 >/dev/null 2>&1; then
-            gh release upload v1.0.8 "${assets[@]}" --clobber
+          if gh release view v1.0.9 >/dev/null 2>&1; then
+            gh release upload v1.0.9 "${assets[@]}" --clobber
           else
-            gh release create v1.0.8 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.8' --notes 'Internet XP 1.0.8: novo layout mobile XP baseado no mockup do usuário e publicação de APKs separados por arquitetura (armeabi-v7a, arm64-v8a, x86 e x86_64), sem Artifact ZIP.'
+            gh release create v1.0.9 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.9' --notes 'Interface mobile sem barra de título, Android GeckoView. Quatro APKs Release assinados e otimizados com R8, recursos reduzidos e .so comprimidas. Use o APK da ABI do seu aparelho; teste a instalação e o desempenho. Sem Artifact ZIP.'
           fi
-          gh release view v1.0.8 --json url,assets
+          gh release view v1.0.9 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

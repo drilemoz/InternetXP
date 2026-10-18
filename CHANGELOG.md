@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.0.9 (versionCode 10): interface sem barra de título e Release menor
+- Remove totalmente o cabeçalho azul do app, incluindo ícones de minimizar/maximizar e nome, preservando o status bar do Android.
+- O painel de endereço vira a primeira barra da interface. Cadeado emoji substituído por vetores; não sinaliza HTTPS onde o URL não usa HTTPS. Botão de atualizar virou vetor.
+- Mantém barra inferior, reduzida para 72 dp, menu ancorado no botão Menu e funcionalidades GeckoView.
+- Release passa a usar R8 (`minifyEnabled true`, `shrinkResources true`, `proguard-android-optimize.txt`) e compactação de bibliotecas nativas `useLegacyPackaging = true`.
+- Publicação exige os quatro Secrets de assinatura e **não publica APK Debug**. Os builds `debug` continuam disponíveis para testes/lint.
+- Pipeline gera quatro APKs por ABI, valida conteúdo ZIP, mede tamanho por categoria e publica somente APKs nativos corretos diretamente na Release (sem Artifact ZIP).
+- `versionName` 1.0.9, `versionCode` 10, release tag e documentação sincronizados.
+- **Pendente:** compilar no GitHub Actions, verificar se R8 preservou GeckoView, medir redução real de tamanho e testar instalação/consumo em aparelho.
+
 ## 1.0.8 (versionCode 9) - layout mobile XP e APKs por ABI
 - Reorganiza a interface para celular conforme o mockup do usuário: cabeçalho azul compacto, barra de endereço destacada, GeckoView central amplo e navegação principal fixa na parte inferior.
 - Remove a antiga composição com menu clássico e barra superior extensa, priorizando uso em telas de telefone sem perder a identidade visual XP.

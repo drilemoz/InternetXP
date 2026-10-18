@@ -83,3 +83,11 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 ## 1.0.8
 - Validação estrutural do ZIP, workflow atualizado para split APK por ABI e Activity principal redesenhada para o layout mobile XP.
 - Necessário validar no GitHub Actions a geração dos APKs separados por arquitetura e o visual em aparelho real.
+
+
+## 1.0.9: revisão do layout e tamanho do APK
+- Cabeçalho azul redundante removido da Activity. Status bar azul do Android preservada.
+- Cadeado emoji substituído por recurso vetorial; globo usado quando URL não é HTTPS, atualização desenhada por vetor.
+- Java da Activity, workflow, vetores XML, validação de arquivo ZIP e script `tools/report_apk.py` passam por revisão estática e testes locais.
+- CI faz lint/testes, exige Secrets e monta Release com minificação R8, compactação de .so, APKs divididos por ABI e relatório de tamanho por categoria.
+- Pendente: execução Android/Gradle, medidas de MiB por ABI, atualização de APK existente, tempo/armazenamento de instalação e teste GeckoView na v1.0.9.

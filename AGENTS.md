@@ -1,11 +1,12 @@
 # Regras Internet XP
-- Versionamento sequencial em toda alteração: subir `versionCode` e `versionName` e sincronizar README/CHANGELOG/docs.
-- GeckoView é obrigatório; não trocar por WebView.
-- Prioridade atual de design: **layout mobile para telefone**, fiel ao mockup aprovado pelo usuário, preservando identidade visual XP.
-- Publicar APKs **direto no GitHub Release**, sem `upload-artifact` e sem Artifact ZIP de workflow.
-- A partir da v1.0.8, o build deve gerar **APKs separados por ABI** (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`) em vez de um único APK universal pesado.
-- Secrets exigidos: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Nunca inserir credenciais em commit.
-- Não declarar APK disponível antes de build bem-sucedido e assets da Release confirmados.
-- Nunca desativar Lint ou alterar `minSdk` apenas para ocultar problemas de compatibilidade.
-- Para GeckoView 158 manter `compileSdk 37`, AGP `9.1.1`, Gradle `9.3.1` ou combinação comprovadamente compatível; `targetSdk 35` permanece distinto.
-- GeckoView 158 requer `minSdk 26` (Android 8.0+): não usar `tools:overrideLibrary` para forçar APIs não suportadas.
+
+- Versionamento sequencial por mudança: v1.0.9/versionCode 10 é a versão presente, próximo incremento v1.0.10/versionCode 11. Sincronizar workflow, arquivo APK, README, CHANGELOG, docs e Sobre.
+- GeckoView 158 é obrigatório: não substituir o motor Firefox por WebView.
+- Layout mobile conforme screenshot aprovado: **sem barra de título duplicada**, endereço como primeiro componente abaixo do status bar do Android, barra inferior com seis ações.
+- Usar Java 17, AGP 9.1.1, Gradle 9.3.1, compileSdk 37, targetSdk 35, minSdk 26.
+- Gerar APKs **separados por ABI**: armeabi-v7a, arm64-v8a, x86, x86_64. Não publicar universal acidental, variante vazia ou rotulada com ABI errada.
+- No GitHub, publicar APKs assinados de variante **Release otimizada com R8**, nunca Debug: `Internet XP.v1.0.9-<abi>.apk`. Sem `actions/upload-artifact` ou Artifact ZIP. O ZIP entregue ao usuário contém apenas o código-fonte.
+- Nomear Secrets exigidos corretamente: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD. Nunca inserir valores ou keystore no repositório/ZIP; reutilizar a mesma assinatura para atualizações.
+- A compactação de `.so` visa reduzir download, mas pode aumentar espaço usado na instalação e tempo de inicialização; documentar essa troca e medir a cada mudança. Não afirmar redução de 190 MB sem APK real analisado.
+- Nunca declarar APK gerado/publicado ou upload Drive concluído sem confirmação da ferramenta correspondente.
+- Não desativar Lint para ocultar erro, nem forçar GeckoView em minSdk inferior a 26.
