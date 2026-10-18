@@ -42,11 +42,28 @@ class ReportApkTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'sem bibliotecas nativas'):
                 inspect_apk(path, 'arm64-v8a')
 
-    def test_rejects_wrong_abi(self):
+
+    def test_rejects_unsupported_x86_32_build(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'test.apk'
             with ZipFile(path, 'w', ZIP_DEFLATED) as z:
                 z.writestr('lib/x86/libxul.so', b'A' * 300)
+            with self.assertRaisesRegex(ValueError, 'ABI desconhecida'):
+                inspect_apk(path, 'x86')
+
+    def test_accepts_x86_64_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'test.apk'
+            with ZipFile(path, 'w', ZIP_DEFLATED) as z:
+                z.writestr('lib/x86_64/libxul.so', b'A' * 300)
+            result = inspect_apk(path, 'x86_64')
+            self.assertEqual(result['native_count'], 1)
+
+    def test_rejects_wrong_abi(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'test.apk'
+            with ZipFile(path, 'w', ZIP_DEFLATED) as z:
+                z.writestr('lib/armeabi-v7a/libxul.so', b'A' * 300)
             with self.assertRaisesRegex(ValueError, 'ABI esperada'):
                 inspect_apk(path, 'x86_64')
 

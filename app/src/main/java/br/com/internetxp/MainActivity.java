@@ -288,7 +288,7 @@ public final class MainActivity extends Activity {
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.10")
+                .setTitle("Internet XP 1.0.11")
                 .setMessage("Layout mobile XP baseado no mockup do usuário, usando GeckoView. Projeto independente, sem vínculo com Microsoft ou Mozilla.")
                 .setPositiveButton("OK", null).show());
         p.show();

@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.0.11 (versionCode 12) - corrigido build por ABI
+- Workflow 11: testes Java, Android Lint, assinatura e `:app:assembleRelease` aprovados com R8; a publicação falhou somente porque a variante x86 de 32 bits não inclui bibliotecas nativas do GeckoView 158.
+- Excluída ABI `x86` do split e do upload; mantidas `armeabi-v7a`, `arm64-v8a` e `x86_64`.
+- O workflow passa a exigir exatamente 3 APKs Release assinados, sempre validados com `report_apk.py` e SHA-256 antes da publicação, sem Artifacts ZIP.
+- O analisador rejeita `x86` e ganha testes explícitos de aceitação de `x86_64` e rejeição de x86 32 bits.
+- `versionName=1.0.11`, `versionCode=12`, menu Sobre, workflow, README, AGENTS e validações sincronizados.
+- Tamanhos medidos na CI anterior: ARM32 84,40 MiB, ARM64 87,00 MiB. O tamanho de x86_64 ainda precisa de confirmação na execução 12.
+- Não há APK v1.0.11 compilado ou Release publicada nesta entrega local.
+
+
 ## 1.0.10 (versionCode 11) - diagnóstico dos Secrets e correção do split ABI
 - Logs da execução 10: as quatro variáveis de assinatura chegaram vazias; build parou antes de testar/compilar.
 - Continua proibido publicar APK Debug no lugar de Release assinada.

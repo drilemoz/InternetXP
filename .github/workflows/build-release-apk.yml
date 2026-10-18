@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.10
+  group: internet-xp-v1.0.11
   cancel-in-progress: false
 jobs:
   apk:
@@ -96,11 +96,11 @@ jobs:
           : > "$RUNNER_TEMP/release-assets.txt"
           shopt -s nullglob
           all_apks=("$src_dir"/*.apk)
-          if [[ ${#all_apks[@]} -ne 4 ]]; then
-            echo "::error::Esperados 4 APKs por ABI; encontrados ${#all_apks[@]} em $src_dir"
+          if [[ ${#all_apks[@]} -ne 3 ]]; then
+            echo "::error::Esperados 3 APKs por ABI; encontrados ${#all_apks[@]} em $src_dir"
             exit 1
           fi
-          for abi in armeabi-v7a arm64-v8a x86 x86_64; do
+          for abi in armeabi-v7a arm64-v8a x86_64; do
             # Nome padrão documentado pelo Android Gradle Plugin: app-ABI-release.apk.
             # Evita falso positivo: buscar *x86* também encontra x86_64.
             src="$src_dir/app-${abi}-release.apk"
@@ -109,11 +109,11 @@ jobs:
               printf 'APKs existentes: %s\n' "${all_apks[@]}"
               exit 1
             fi
-            out="Internet XP.v1.0.10-${abi}.apk"
+            out="Internet XP.v1.0.11-${abi}.apk"
             cp "$src" "$out"
             "$aapt_bin" dump badging "$out" > "$RUNNER_TEMP/${abi}-badging.txt"
             grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-badging.txt"
-            grep -Fq "versionCode='11' versionName='1.0.10'" "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "versionCode='12' versionName='1.0.11'" "$RUNNER_TEMP/${abi}-badging.txt"
             python3 tools/report_apk.py "$out" "$abi"
             sha256sum "$out" > "$out.sha256"
             printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
@@ -127,12 +127,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
-          if gh release view v1.0.10 >/dev/null 2>&1; then
-            gh release upload v1.0.10 "${assets[@]}" --clobber
+          if gh release view v1.0.11 >/dev/null 2>&1; then
+            gh release upload v1.0.11 "${assets[@]}" --clobber
           else
-            gh release create v1.0.10 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.10' --notes 'Interface mobile sem barra de título, Android GeckoView. Quatro APKs Release assinados e otimizados com R8, recursos reduzidos e .so comprimidas. Use o APK da ABI do seu aparelho; teste a instalação e o desempenho. Sem Artifact ZIP.'
+            gh release create v1.0.11 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.11' --notes 'Interface mobile sem barra de título, Android GeckoView. Três APKs Release assinados e otimizados com R8, recursos reduzidos e .so comprimidas. Use o APK da ABI do seu aparelho; teste a instalação e o desempenho. Sem Artifact ZIP.'
           fi
-          gh release view v1.0.10 --json url,assets
+          gh release view v1.0.11 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

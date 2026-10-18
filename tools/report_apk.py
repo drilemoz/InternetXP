@@ -9,7 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
-ABIS = {"armeabi-v7a", "arm64-v8a", "x86", "x86_64"}
+ABIS = {"armeabi-v7a", "arm64-v8a", "x86_64"}
 
 
 def inspect_apk(path: Path, expected_abi: str) -> dict:

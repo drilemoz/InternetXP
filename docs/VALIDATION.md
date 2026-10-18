@@ -100,3 +100,12 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - [x] Corrigida correspondência ambígua de nomes `x86` e `x86_64` por caminho exato.
 - [ ] Importar os quatro Repository secrets no repositório InternetXP e executar GitHub Actions.
 - [ ] Confirmar compilação Android completa, APKs por ABI e tamanho real.
+
+
+## 1.0.11 - workflow 11 (2026-10-18)
+- [x] Logs reais inspecionados: `testDebugUnitTest`, `lintDebug`, `minifyReleaseWithR8`, `assembleRelease` bem-sucedidos. Os Secrets de assinatura funcionaram.
+- [x] Relatórios reais: ARM32 = 84,40 MiB (13 `.so`), ARM64 = 87,00 MiB (13 `.so`).
+- [x] Falha posterior à compilação: APK x86 (32 bits) sem bibliotecas nativas GeckoView, validador bloqueou a publicação.
+- [x] Removido `x86` dos splits, workflow e testes de ABIs aceitas; adicionado teste específico contra regressão.
+- [ ] Compilar e validar 3 APKs Release no GitHub Actions; confirmar tamanho do x86_64.
+- [ ] Confirmar assets Release e testar instalação/funcionamento GeckoView no aparelho.
