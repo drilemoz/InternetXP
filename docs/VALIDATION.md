@@ -1,3 +1,11 @@
+## 1.0.25: serviço de downloads em primeiro plano
+- Verificar `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` no GitHub Actions.
+- Testar download após ir para a tela inicial do Android, aguardando conclusão sem fechar o processo.
+- Testar dois downloads simultâneos, cancelamento imediato ainda na fila e cancelamento durante gravação.
+- Testar notificações no Android 8, Android 13+ com notificações desativadas e Android 15 com limites de `dataSync`.
+- **Não garante continuidade após reinicialização ou parada forçada**; downloads interrompidos permanecem marcados como falhos.
+- Conferir Novidades 1.0.25 exibida uma vez e APKs assinados por ABI.
+
 ## 1.0.23: download nativo e identificação como navegador
 - Validar `tools/validate_project.py`, testes JVM e integridade ZIP.
 - Testar download HTTP e HTTPS no Redmi A3 e Redmi Note 11 Pro+, verificando que outro navegador não é acionado.

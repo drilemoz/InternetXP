@@ -4,14 +4,14 @@ import static org.junit.Assert.*;
 import java.util.HashSet;
 public final class ReleaseNotesTest {
     @Test public void displaysAfterFreshInstallAndUpdate() {
-        assertTrue(ReleaseNotes.shouldShow(0));
-        assertTrue(ReleaseNotes.shouldShow(23));
-        assertFalse(ReleaseNotes.shouldShow(24));
-        assertFalse(ReleaseNotes.shouldShow(25));
+        assertTrue(ReleaseNotes.shouldShow(25));
+        assertTrue(ReleaseNotes.shouldShow(24));
+        assertFalse(ReleaseNotes.shouldShow(26));
+        assertFalse(ReleaseNotes.shouldShow(30));
     }
     @Test public void releaseEntriesAreUsefulAndUnique() {
-        assertEquals("1.0.23", ReleaseNotes.VERSION_NAME);
-        assertEquals(24, ReleaseNotes.VERSION_CODE);
+        assertEquals("1.0.25", ReleaseNotes.VERSION_NAME);
+        assertEquals(26, ReleaseNotes.VERSION_CODE);
         assertTrue(ReleaseNotes.FEATURES.length >= 3);
         HashSet<String> names = new HashSet<>();
         for (ReleaseNotes.Feature feature : ReleaseNotes.FEATURES) {

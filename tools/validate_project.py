@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 24" in gradle
-assert "versionName '1.0.23'" in gradle
+assert "versionCode 26" in gradle
+assert "versionName '1.0.25'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -26,9 +26,9 @@ assert 'private void showModuleMenuDialog(' in activity
 assert 'addressBox.setOnClickListener(v -> focusAddressBar(true))' in activity
 assert 'urlBox.setOnTouchListener((v, event) -> {' in activity
 assert 'private void focusAddressBar(boolean showSuggestions)' in activity
-assert "Internet XP.v1.0.23-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.25-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.23' in workflow_text
+assert 'gh release create v1.0.25' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 assert 'name: Compilar APK e publicar na Release' in workflow_text
@@ -45,9 +45,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='24' versionName='1.0.23'" in workflow_text
+assert "versionCode='25' versionName='1.0.25'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.23-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.25-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -97,9 +97,9 @@ for name in ('ic_launcher.xml','ic_launcher_round.xml'):
     ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
 assert (root/'branding/internet_xp_icon_master.png').exists()
 
-assert '1.0.23' in (root/'README.md').read_text()
-assert '1.0.23' in (root/'CHANGELOG.md').read_text()
-assert '1.0.23' in (root/'docs/VALIDATION.md').read_text()
+assert '1.0.25' in (root/'README.md').read_text()
+assert '1.0.25' in (root/'CHANGELOG.md').read_text()
+assert '1.0.25' in (root/'docs/VALIDATION.md').read_text()
 
 # Mandatory per-update release notes: failed checks block CI before Android build.
 import ast
@@ -144,10 +144,10 @@ assert "implementation 'androidx.annotation:annotation:1.11.0'" in gradle, 'Depe
 assert 'import androidx.annotation.OptIn;' in activity
 assert '@OptIn(markerClass = ExperimentalGeckoViewApi.class)' in activity
 assert 'permission.notifyShown();' in activity
-assert 'new Feature("01", "Gerenciador de downloads próprio"' in notes, 'Novidades desatualizadas'
+assert 'new Feature("01", "Menu rápido redesenhado"' in notes, 'Novidades desatualizadas'
 print('Dependencia AndroidX @OptIn e notas da versão atual: OK')
 
-# Versao 1.0.23: verificacao estrutural de privacidade
+# Versao 1.0.25: verificacao estrutural de privacidade
 assert 'usePrivateMode(privateMode)' in activity
 assert 'PrivacyRules.shouldRecordHistory(tab.privateMode, uri)' in activity
 assert 'if (tab.privateMode) continue;' in activity, 'As abas privadas nao podem ser persistidas'
@@ -158,21 +158,21 @@ assert 'StorageController.ClearFlags.ALL_CACHES' in activity
 assert 'runtime.getStorageController().clearData(flags).accept(' in activity
 assert 'private void showCurrentSitePermissions()' in activity
 assert 'trackingProtectionEnabled' in activity
-assert 'new Feature("05", "Histórico preservado e migração segura"' in notes
+assert 'new Feature("05", "Pop-ups coerentes"' in notes
 assert (root/'app/src/main/java/br/com/internetxp/PrivacyRules.java').exists()
 assert (root/'app/src/test/java/br/com/internetxp/PrivacyRulesTest.java').exists()
 print('Privacidade, seguranca e isolamento estrutural: OK')
 assert 'storage.edit().putString(PREF_OPEN_TABS,' in activity, 'Clear deve invalidar sessao persistida antes de apagar dados'
 
-# Versao 1.0.23: menu em modulos e ajuste para telas compactas
+# Versao 1.0.25: menu em modulos e ajuste para telas compactas
 assert 'private static final class MenuAction' in activity
-assert 'showModuleMenuDialog("Menu do Internet XP"' in activity
+assert 'showMainMenuHubDialog("Internet XP"' in activity
 assert 'showModuleMenuDialog("Privacidade e dados"' in activity
 assert 'downloadsPanelHeightDp()' in activity
 assert 'toolbarHeightDp()' in activity
 print('Menu em módulos e responsividade estrutural: OK')
 
-# v1.0.23: Nova página inicial, favoritos e configuração devem permanecer sincronizados.
+# v1.0.25: Nova página inicial, favoritos e configuração devem permanecer sincronizados.
 assert 'new HomePageView(' in activity
 assert 'homeScreen.showFavorites(bookmarks)' in activity
 assert 'private void showBrowserSettings()' in activity
@@ -187,10 +187,10 @@ assert (root/'app/src/main/java/br/com/internetxp/HomePageView.java').exists()
 assert (root/'app/src/main/java/br/com/internetxp/HomePageSettings.java').exists()
 assert (root/'app/src/main/java/br/com/internetxp/FaviconRepository.java').exists()
 assert (root/'app/src/test/java/br/com/internetxp/HomePageSettingsTest.java').exists()
-assert 'new Feature("05", "Histórico preservado e migração segura"' in notes
+assert 'new Feature("05", "Pop-ups coerentes"' in notes
 print('Página inicial, favicons, Configurações e diálogos XP: OK')
 
-# v1.0.23: regras para próprio gerenciador e papel de navegador.
+# v1.0.25: regras para próprio gerenciador e papel de navegador.
 engine = (root/'app/src/main/java/br/com/internetxp/AppDownloadEngine.java').read_text()
 assert 'class AppDownloadEngine' in engine
 assert 'InputStream' in engine and 'FileOutputStream' in engine
@@ -210,3 +210,27 @@ assert (root/'app/src/main/java/br/com/internetxp/XpFileProvider.java').exists()
 assert "implementation 'androidx.core:core:1.16.0'" in gradle
 assert (root/'app/src/main/res/xml/xp_file_paths.xml').exists()
 print('Downloads nativos, FileProvider e papel de navegador: OK')
+
+# v1.0.25: foreground transfers and queue cancellation
+service = (root/'app/src/main/java/br/com/internetxp/DownloadForegroundService.java').read_text()
+engine = (root/'app/src/main/java/br/com/internetxp/AppDownloadEngine.java').read_text()
+assert 'android.permission.FOREGROUND_SERVICE' in manifest_xml
+assert 'android.permission.FOREGROUND_SERVICE_DATA_SYNC' in manifest_xml
+assert 'android:foregroundServiceType="dataSync"' in manifest_xml
+assert 'android:name=".DownloadForegroundService"' in manifest_xml
+assert 'void onTimeout(int startId, int fgsType)' in service
+assert 'startForeground(NOTIFICATION_ID' in service
+assert 'DownloadForegroundService.begin(context, id, filename, expected);' in engine
+assert 'DownloadForegroundService.end(context, id)' in engine
+assert 'future.cancel(true) && !transfer.workerStarted' in engine
+assert 'android.app.DownloadManager' not in engine
+print('Servico de download e cancelamento da fila: OK')
+
+# v1.0.25: menu XP moderno
+activity = (root/'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
+assert "showMainMenuHubDialog(\"Internet XP\"" in activity
+assert "createHubTile(" in activity
+assert "styleBottomMenuDialog(" in activity
+assert "Acesso rápido" in activity
+assert "Mais ferramentas" in activity
+print('Menu XP moderno: OK')

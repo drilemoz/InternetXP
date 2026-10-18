@@ -75,3 +75,11 @@
 - No `AndroidManifest.xml`, manter `ACTION_VIEW`, `CATEGORY_BROWSABLE`, `CATEGORY_DEFAULT` e esquemas HTTP/HTTPS para ser candidato a navegador padrão. Tratar `onNewIntent` e novos links sem abrir navegador externo.
 - A instalação de XPI continua com GeckoView WebExtensionController (não basta baixar o arquivo).
 - Toda versão futura DEVE sincronizar ReleaseNotes, AGENTS, README, CHANGELOG, docs/VALIDATION, workflow e versionCode.
+
+## 1.0.25: foreground download service
+- Para download próprio iniciar serviço dataSync apenas após gesto explícito e concluir/encerrar ao terminar transferências.
+- Manter permissões FOREGROUND_SERVICE e FOREGROUND_SERVICE_DATA_SYNC e `android:foregroundServiceType="dataSync"` no manifesto.
+- O Android 15 (target 35) impõe cotas a dataSync; tratar `onTimeout` e não prometer downloads ilimitados em segundo plano.
+- Cancelamento antes de o worker iniciar deve fechar stream e remover entrada do mapa/serviço.
+- Não reintroduzir DownloadManager do Android, nem prometer retomada por bytes sem validação HTTP Range.
+- Toda versão exige atualização da tela Novidades, ReleaseNotes, README, CHANGELOG, docs, workflow e versionCode.

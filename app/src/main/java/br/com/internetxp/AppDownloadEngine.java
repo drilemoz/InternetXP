@@ -52,6 +52,7 @@ final class AppDownloadEngine {
         volatile boolean cancelled;
         volatile InputStream input;
         volatile Future<?> future;
+        volatile boolean workerStarted;
     }
 
     static AppDownloadEngine get(Context context) {
@@ -129,7 +130,18 @@ final class AppDownloadEngine {
             main.post(() -> listener.onError(REASON_INTERRUPTED));
             return;
         }
+        // Chamar imediatamente após a confirmação do usuário, ainda com o app visível.
+        // Se o Android bloquear dataSync, não iniciar download que pareceria protegido.
+        try {
+            DownloadForegroundService.begin(context, id, filename, expected);
+        } catch (RuntimeException startupFailure) {
+            active.remove(id, transfer);
+            closeQuietly(input);
+            main.post(() -> listener.onError(REASON_INTERRUPTED));
+            return;
+        }
         transfer.future = workers.submit(() -> {
+            transfer.workerStarted = true;
             File file = null;
             long received = 0;
             long lastBytes = 0;
@@ -160,6 +172,7 @@ final class AppDownloadEngine {
                             long speed = DownloadDisplay.speed(lastBytes, currentBytes, now - lastTime);
                             lastTime = now;
                             lastBytes = received;
+                            DownloadForegroundService.progress(context, id, currentBytes, expected);
                             main.post(() -> { if (!transfer.cancelled) listener.onProgress(currentBytes, expected, speed); });
                         }
                     }
@@ -177,8 +190,12 @@ final class AppDownloadEngine {
             } finally {
                 active.remove(id, transfer);
                 transfer.input = null;
+                DownloadForegroundService.end(context, id);
             }
         });
+        // Se um cancelamento ocorreu entre a inscrição e a obtenção do Future,
+        // não deixar trabalho enfileirado executando depois de cancelar.
+        if (transfer.cancelled) cancel(id);
     }
 
     void cancel(long id) {
@@ -186,8 +203,18 @@ final class AppDownloadEngine {
         if (transfer == null) return;
         transfer.cancelled = true;
         closeQuietly(transfer.input);
-        if (transfer.future != null) transfer.future.cancel(true);
-        // O worker remove o arquivo parcial ao observar o cancelamento.
+        Future<?> future = transfer.future;
+        if (future != null && future.cancel(true) && !transfer.workerStarted) {
+            // Future cancelado ANTES de executar: seu finally não será chamado.
+            // Retirar do mapa e do serviço imediatamente para não deixar download fantasma.
+            active.remove(id, transfer);
+            transfer.input = null;
+            DownloadForegroundService.end(context, id);
+        }
+    }
+
+    void cancelAllForTimeout() {
+        for (Long id : active.keySet()) cancel(id);
     }
 
     void exportCopy(Uri source, Uri target, Runnable finished, ErrorCallback error) {

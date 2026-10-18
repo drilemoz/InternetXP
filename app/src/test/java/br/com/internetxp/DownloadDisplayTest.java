@@ -2,6 +2,11 @@ package br.com.internetxp;
 import static org.junit.Assert.*;
 import org.junit.Test;
 public class DownloadDisplayTest {
+    @Test public void unknownTotalNeverShowsPercent() {
+        assertEquals(-1, DownloadDisplay.percent(1024, -1));
+        assertEquals(-1, DownloadDisplay.remainingSeconds(2048, -1, 1024));
+    }
+
     @Test public void unknownSize() { assertEquals(-1, DownloadDisplay.percent(123, -1)); }
     @Test public void normalPercent() { assertEquals(25, DownloadDisplay.percent(250, 1000)); }
     @Test public void clamped() { assertEquals(0, DownloadDisplay.percent(-50, 1000)); assertEquals(100, DownloadDisplay.percent(2000, 1000)); }

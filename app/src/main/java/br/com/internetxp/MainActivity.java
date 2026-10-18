@@ -18,6 +18,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -561,21 +562,202 @@ public final class MainActivity extends Activity {
     }
 
     private void showMainMenu() {
-        ArrayList<MenuAction> actions = new ArrayList<>();
-        actions.add(new MenuAction("＋", "Nova aba", "Abra uma nova aba normal para continuar navegando sem fechar a atual.", () -> addTab(configuredHome())));
-        actions.add(new MenuAction("◌", "Nova aba privada", "Use uma aba privada sem histórico local, sugestões ou restauração de sessão.", () -> addPrivateTab(configuredHome())));
-        actions.add(new MenuAction("↻", "Atualizar página", "Recarregue o site atual caso a página tenha travado ou demore a atualizar.", () -> { Tab t = current(); if (t != null) t.session.reload(); }));
-        actions.add(new MenuAction("★", "Favoritos", "Abra sua lista de favoritos ou adicione/remova rapidamente a página atual.", this::showBookmarks));
-        actions.add(new MenuAction("🕘", "Histórico", "Pesquise páginas visitadas recentemente e abra novamente qualquer endereço salvo.", this::showHistory));
-        actions.add(new MenuAction("↓", "Downloads", "Veja arquivos em andamento, concluídos, erros, velocidade e ações de compartilhamento.", this::showDownloads));
-        actions.add(new MenuAction("⚙", "Configurações", "Escolha a página inicial, personalize o início e organize seu acesso rápido.", this::showBrowserSettings));
-        actions.add(new MenuAction("🔒", "Privacidade e dados", "Abra as opções para limpar cookies, cache, permissões e controlar a proteção antirrastreamento.", this::showPrivacyMenu));
-        actions.add(new MenuAction("🧩", "Extensões", "Gerencie suas extensões compatíveis do Firefox dentro do Internet XP.", this::showExtensions));
-        actions.add(new MenuAction("⇪", "Compartilhar página", "Copie ou compartilhe o endereço atual em outros aplicativos.", this::share));
-        actions.add(new MenuAction("ⓘ", "Novidades desta versão", "Consulte a tela estilizada com as mudanças mais recentes do projeto.", () -> startActivity(new Intent(this, WhatsNewActivity.class))));
-        actions.add(new MenuAction("ℹ", "Sobre", "Informações da versão, motor e principais funções.", this::showAbout));
-        actions.add(new MenuAction("🌐", "Navegador padrão", "Permita que o Android sugira o Internet XP ao abrir links HTTP ou HTTPS.", this::requestDefaultBrowserRole));
-        showModuleMenuDialog("Menu do Internet XP", "Ações e módulos com ícones, descrições e layout melhor para telas de telefone.", actions);
+        ArrayList<MenuAction> primary = new ArrayList<>();
+        ArrayList<MenuAction> secondary = new ArrayList<>();
+
+        primary.add(new MenuAction("＋", "Nova aba", "Abrir uma nova aba.", () -> addTab(configuredHome())));
+        primary.add(new MenuAction("◌", "Privada", "Abrir uma aba privada.", () -> addPrivateTab(configuredHome())));
+        primary.add(new MenuAction("★", "Favoritos", "Seus sites salvos.", this::showBookmarks));
+        primary.add(new MenuAction("🕘", "Histórico", "Páginas visitadas.", this::showHistory));
+        primary.add(new MenuAction("↓", "Downloads", "Transferências do app.", this::showDownloads));
+        primary.add(new MenuAction("⚙", "Configurações", "Página inicial e atalhos.", this::showBrowserSettings));
+
+        secondary.add(new MenuAction("↻", "Atualizar página", "Recarregue o site atual caso algo não tenha carregado direito.", () -> { Tab t = current(); if (t != null) t.session.reload(); }));
+        secondary.add(new MenuAction("🔒", "Privacidade e dados", "Limpe cookies, cache, permissões e ajuste o modo de proteção.", this::showPrivacyMenu));
+        secondary.add(new MenuAction("🧩", "Extensões", "Gerencie complementos do Firefox compatíveis com o Internet XP.", this::showExtensions));
+        secondary.add(new MenuAction("⇪", "Compartilhar página", "Copie ou compartilhe o endereço aberto em outros aplicativos.", this::share));
+        secondary.add(new MenuAction("ⓘ", "Novidades desta versão", "Consulte a tela com o resumo estilizado das últimas alterações.", () -> startActivity(new Intent(this, WhatsNewActivity.class))));
+        secondary.add(new MenuAction("ℹ", "Sobre", "Informações da versão, motor e principais recursos do navegador.", this::showAbout));
+        secondary.add(new MenuAction("🌐", "Navegador padrão", "Peça ao Android para oferecer o Internet XP ao abrir links HTTP e HTTPS.", this::requestDefaultBrowserRole));
+
+        showMainMenuHubDialog("Internet XP", "Menu rápido com aparência mais viva, atalhos principais em destaque e ferramentas extras abaixo.", primary, secondary);
+    }
+
+    private void showMainMenuHubDialog(String title, String subtitle, List<MenuAction> primary, List<MenuAction> secondary) {
+        LinearLayout wrapper = new LinearLayout(this);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.setBackground(rounded(LIGHT_BG, BORDER, 18));
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(dp(16), dp(14), dp(16), dp(12));
+        GradientDrawable headerBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff3a8df3, XP_BLUE, 0xff0b58aa});
+        headerBg.setCornerRadii(new float[]{dp(18), dp(18), dp(18), dp(18), 0, 0, 0, 0});
+        header.setBackground(headerBg);
+        TextView titleView = text(title, 19, Color.WHITE);
+        titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        header.addView(titleView);
+        TextView subtitleView = text(subtitle, 11, 0xffe6effa);
+        subtitleView.setPadding(0, dp(4), 0, 0);
+        header.addView(subtitleView);
+        wrapper.addView(header);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(12), dp(12), dp(12), dp(10));
+        scroll.addView(content);
+
+        TextView quick = text("Acesso rápido", 12, XP_BLUE);
+        quick.setTypeface(Typeface.DEFAULT_BOLD);
+        content.addView(quick);
+        TextView quickSub = text("Os atalhos mais usados ficam logo no topo.", 10.5f, SUBTLE);
+        quickSub.setPadding(0, dp(2), 0, dp(8));
+        content.addView(quickSub);
+
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        content.addView(grid);
+        int cols = 3;
+        for (int i = 0; i < primary.size(); i += cols) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
+            rowParams.bottomMargin = dp(8);
+            grid.addView(row, rowParams);
+            for (int c = 0; c < cols; c++) {
+                int index = i + c;
+                if (index >= primary.size()) {
+                    View spacer = new View(this);
+                    row.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
+                    continue;
+                }
+                MenuAction action = primary.get(index);
+                row.addView(createHubTile(action, holder), new LinearLayout.LayoutParams(0, -2, 1));
+                if (c < cols - 1) {
+                    View gap = new View(this);
+                    row.addView(gap, new LinearLayout.LayoutParams(dp(8), 1));
+                }
+            }
+        }
+
+        TextView tools = text("Mais ferramentas", 12, XP_BLUE);
+        tools.setTypeface(Typeface.DEFAULT_BOLD);
+        tools.setPadding(0, dp(6), 0, 0);
+        content.addView(tools);
+        TextView toolsSub = text("Ações extras do navegador em uma lista mais compacta.", 10.5f, SUBTLE);
+        toolsSub.setPadding(0, dp(2), 0, dp(8));
+        content.addView(toolsSub);
+
+        final AlertDialog[] holder = new AlertDialog[1];
+        for (MenuAction action : secondary) {
+            LinearLayout row = createCompactMenuRow(action, holder);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(7);
+            content.addView(row, params);
+        }
+
+        int contentHeight = Math.min(520, Math.max(360, (int) (screenHeightDp() * .56f)));
+        wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(contentHeight)));
+
+        TextView close = text("Fechar", 13, XP_BLUE);
+        close.setTypeface(Typeface.DEFAULT_BOLD);
+        close.setGravity(Gravity.CENTER);
+        close.setPadding(dp(16), dp(12), dp(16), dp(14));
+        close.setBackground(rounded(Color.WHITE, BORDER, 0));
+        wrapper.addView(close, new LinearLayout.LayoutParams(-1, -2));
+
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(wrapper).create();
+        holder[0] = dialog;
+        close.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+        styleBottomMenuDialog(dialog);
+    }
+
+    private LinearLayout createHubTile(MenuAction action, AlertDialog[] holder) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        tile.setPadding(dp(8), dp(10), dp(8), dp(10));
+        tile.setBackground(rounded(Color.WHITE, BORDER, 14));
+        tile.setClickable(true);
+        tile.setFocusable(true);
+
+        TextView icon = text(action.icon, 20, Color.WHITE);
+        icon.setTypeface(Typeface.DEFAULT_BOLD);
+        icon.setGravity(Gravity.CENTER);
+        GradientDrawable iconBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xff3993ff, XP_BLUE});
+        iconBg.setCornerRadius(dp(12));
+        icon.setBackground(iconBg);
+        tile.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
+
+        TextView title = text(action.title, 11.5f, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setGravity(Gravity.CENTER_HORIZONTAL);
+        title.setPadding(0, dp(8), 0, 0);
+        tile.addView(title);
+
+        TextView desc = text(action.description, 9.5f, SUBTLE);
+        desc.setGravity(Gravity.CENTER_HORIZONTAL);
+        desc.setPadding(dp(2), dp(2), dp(2), 0);
+        desc.setMaxLines(2);
+        tile.addView(desc);
+
+        tile.setOnClickListener(v -> {
+            if (holder != null && holder[0] != null) holder[0].dismiss();
+            action.action.run();
+        });
+        return tile;
+    }
+
+    private LinearLayout createCompactMenuRow(MenuAction action, AlertDialog[] holder) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(10), dp(9), dp(10), dp(9));
+        row.setBackground(rounded(Color.WHITE, BORDER, 12));
+        row.setClickable(true);
+        row.setFocusable(true);
+
+        TextView icon = text(action.icon, 15, Color.WHITE);
+        icon.setTypeface(Typeface.DEFAULT_BOLD);
+        icon.setGravity(Gravity.CENTER);
+        GradientDrawable iconBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xff5ea7ff, XP_BLUE});
+        iconBg.setCornerRadius(dp(10));
+        icon.setBackground(iconBg);
+        row.addView(icon, new LinearLayout.LayoutParams(dp(30), dp(30)));
+
+        LinearLayout labels = new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.setPadding(dp(10), 0, dp(8), 0);
+        TextView rowTitle = text(action.title, 12.5f, TEXT);
+        rowTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        labels.addView(rowTitle);
+        TextView rowDesc = text(action.description, 10.5f, SUBTLE);
+        rowDesc.setPadding(0, dp(1), 0, 0);
+        rowDesc.setMaxLines(2);
+        labels.addView(rowDesc);
+        row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView chevron = text("›", 18, XP_BLUE);
+        chevron.setGravity(Gravity.CENTER);
+        row.addView(chevron, new LinearLayout.LayoutParams(dp(18), dp(18)));
+
+        row.setOnClickListener(v -> {
+            if (holder != null && holder[0] != null) holder[0].dismiss();
+            action.action.run();
+        });
+        return row;
+    }
+
+    private void styleBottomMenuDialog(AlertDialog dialog) {
+        if (dialog.getWindow() == null) return;
+        int width = dp(Math.min(Math.max(320, screenWidthDp() - 18), 430));
+        dialog.getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+        dialog.getWindow().setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
     }
 
     private void showModuleMenuDialog(String title, String subtitle, List<MenuAction> actions) {
@@ -600,7 +782,7 @@ public final class MainActivity extends Activity {
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(10), dp(10), dp(10), dp(6));
         scroll.addView(list);
-        int contentHeight = Math.min(isShortPhone() ? 290 : 350, Math.max(230, (int) (screenHeightDp() * .40f)));
+        int contentHeight = Math.min(isShortPhone() ? 330 : 400, Math.max(260, (int) (screenHeightDp() * .48f)));
         wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(contentHeight)));
 
         final AlertDialog[] holder = new AlertDialog[1];
@@ -627,6 +809,7 @@ public final class MainActivity extends Activity {
             labels.addView(rowTitle);
             TextView rowDesc = text(action.description, 11, SUBTLE);
             rowDesc.setPadding(0, dp(2), 0, 0);
+            rowDesc.setMaxLines(3);
             labels.addView(rowDesc);
             row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
 
@@ -655,7 +838,7 @@ public final class MainActivity extends Activity {
 
     private void compactDialog(AlertDialog dialog) {
         if (dialog.getWindow() == null) return;
-        int width = dp(Math.min(Math.max(288, screenWidthDp() - 48), 390));
+        int width = dp(Math.min(Math.max(304, screenWidthDp() - 28), 420));
         dialog.getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
     }
 

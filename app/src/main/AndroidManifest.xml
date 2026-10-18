@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <!-- Solicitadas somente quando um site pede acesso e o usuário concorda. -->
   <uses-permission android:name="android.permission.CAMERA" />
@@ -10,6 +12,8 @@
   <uses-feature android:name="android.hardware.camera" android:required="false" />
   <uses-feature android:name="android.hardware.microphone" android:required="false" />
   <application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:label="Internet XP" android:theme="@style/XPTheme" android:allowBackup="false" android:usesCleartextTraffic="false">
+    <service android:name=".DownloadForegroundService" android:exported="false"
+        android:stopWithTask="false" android:foregroundServiceType="dataSync" />
     <provider android:name=".XpFileProvider"
         android:authorities="${applicationId}.files"
         android:exported="false"
