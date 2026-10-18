@@ -1,4 +1,4 @@
-# Internet XP v1.0.2
+# Internet XP v1.0.3
 
 Projeto Android inicial com **GeckoView 158** (motor Firefox) e interface clássica inspirada na captura do Explorador XP e no Internet Explorer 6.
 
@@ -12,7 +12,7 @@ Projeto Android inicial com **GeckoView 158** (motor Firefox) e interface cláss
 ## GitHub Actions: somente APK direto na Release
 
 Crie o repositório `Internet-XP` e coloque os arquivos **incluindo a pasta oculta `.github`** na branch `main`.
-Após corrigir a configuração do Android SDK, o push executa `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug` e publica o arquivo exato `Internet XP.v1.0.2.apk` na aba Releases, sem `actions/upload-artifact` e sem artefatos ZIP de workflow. Se todos os Secrets de assinatura estiverem presentes, publica APK Release assinado.
+Após enviar os arquivos para o repositório, o push executa `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug` e publica o arquivo exato `Internet XP.v1.0.3.apk` na aba Releases, sem `actions/upload-artifact` e sem artefatos ZIP de workflow. Se todos os Secrets de assinatura estiverem presentes, publica APK Release assinado.
 
 **Estado atual:** código-fonte local criado; sem SDK Android e sem repositório GitHub acessível no ambiente, por isso **não foi compilado nem publicado um APK real**. Não instalar nenhum arquivo renomeado como APK antes de validar o build.
 

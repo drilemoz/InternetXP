@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.0.3 (versionCode 4) - correção do workflow 3
+- Logs da terceira execução analisados: `sdkmanager` encerrou com `Failed to find package 'platforms;android-37'` antes do Gradle.
+- Corrige o pacote para `platforms;android-37.0`, nome realmente disponibilizado pelo SDK Android 17.
+- Valida a existência do `android.jar` instalado e de `aapt2` em Build Tools 36.0.0, falhando de forma explícita caso faltem.
+- Adiciona alias de diretório `android-37 -> android-37.0` exclusivamente no runner para contornar a diferença de resolução documentada em GitHub Actions.
+- Preserva GeckoView 158, AGP 9.1.1, Gradle 9.3.1, `compileSdk 37`, `targetSdk 35`, saída APK direta na Release e Secrets de assinatura.
+- `versionCode` 4 e `versionName` 1.0.3 sincronizados. Sem build completo Android comprovado ainda.
+
 ## 1.0.2 (versionCode 3) - correção do workflow 2
 - Corrige 11 incompatibilidades detectadas em `:app:checkDebugAarMetadata` envolvendo GeckoView 158, AndroidX Core 1.19 e Media3 1.11.1.
 - Atualiza `compileSdk` 35 → 37; mantém `targetSdk` 35 e `minSdk` 24.

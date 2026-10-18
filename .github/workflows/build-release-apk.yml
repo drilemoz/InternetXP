@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.2
+  group: internet-xp-v1.0.3
   cancel-in-progress: false
 jobs:
   apk:
@@ -22,8 +22,26 @@ jobs:
       - uses: android-actions/setup-android@v4
         with:
           packages: platform-tools
-      - name: SDK
-        run: sdkmanager --install 'platforms;android-37' 'build-tools;36.0.0'
+      - name: Instalar e verificar SDK Android 37.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Android 17 usa identificador com sufixo .0 (nao 'android-37').
+          sdkmanager --install 'platforms;android-37.0' 'build-tools;36.0.0'
+          sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [[ -z "$sdk_root" || ! -f "$sdk_root/platforms/android-37.0/android.jar" ]]; then
+            echo '::error::Android SDK 37.0 nao foi instalado corretamente.'
+            exit 1
+          fi
+          # Algumas versoes do Gradle procuram 'android-37' mesmo com SDK 37.0.
+          # Cria apenas um alias de diretorio para o mesmo SDK, sem falsificar arquivos.
+          if [[ ! -e "$sdk_root/platforms/android-37" ]]; then
+            ln -s android-37.0 "$sdk_root/platforms/android-37"
+          fi
+          test -f "$sdk_root/platforms/android-37/android.jar"
+          test -f "$sdk_root/build-tools/36.0.0/aapt2"
+          echo 'SDK Android 37.0 validado:'
+          ls -ld "$sdk_root/platforms/android-37" "$sdk_root/platforms/android-37.0"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
@@ -70,20 +88,20 @@ jobs:
           if [[ '${{ steps.signing.outputs.mode }}' == 'release' ]]; then src=app/build/outputs/apk/release/app-release.apk
           else src=app/build/outputs/apk/debug/app-debug.apk; fi
           test -s "$src"
-          cp "$src" 'Internet XP.v1.0.2.apk'
-          sha256sum 'Internet XP.v1.0.2.apk' > 'Internet XP.v1.0.2.apk.sha256'
+          cp "$src" 'Internet XP.v1.0.3.apk'
+          sha256sum 'Internet XP.v1.0.3.apk' > 'Internet XP.v1.0.3.apk.sha256'
       - name: Publicar APK diretamente na Release GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v1.0.2 >/dev/null 2>&1; then
-            gh release upload v1.0.2 'Internet XP.v1.0.2.apk' 'Internet XP.v1.0.2.apk.sha256' --clobber
+          if gh release view v1.0.3 >/dev/null 2>&1; then
+            gh release upload v1.0.3 'Internet XP.v1.0.3.apk' 'Internet XP.v1.0.3.apk.sha256' --clobber
           else
-            gh release create v1.0.2 'Internet XP.v1.0.2.apk' 'Internet XP.v1.0.2.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.2' --notes 'Internet XP 1.0.2: compatibilidade de build com GeckoView 158 / Android API 37 (AGP 9.1.1 e Gradle 9.3.1). Verifique a assinatura antes de atualizar versões.'
+            gh release create v1.0.3 'Internet XP.v1.0.3.apk' 'Internet XP.v1.0.3.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.3' --notes 'Internet XP 1.0.3: corrige instalacao do Android SDK 37.0 e compatibilidade de caminho android-37; GeckoView 158, AGP 9.1.1 e Gradle 9.3.1. Verifique a assinatura antes de atualizar versoes.'
           fi
-          gh release view v1.0.2 --json url,assets
+          gh release view v1.0.3 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"
