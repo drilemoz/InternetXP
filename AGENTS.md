@@ -110,3 +110,11 @@
 - Validação de sincronização Gradle, `ReleaseNotes`, workflow e documentação permanece obrigatória no script `tools/validate_project.py`.
 - Não exigir textos de destaques de releases anteriores no validador; validar a existência dos destaques e seus conteúdos pelos testes JUnit para evitar falsos bloqueios.
 - Após mudar qualquer código, incrementar versionCode/versionName e sincronizar arquivos de release. Testar Java/JUnit em CI antes de anunciar APK pronto.
+
+## 1.0.30: design consistente de extensões e diálogos
+- As três ações de adicionar extensões e os quatro comandos por extensão instalada permanecem em faixas horizontais, com rótulos curtos e descrições de acessibilidade.
+- Novos diálogos comuns em `MainActivity` e `ExtensionManagerActivity` devem usar `XpDialogs.Builder` para herdar identidade visual, tipografia e botões; menus especiais com `setView` conservam os próprios contêineres e ações.
+- Não remover os prompts de permissão nem os callbacks GeckoView ao reformular a aparência.
+- Barra de navegação inferior mantém seis itens e ícones/legendas ampliados.
+- A condição `metaData.enabled` não é diagnóstico de execução: validar funcionamento de cada complemento com efeitos observáveis em página real.
+- Novas mudanças exigem incremento de versionCode, Novidades, docs, validações e Release, conforme regra permanente.

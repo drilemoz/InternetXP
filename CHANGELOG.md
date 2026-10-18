@@ -1,3 +1,12 @@
+## 1.0.30 (versionCode 31) - módulos horizontais e diálogos XP reutilizáveis
+- Três atalhos de instalação de extensões dispostos em linha única com dimensões iguais, textos curtos e descrições acessíveis.
+- Cada complemento instalado apresenta uma fileira com os quatro comandos, sem retirar operações ou seus avisos de segurança.
+- Central criado `XpDialogs.Builder`: estilização uniforme dos diálogos convencionais de extensões e tela principal, com título customizado, mensagens legíveis e botões com identidade XP.
+- Aumentados ícones, legendas e altura da barra inferior preservando os seis botões.
+- Acrescentada orientação de teste de comportamento real das extensões em páginas, diferenciando instalação, ativação e execução funcional.
+- Versionamento sequencial, documentação, tela Novidades, workflow, testes e lançamento por ABI atualizados.
+- Pendente compilar/lint no CI e testar visualmente no aparelho; não confundir com APK verificado.
+
 ## 1.0.29 (versionCode 30) - testes de Novidades corrigidos após o workflow 28
 - Corrigidos os 2 testes JUnit falhos da classe `ReleaseNotesTest` (56 executados, 2 falhas no workflow 28).
 - Removidas comparações desatualizadas com `1.0.26`/`versionCode 27`; testes de primeira abertura e atualizações utilizam `ReleaseNotes.VERSION_CODE` atual.

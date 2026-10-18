@@ -65,7 +65,7 @@ public final class ExtensionManagerActivity extends Activity {
         runtime.getWebExtensionController().setPromptDelegate(new WebExtensionController.PromptDelegate() {
             @Override public GeckoResult<WebExtension.PermissionPromptResponse> onInstallPromptRequest(WebExtension extension, String[] permissions, String[] origins, String[] collected) {
                 GeckoResult<WebExtension.PermissionPromptResponse> result = new GeckoResult<>();
-                runOnUiThread(() -> new AlertDialog.Builder(ExtensionManagerActivity.this)
+                runOnUiThread(() -> new XpDialogs.Builder(ExtensionManagerActivity.this)
                         .setTitle("Permissões da extensão")
                         .setMessage(extension.id + "\n\nAPIs: " + Arrays.toString(permissions) + "\nSites: " + Arrays.toString(origins) + "\nColeta de dados: " + Arrays.toString(collected))
                         .setPositiveButton("Permitir", (d, w) -> result.complete(new WebExtension.PermissionPromptResponse(true, false, false)))
@@ -84,7 +84,7 @@ public final class ExtensionManagerActivity extends Activity {
 
     private GeckoResult<AllowOrDeny> permissionChangePrompt(WebExtension extension, String[] permissions, String[] origins, String[] collected) {
         GeckoResult<AllowOrDeny> result = new GeckoResult<>();
-        runOnUiThread(() -> new AlertDialog.Builder(this)
+        runOnUiThread(() -> new XpDialogs.Builder(this)
                 .setTitle("Novas permissões: " + extension.id)
                 .setMessage("APIs: " + Arrays.toString(permissions) + "\nSites: " + Arrays.toString(origins) + "\nColeta: " + Arrays.toString(collected))
                 .setPositiveButton("Permitir", (d, w) -> result.complete(AllowOrDeny.ALLOW))
@@ -128,36 +128,89 @@ public final class ExtensionManagerActivity extends Activity {
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         LinearLayout body = vertical(); body.setPadding(dp(13), dp(14), dp(13), dp(20)); scroll.addView(body);
-        LinearLayout options = vertical(); options.setPadding(dp(13), dp(12), dp(13), dp(10));
+        LinearLayout options = vertical(); options.setPadding(dp(10), dp(12), dp(10), dp(12));
         options.setBackground(background(Color.WHITE, 0xffcfdae9, 14));
         TextView startTitle = text("Adicionar complemento", 15, DARK); startTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        startTitle.setPadding(dp(3), 0, 0, dp(10));
         options.addView(startTitle);
-        addAction(options, "⬇  Importar arquivo XPI", "Escolher arquivo do celular com o seletor Android", this::selectFile);
-        addAction(options, "🔗  Instalar por HTTPS", "Link direto de um XPI assinado pela Mozilla", this::enterUrl);
-        addAction(options, "🌐  Catálogo Mozilla", "Pesquisar no site oficial de complementos", () -> {
+        LinearLayout addRow = horizontal();
+        addHorizontalAction(addRow, "↓", "Importar XPI", "Escolher arquivo do celular", this::selectFile);
+        addHorizontalAction(addRow, "↗", "Por HTTPS", "Link de XPI assinado", this::enterUrl);
+        addHorizontalAction(addRow, "◎", "Catálogo", "Extensões Mozilla", () -> {
             Intent data = new Intent(this, MainActivity.class);
             data.setAction(Intent.ACTION_VIEW);
             data.setData(Uri.parse("https://addons.mozilla.org/android/"));
             data.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             startActivity(data); finish();
         });
+        options.addView(addRow, new LinearLayout.LayoutParams(-1, -2));
         body.addView(options, new LinearLayout.LayoutParams(-1, -2));
         activityStatus = text("", 12, BLUE);
         activityStatus.setPadding(dp(4), dp(11), dp(4), dp(6)); body.addView(activityStatus);
         summary = text("Consultando extensões instaladas...", 13, DARK);
         summary.setTypeface(Typeface.DEFAULT_BOLD); summary.setPadding(dp(4), dp(6), dp(4), dp(8)); body.addView(summary);
         entries = vertical(); body.addView(entries);
-        TextView note = text("Compatibilidade: instalar e manter ativada confirma o carregamento pelo GeckoView. O comportamento dentro de sites depende das APIs, permissões e implementação de cada complemento. XPI sem assinatura Mozilla não é instalado.", 11, 0xff556274);
+        TextView note = text("Instalada e ativa significa que o GeckoView carregou a extensão, não que todas as funções já foram testadas. Para conferir um complemento com botão, abra uma página e use Menu > Ações das extensões. Teste uma função observável, como criar e apagar um cookie de teste, sem alterar dados de login. Pacotes sem assinatura Mozilla válida não são instalados.", 11, 0xff556274);
         note.setPadding(dp(4), dp(15), dp(4), dp(15)); body.addView(note);
     }
 
-    private void addAction(LinearLayout parent, String label, String sub, Runnable click) {
-        LinearLayout item = vertical();
-        item.setPadding(dp(9), dp(11), dp(9), dp(11));
-        TextView name = text(label, 14, BLUE); name.setTypeface(Typeface.DEFAULT_BOLD); item.addView(name);
-        TextView description = text(sub, 11, 0xff687b91); description.setPadding(0, dp(2), 0, 0); item.addView(description);
-        item.setOnClickListener(v -> click.run()); item.setBackground(background(0xfff6f9ff, 0xffe1e9f4, 9));
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.topMargin = dp(6); parent.addView(item, p);
+    private LinearLayout horizontal() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.TOP);
+        return row;
+    }
+
+    /** Um conjunto de ações sempre na mesma linha, inclusive nos aparelhos estreitos. */
+    private void addHorizontalAction(LinearLayout row, String glyph, String label, String help, Runnable click) {
+        LinearLayout tile = vertical();
+        tile.setGravity(Gravity.CENTER_HORIZONTAL);
+        tile.setPadding(dp(4), dp(10), dp(4), dp(10));
+        tile.setBackground(background(0xfff4f8ff, 0xffdbe6f3, 11));
+        TextView icon = text(glyph, 23, BLUE);
+        icon.setTypeface(Typeface.DEFAULT_BOLD);
+        icon.setGravity(Gravity.CENTER);
+        tile.addView(icon, new LinearLayout.LayoutParams(-1, dp(31)));
+        TextView name = text(label, 11, DARK);
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+        name.setGravity(Gravity.CENTER);
+        name.setMaxLines(2);
+        tile.addView(name, new LinearLayout.LayoutParams(-1, dp(34)));
+        TextView hint = text(help, 9, 0xff61748c);
+        hint.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        hint.setMaxLines(2);
+        tile.addView(hint, new LinearLayout.LayoutParams(-1, dp(30)));
+        tile.setContentDescription(label + ". " + help);
+        tile.setFocusable(true);
+        tile.setClickable(true);
+        tile.setOnClickListener(v -> click.run());
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(117), 1);
+        if (row.getChildCount() != 0) params.leftMargin = dp(6);
+        row.addView(tile, params);
+    }
+
+    /** Gerenciamento horizontal sem esconder os quatro comandos em uma coluna longa. */
+    private void addInstalledAction(LinearLayout row, String glyph, String label, String help, boolean destructive, Runnable click) {
+        LinearLayout tile = vertical();
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(dp(2), dp(8), dp(2), dp(8));
+        tile.setBackground(background(destructive ? 0xfffff5f5 : 0xfff4f8ff,
+                destructive ? 0xffefcccc : 0xffdbe6f3, 10));
+        TextView icon = text(glyph, 22, destructive ? 0xffae3540 : BLUE);
+        icon.setGravity(Gravity.CENTER);
+        tile.addView(icon, new LinearLayout.LayoutParams(-1, dp(28)));
+        TextView caption = text(label, 10, destructive ? 0xff96303a : DARK);
+        caption.setTypeface(Typeface.DEFAULT_BOLD);
+        caption.setGravity(Gravity.CENTER);
+        caption.setMaxLines(2);
+        tile.addView(caption, new LinearLayout.LayoutParams(-1, dp(31)));
+        tile.setContentDescription(label + ". " + help);
+        tile.setFocusable(true);
+        tile.setClickable(true);
+        tile.setOnClickListener(v -> click.run());
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(77), 1);
+        if (row.getChildCount() != 0) params.leftMargin = dp(5);
+        row.addView(tile, params);
     }
 
     private void setBusy(boolean value, String message) {
@@ -194,10 +247,17 @@ public final class ExtensionManagerActivity extends Activity {
         String desc = extension.metaData.description == null || extension.metaData.description.isEmpty()
                 ? "Identificador: " + extension.id : extension.metaData.description;
         TextView details = text(desc, 12, 0xff617184); card.addView(details);
-        addAction(card, extension.metaData.enabled ? "⏻  Desativar" : "✓  Ativar", "Alterar estado real no motor GeckoView", () -> changeState(extension));
-        addAction(card, "ⓘ  Diagnóstico e permissões", "Versão, assinatura, IDs, origem e escopos autorizados", () -> details(extension));
-        addAction(card, "⇧  Exportar", store.hasArchive(extension.id) ? "Exportar pacote XPI importado ou informações JSON" : "Exportar informações JSON (pacote não disponível)", () -> exportMenu(extension));
-        addAction(card, "✕  Excluir", "Desinstala e apaga os dados da extensão", () -> confirmUninstall(extension));
+        LinearLayout actions = horizontal();
+        actions.setPadding(0, dp(12), 0, 0);
+        addInstalledAction(actions, "⏻", extension.metaData.enabled ? "Desativar" : "Ativar",
+                "Mudar estado da extensão no GeckoView", false, () -> changeState(extension));
+        addInstalledAction(actions, "ⓘ", "Diagnóstico", "Ver assinatura, versão e permissões",
+                false, () -> details(extension));
+        addInstalledAction(actions, "⇧", "Exportar", "Exportar XPI preservado ou diagnóstico JSON",
+                false, () -> exportMenu(extension));
+        addInstalledAction(actions, "×", "Excluir", "Remover a extensão e os dados",
+                true, () -> confirmUninstall(extension));
+        card.addView(actions, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
         p.bottomMargin = dp(10); entries.addView(card, p);
     }
@@ -213,7 +273,7 @@ public final class ExtensionManagerActivity extends Activity {
                 + "\nNavegação privada: " + (ext.metaData.allowedInPrivateBrowsing ? "Permitida" : "Não permitida")
                 + "\nXPI exportável: " + (store.hasArchive(ext.id) ? "Sim" : "Não")
                 + "\n\nO estado Ativa não comprova que o conteúdo de toda página foi alterado.";
-        new AlertDialog.Builder(this).setTitle("Diagnóstico da extensão").setMessage(text)
+        new XpDialogs.Builder(this).setTitle("Diagnóstico da extensão").setMessage(text)
                 .setPositiveButton("Fechar", null).show();
     }
 
@@ -228,7 +288,7 @@ public final class ExtensionManagerActivity extends Activity {
     }
 
     private void confirmUninstall(WebExtension x) {
-        new AlertDialog.Builder(this).setTitle("Excluir extensão?")
+        new XpDialogs.Builder(this).setTitle("Excluir extensão?")
                 .setMessage("A extensão " + (x.metaData.name == null ? x.id : x.metaData.name) + " e seus dados serão removidos do GeckoView. O XPI arquivado no Internet XP também será excluído.")
                 .setPositiveButton("Excluir", (d, w) -> {
                     if (busy) return;
@@ -253,7 +313,7 @@ public final class ExtensionManagerActivity extends Activity {
         if (busy) return;
         EditText edit = new EditText(this);
         edit.setSingleLine(true); edit.setTextSize(14); edit.setHint("https://.../extensao.xpi");
-        new AlertDialog.Builder(this).setTitle("Instalar XPI pela internet")
+        new XpDialogs.Builder(this).setTitle("Instalar XPI pela internet")
                 .setMessage("Informe o link HTTPS direto. O GeckoView verificará assinatura Mozilla, manifesto e permissões.")
                 .setView(edit).setPositiveButton("Instalar", (d, w) -> {
                     String url = edit.getText().toString().trim();
@@ -285,7 +345,7 @@ public final class ExtensionManagerActivity extends Activity {
                 runOnUiThread(() -> {
                     if (isFinishing() || isDestroyed()) { staged.delete(); return; }
                     setBusy(false, "Manifesto: " + info.name + " v" + info.version + " • MV" + info.manifestVersion);
-                    new AlertDialog.Builder(this).setTitle("Confirmar instalação XPI")
+                    new XpDialogs.Builder(this).setTitle("Confirmar instalação XPI")
                             .setMessage(info.name + " v" + info.version + "\nManifesto: V" + info.manifestVersion
                                     + "\n\n" + info.warning + "\n\nInstalar agora?")
                             .setPositiveButton("Instalar", (d, w) -> installStaged(staged))
@@ -323,7 +383,7 @@ public final class ExtensionManagerActivity extends Activity {
         boolean archive = store.hasArchive(ext.id);
         String[] types = archive ? new String[]{"Exportar pacote original .xpi", "Exportar diagnóstico .json"}
                 : new String[]{"Exportar diagnóstico .json"};
-        new AlertDialog.Builder(this).setTitle("Exportar " + (ext.metaData.name == null ? ext.id : ext.metaData.name))
+        new XpDialogs.Builder(this).setTitle("Exportar " + (ext.metaData.name == null ? ext.id : ext.metaData.name))
                 .setItems(types, (d, choice) -> {
                     exportSource = archive && choice == 0 ? store.getArchive(ext.id) : null;
                     exportMetadata = exportSource == null ? buildMetadata(ext) : null;
@@ -403,7 +463,7 @@ public final class ExtensionManagerActivity extends Activity {
         setBusy(false, title);
         if (isFinishing() || isDestroyed()) return;
         String description = explainFailure(e);
-        new AlertDialog.Builder(this).setTitle(title).setMessage(description)
+        new XpDialogs.Builder(this).setTitle(title).setMessage(description)
                 .setPositiveButton("OK", null).show();
     }
 

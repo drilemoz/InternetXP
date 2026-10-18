@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.29";
-    public static final int VERSION_CODE = 30;
-    public static final String HEADLINE = "Testes de atualização sincronizados.";
-    public static final String SUBTITLE = "Corrigidas verificações antigas da tela de Novidades que bloqueavam o workflow 28. O gerenciador de extensões GeckoView foi preservado.";
+    public static final String VERSION_NAME = "1.0.30";
+    public static final int VERSION_CODE = 31;
+    public static final String HEADLINE = "Extensões mais compactas e diálogos com identidade XP.";
+    public static final String SUBTITLE = "Central de extensões em cartões horizontais, janelas reutilizáveis com identidade própria e barra inferior maior para facilitar os toques.";
 
     public static final class Feature {
         public final String number;
@@ -21,12 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Testes de Novidades", "Os testes agora acompanham a versão atual e não rejeitam atualizações por números antigos fixos."),
-        new Feature("02", "Exibição após atualização", "Cobertura corrigida para mostrar Novidades somente quando o último versionCode visto é anterior ao atual."),
-        new Feature("03", "Proteção do versionamento", "Validação cruzada mantém Gradle, Novidades, nomes dos APKs e GitHub Release sincronizados."),
-        new Feature("04", "Extensões mantidas", "A central GeckoView conserva importação de XPI, listagem, ativação, desativação, remoção e exportação."),
-        new Feature("05", "Verificação de conteúdo", "Os testes conferem destaques únicos, textos não vazios e identificação de versão sem valores legados.")
-
+        new Feature("01", "Importar lado a lado", "Importar XPI, instalar por HTTPS e acessar o catálogo Mozilla agora ocupam uma única faixa horizontal."),
+        new Feature("02", "Comandos horizontais", "Ativar ou desativar, diagnóstico, exportação e exclusão compartilham uma linha em cada cartão instalado."),
+        new Feature("03", "Diálogos XP", "Janelas convencionais do navegador usam um construtor de estilo comum, com cabeçalho azul, cantos arredondados e ações padronizadas."),
+        new Feature("04", "Navegação ampliada", "Barra inferior com símbolos, ícone de downloads e textos mais visíveis, respeitando a largura do aparelho."),
+        new Feature("05", "Teste de funcionamento", "A central lembra que uma extensão ativada precisa ser testada em uma página real para comprovar sua função.")
     };
 
     private ReleaseNotes() { }

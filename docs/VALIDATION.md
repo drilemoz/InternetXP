@@ -1,3 +1,13 @@
+## 1.0.30: layout horizontal, janelas XP e navegação ampliada
+- Conferir que os três comandos de Adicionar complemento aparecem em **uma única linha** na largura de 320 a 430dp.
+- Instalar Cookie Editor, verificar quatro comandos horizontais no cartão, sem truncamento grave em 320dp.
+- Abrir os diálogos de URL, confirmação XPI, permissão GeckoView, diagnóstico, exportação e exclusão; verificar cabeçalho azul, botões e fechamento/cancelamento.
+- Verificar menus e confirmações de Downloads, Favoritos e privacidade para garantir que o construtor visual global não remova callbacks ou obscureça telas especiais.
+- Testar seis botões inferiores com ícones e legendas maiores em Redmi A3 e Redmi Note 11 Pro+.
+- Com Cookie Editor ativo, acessar site HTTPS de teste e executar Menu > Ações das extensões; ler e modificar cookie não sensível, atualizar e confirmar, depois removê-lo.
+- Executar `python3 tools/validate_project.py`, `python3 -m unittest discover -s tools`, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleRelease` no CI; conferir assinatura e APKs por ABI.
+- **Pendente**: execução real dos testes Android e confirmação visual no aparelho.
+
 ## 1.0.29: correção dos testes JUnit da execução 28
 - Log real do workflow 28: `:app:compileDebugJavaWithJavac` concluído; `:app:testDebugUnitTest` falhou com 56 testes, 2 falhas em `ReleaseNotesTest`.
 - `releaseEntriesAreUsefulAndUnique`: ainda esperava `VERSION_NAME = 1.0.26` e `VERSION_CODE = 27` da v1.0.26. Teste reescrito para validar nome, código, descrições, identificadores e títulos sem versão congelada.

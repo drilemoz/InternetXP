@@ -224,7 +224,8 @@ public final class MainActivity extends Activity {
     }
 
     private int toolbarHeightDp() {
-        return isCompactPhone() ? 56 : 62;
+        // Ícones e legendas legíveis, sem sacrificar área desnecessária da página.
+        return isCompactPhone() ? 68 : 74;
     }
 
     private int downloadsPanelHeightDp() {
@@ -554,13 +555,14 @@ public final class MainActivity extends Activity {
     private TextView navText(LinearLayout parent, String icon, String caption, Runnable action) {
         LinearLayout cell = navCell(parent, caption, action);
         boolean compactPhone = isCompactPhone();
-        TextView symbol = text(icon, compactPhone ? 18 : 20, XP_BLUE);
+        TextView symbol = text(icon, compactPhone ? 26 : 29, XP_BLUE);
         symbol.setTypeface(Typeface.DEFAULT_BOLD);
         symbol.setGravity(Gravity.CENTER);
-        cell.addView(symbol, new LinearLayout.LayoutParams(-1, isCompactPhone() ? dp(20) : dp(24)));
-        TextView name = text(caption, isCompactPhone() ? 6.4f : 7f, TEXT);
+        cell.addView(symbol, new LinearLayout.LayoutParams(-1, dp(compactPhone ? 34 : 38)));
+        TextView name = text(caption, compactPhone ? 9.5f : 10.5f, TEXT);
         name.setGravity(Gravity.CENTER);
-        cell.addView(name, new LinearLayout.LayoutParams(-1, dp(18)));
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+        cell.addView(name, new LinearLayout.LayoutParams(-1, dp(19)));
         return symbol;
     }
 
@@ -568,12 +570,14 @@ public final class MainActivity extends Activity {
         LinearLayout cell = navCell(parent, caption, action);
         ImageView icon = new ImageView(this);
         icon.setImageResource(drawable);
-        icon.setPadding(dp(isCompactPhone() ? 6 : 8), dp(2), dp(isCompactPhone() ? 6 : 8), dp(2));
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        icon.setPadding(dp(2), dp(2), dp(2), dp(2));
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        cell.addView(icon, new LinearLayout.LayoutParams(-1, isCompactPhone() ? dp(20) : dp(24)));
-        TextView name = text(caption, isCompactPhone() ? 6.4f : 7f, TEXT);
+        cell.addView(icon, new LinearLayout.LayoutParams(-1, dp(isCompactPhone() ? 34 : 38)));
+        TextView name = text(caption, isCompactPhone() ? 9.5f : 10.5f, TEXT);
         name.setGravity(Gravity.CENTER);
-        cell.addView(name, new LinearLayout.LayoutParams(-1, dp(18)));
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+        cell.addView(name, new LinearLayout.LayoutParams(-1, dp(19)));
     }
 
     private void showMainMenu() {
@@ -685,7 +689,7 @@ public final class MainActivity extends Activity {
         close.setBackground(rounded(Color.WHITE, BORDER, 0));
         wrapper.addView(close, new LinearLayout.LayoutParams(-1, -2));
 
-        AlertDialog dialog = new AlertDialog.Builder(this).setView(wrapper).create();
+        AlertDialog dialog = new XpDialogs.Builder(this).setView(wrapper).create();
         holder[0] = dialog;
         close.setOnClickListener(v -> dialog.dismiss());
         dialog.show();
@@ -860,7 +864,7 @@ public final class MainActivity extends Activity {
             list.addView(row, params);
         }
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new XpDialogs.Builder(this)
                 .setView(wrapper)
                 .setNegativeButton("Fechar", null)
                 .create();
@@ -904,7 +908,7 @@ public final class MainActivity extends Activity {
         if (!HOME.equals(configuredHome())) input.setText(configuredHome());
         LinearLayout content = styledDialogContent("Página inicial personalizada", "Escolha o site aberto pelo botão Início.");
         content.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
-        AlertDialog d = new AlertDialog.Builder(this).setView(content)
+        AlertDialog d = new XpDialogs.Builder(this).setView(content)
                 .setPositiveButton("Salvar", (dialog, which) -> {
                     String entered = input.getText().toString().trim();
                     String resolved = BrowserAddress.resolve(entered);
@@ -928,7 +932,7 @@ public final class MainActivity extends Activity {
         Tab t = current();
         if (t != null && t.url.startsWith("http")) input.setText(t.url);
         content.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
-        AlertDialog d = new AlertDialog.Builder(this).setView(content).setPositiveButton("Adicionar", (dialog, which) -> {
+        AlertDialog d = new XpDialogs.Builder(this).setView(content).setPositiveButton("Adicionar", (dialog, which) -> {
             String address = BrowserAddress.resolve(input.getText().toString());
             if (HOME.equals(HomePageSettings.normalize(input.getText().toString()))) {
                 Toast.makeText(this, "Endereço inválido", Toast.LENGTH_LONG).show();
@@ -980,7 +984,7 @@ public final class MainActivity extends Activity {
             params.bottomMargin = dp(8);
             content.addView(detail, params);
         }
-        AlertDialog dialog = new AlertDialog.Builder(this).setView(content).setPositiveButton("Fechar", null).create();
+        AlertDialog dialog = new XpDialogs.Builder(this).setView(content).setPositiveButton("Fechar", null).create();
         dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
     }
 
@@ -1317,7 +1321,7 @@ public final class MainActivity extends Activity {
         list.setPadding(dp(8), dp(8), dp(8), dp(8));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(list);
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new XpDialogs.Builder(this)
                 .setTitle("Abas abertas • " + tabs.size())
                 .setView(scroll)
                 .setPositiveButton("+ Nova aba", (d, n) -> addTab(configuredHome()))
@@ -1553,7 +1557,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, dp(Math.min(300, Math.max(180, (int) (screenHeightDp() * .37f)))));
         scrollParams.topMargin = dp(8);
         column.addView(scroll, scrollParams);
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new XpDialogs.Builder(this)
                 .setView(column)
                 .setPositiveButton("Limpar histórico", (d, n) -> clearHistory())
                 .setNegativeButton("Fechar", null)
@@ -1641,7 +1645,7 @@ public final class MainActivity extends Activity {
     }
 
     private void clearHistory() {
-        new AlertDialog.Builder(this)
+        new XpDialogs.Builder(this)
                 .setTitle("Limpar histórico local?")
                 .setMessage("Cookies e cache do GeckoView não serão apagados.")
                 .setPositiveButton("Apagar", (d, n) -> {
@@ -1801,7 +1805,7 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Nenhum registro finalizado", Toast.LENGTH_SHORT).show();
             return;
         }
-        new AlertDialog.Builder(this).setTitle("Limpar registros finalizados?")
+        new XpDialogs.Builder(this).setTitle("Limpar registros finalizados?")
                 .setMessage("Remove " + finished + " registros da lista do Internet XP, sem apagar os arquivos baixados do celular.")
                 .setPositiveButton("Limpar", (d,n) -> {
                     downloads.removeIf(item -> !isDownloadRunning(item.status));
@@ -1849,7 +1853,7 @@ public final class MainActivity extends Activity {
                 + "\nArmazenamento: gerenciado pelo Internet XP"
                 + "\nOrigem: " + item.url;
         if (item.status == AppDownloadEngine.STATUS_FAILED) message += "\nMotivo: " + downloadReason(item);
-        new AlertDialog.Builder(this).setTitle("Detalhes do download").setMessage(message)
+        new XpDialogs.Builder(this).setTitle("Detalhes do download").setMessage(message)
                 .setPositiveButton("Fechar", null).show();
     }
 
@@ -1865,7 +1869,7 @@ public final class MainActivity extends Activity {
     }
 
     private void confirmCancelDownload(DownloadItem item) {
-        new AlertDialog.Builder(this).setTitle("Cancelar download?")
+        new XpDialogs.Builder(this).setTitle("Cancelar download?")
                 .setMessage("O Internet XP interromperá a transferência e apagará o arquivo parcial.")
                 .setPositiveButton("Cancelar download", (d, w) -> {
                     nativeDownloads.cancel(item.id);
@@ -1881,7 +1885,7 @@ public final class MainActivity extends Activity {
         if (!AppDownloadEngine.isWebUrl(item.url)) {
             Toast.makeText(this, "Link inválido para download", Toast.LENGTH_SHORT).show(); return;
         }
-        new AlertDialog.Builder(this)
+        new XpDialogs.Builder(this)
                 .setTitle("Baixar novamente?")
                 .setMessage("O Internet XP fará uma nova requisição pelo GeckoView. É um novo download, não retomada por partes.\nArquivos com login podem exigir nova autenticação.")
                 .setPositiveButton("Reiniciar", (dialog, which) -> fetchForDownload(item))
@@ -2024,7 +2028,7 @@ public final class MainActivity extends Activity {
         String disposition = AppDownloadEngine.header(response.headers, "Content-Disposition");
         String filename = AppDownloadEngine.filename(uri, disposition, mime);
         // O fluxo recebido pelo GeckoView não é descartado e não exige nova autenticação.
-        new AlertDialog.Builder(this)
+        new XpDialogs.Builder(this)
                 .setTitle(fromPrivateTab ? "Baixar arquivo da aba privada?" : "Baixar com Internet XP?")
                 .setMessage("Arquivo: " + filename + "\nOrigem: " + uri + "\n\n"
                         + "O Internet XP gerenciará o download. Para salvá-lo em outra pasta, use Salvar cópia após concluir."
@@ -2177,7 +2181,7 @@ public final class MainActivity extends Activity {
             return GeckoResult.fromValue(permission.value);
         }
         GeckoResult<Integer> result = new GeckoResult<>();
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new XpDialogs.Builder(this)
                 .setTitle("Permissão de localização")
                 .setMessage("Permitir que " + SiteCompatibility.originLabel(permission.uri)
                         + " acesse sua localização?")
@@ -2227,7 +2231,7 @@ public final class MainActivity extends Activity {
         requestSitePermissions(needed.toArray(new String[0]), () -> {
             String devices = selectedCamera != null && selectedMicrophone != null ? "câmera e microfone"
                     : selectedCamera != null ? "câmera" : "microfone";
-            new AlertDialog.Builder(this)
+            new XpDialogs.Builder(this)
                     .setTitle("Permissão de " + devices)
                     .setMessage("Permitir que " + SiteCompatibility.originLabel(uri)
                             + " utilize " + devices + " nesta página?")
@@ -2240,7 +2244,7 @@ public final class MainActivity extends Activity {
 
     private void confirmExternalLink(String uri) {
         String label = SiteCompatibility.originLabel(uri);
-        new AlertDialog.Builder(this)
+        new XpDialogs.Builder(this)
                 .setTitle("Abrir aplicativo externo?")
                 .setMessage("O site deseja abrir este link fora do Internet XP:\n" + label)
                 .setPositiveButton("Abrir", (d, n) -> {
@@ -2307,7 +2311,7 @@ public final class MainActivity extends Activity {
             if (info.mixedModePassive == GeckoSession.ProgressDelegate.SecurityInformation.CONTENT_LOADED)
                 message += "\nA página contém conteúdo misto passivo.";
         }
-        new AlertDialog.Builder(this)
+        new XpDialogs.Builder(this)
                 .setTitle("Segurança da página")
                 .setMessage(PrivacyRules.displayHost(tab.url) + "\n\n" + message +
                         "\n\n" + (tab.privateMode ? "Aba privada: o histórico local não é salvo." : "Aba normal."))
@@ -2328,7 +2332,7 @@ public final class MainActivity extends Activity {
     }
 
     private void confirmClearData(long flags, boolean clearLocalHistory, String what) {
-        new AlertDialog.Builder(this)
+        new XpDialogs.Builder(this)
                 .setTitle("Apagar " + what + "?")
                 .setMessage("Para limpar de maneira consistente, todas as abas serão fechadas e uma página vazia será aberta. " +
                         "Os favoritos e os arquivos já baixados serão preservados. Dados de sessão de sites e extensões podem ser afetados. Esta ação não pode ser desfeita.")
@@ -2402,7 +2406,7 @@ public final class MainActivity extends Activity {
     private void displaySitePermissions(String url,
             List<GeckoSession.PermissionDelegate.ContentPermission> permissions) {
         if (permissions == null || permissions.isEmpty()) {
-            new AlertDialog.Builder(this).setTitle("Permissões do site")
+            new XpDialogs.Builder(this).setTitle("Permissões do site")
                     .setMessage("Nenhuma permissão armazenada para " + PrivacyRules.displayHost(url))
                     .setPositiveButton("OK", null).show();
             return;
@@ -2414,17 +2418,17 @@ public final class MainActivity extends Activity {
                     permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY ? "Bloqueado" : "Perguntar";
             titles[i] = permissionLabel(permission.permission) + " • " + state;
         }
-        new AlertDialog.Builder(this).setTitle("Permissões • " + PrivacyRules.displayHost(url))
+        new XpDialogs.Builder(this).setTitle("Permissões • " + PrivacyRules.displayHost(url))
                 .setItems(titles, (d, index) -> {
                     GeckoSession.PermissionDelegate.ContentPermission permission = permissions.get(index);
                     if (permission.permission == GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE &&
                             permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW) {
-                        new AlertDialog.Builder(this).setTitle("Armazenamento persistente")
+                        new XpDialogs.Builder(this).setTitle("Armazenamento persistente")
                                 .setMessage("O GeckoView não permite revogar individualmente esta autorização. Use Privacidade e dados > Limpar todos os dados de navegação.")
                                 .setPositiveButton("OK", null).show();
                         return;
                     }
-                    new AlertDialog.Builder(this).setTitle(titles[index])
+                    new XpDialogs.Builder(this).setTitle(titles[index])
                             .setItems(new String[]{"Perguntar novamente", "Bloquear"}, (d2, action) -> {
                                 int value = action == 0 ?
                                         GeckoSession.PermissionDelegate.ContentPermission.VALUE_PROMPT :
@@ -2440,7 +2444,7 @@ public final class MainActivity extends Activity {
             @Override
             public GeckoResult<WebExtension.PermissionPromptResponse> onInstallPromptRequest(WebExtension ext, String[] permissions, String[] origins, String[] collected) {
                 GeckoResult<WebExtension.PermissionPromptResponse> r = new GeckoResult<>();
-                new AlertDialog.Builder(MainActivity.this)
+                new XpDialogs.Builder(MainActivity.this)
                         .setTitle("Permitir extensão?")
                         .setMessage("Extensão: " + ext.id + "\nPermissões: " + Arrays.toString(permissions) +
                                 "\nSites: " + Arrays.toString(origins) + "\nDados: " + Arrays.toString(collected))
@@ -2457,7 +2461,7 @@ public final class MainActivity extends Activity {
 
     private GeckoResult<AllowOrDeny> reviewPermissions(WebExtension ext, String[] permissions, String[] origins, String[] collected) {
         GeckoResult<AllowOrDeny> r = new GeckoResult<>();
-        new AlertDialog.Builder(this)
+        new XpDialogs.Builder(this)
                 .setTitle("Novas permissões: " + ext.id)
                 .setMessage(Arrays.toString(permissions) + "\nSites: " + Arrays.toString(origins) + "\nDados: " + Arrays.toString(collected))
                 .setPositiveButton("Permitir", (d, n) -> r.complete(AllowOrDeny.ALLOW))
@@ -2547,7 +2551,7 @@ public final class MainActivity extends Activity {
         GeckoView popupView = new GeckoView(this);
         popupView.setSession(popup);
         String title = extension.metaData.name == null ? "Extensão" : extension.metaData.name;
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new XpDialogs.Builder(this)
                 .setTitle(title)
                 .setView(popupView)
                 .setNegativeButton("Fechar", (d, w) -> d.dismiss())
@@ -2595,7 +2599,7 @@ public final class MainActivity extends Activity {
         detail.setPadding(dp(8), dp(10), dp(8), dp(10));
         detail.setBackground(rounded(Color.WHITE, BORDER, 10));
         content.addView(detail, new LinearLayout.LayoutParams(-1, -2));
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog dialog = new XpDialogs.Builder(this)
                 .setView(content)
                 .setPositiveButton("OK", null)
                 .create();
@@ -2650,7 +2654,7 @@ public final class MainActivity extends Activity {
         }
         Tab t = current();
         if (t != null && t.back) t.session.goBack();
-        else new AlertDialog.Builder(this)
+        else new XpDialogs.Builder(this)
                 .setTitle("Sair do Internet XP?")
                 .setPositiveButton("Sair", (d, n) -> finish())
                 .setNegativeButton("Cancelar", null)

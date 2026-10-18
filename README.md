@@ -1,6 +1,15 @@
-# Internet XP v1.0.29 (versionCode 30)
+# Internet XP v1.0.30 (versionCode 31)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.30: refinamento visual da central e dos diálogos
+
+- **Adicionar complemento** mostra Importar arquivo XPI, Instalar por HTTPS e Catálogo Mozilla em três cartões lado a lado, com ícones e textos curtos.
+- As quatro ações de cada extensão instalada ficam numa única fileira: Ativar/Desativar, Diagnóstico, Exportar e Excluir.
+- `XpDialogs.Builder` centraliza a identidade visual dos diálogos comuns do Internet XP (cabeçalho, contornos, botões e tipografia), sem substituir callbacks ou permissões do GeckoView.
+- Barra inferior ampliada para ícones de 26/29sp e legendas de 9,5/10,5sp, com altura adaptativa de 68/74dp.
+- **Funcionamento real**: extensão instalada e ativa ainda precisa de teste funcional na página. Em Menu > Ações das extensões, abra o Cookie Editor e faça alteração controlada em cookie de teste; compare antes e depois.
+- O APK e a execução em aparelho desta revisão ainda dependem do workflow e de testes de interface reais.
 
 ## 1.0.29: testes JUnit corrigidos após o workflow 28
 
@@ -34,7 +43,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.29`, `versionCode=30`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.30`, `versionCode=31`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.
