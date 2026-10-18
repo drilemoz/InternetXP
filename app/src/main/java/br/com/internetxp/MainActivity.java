@@ -438,7 +438,7 @@ public final class MainActivity extends Activity {
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.16")
+                .setTitle("Internet XP 1.0.17")
                 .setMessage("Compatibilidade com sites: envio de arquivos, tela cheia, permissões de localização e mídia, links externos e novas abas. Usa GeckoView. Projeto independente.")
                 .setPositiveButton("OK", null).show());
         p.show();

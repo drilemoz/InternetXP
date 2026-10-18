@@ -1,0 +1,1 @@
+Internet XP é um navegador Android com visual inspirado no Windows XP e no Internet Explorer clássico. Usa GeckoView do Firefox e oferece abas, histórico, favoritos, downloads, extensões e suporte a recursos modernos dos sites. Interface compacta, navegação prática e APKs separados por arquitetura.

@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.0.17 (versionCode 18) - identidade visual do aplicativo
+- Novo ícone exclusivo: globo azul em acabamento clássico XP com anel dourado.
+- Ícones PNG para densidades mdpi, hdpi, xhdpi, xxhdpi e xxxhdpi.
+- Suporte a ícone adaptativo Android 8+ (foreground/background) e roundIcon.
+- Atualiza o manifesto Android, versão, workflow e metadados, mantendo o funcionamento anterior.
+- Não inclui neste ciclo o módulo de privacidade planejado, que permanece para a próxima versão.
+
+
 ## 1.0.16 (versionCode 17) - compatibilidade com sites
 - Integra `FilePrompt` com seletor nativo Android (arquivos individuais e seleção múltipla).
 - Trata pedidos de permissões Android de câmera, microfone e localização e confirmação explícita por site HTTPS.

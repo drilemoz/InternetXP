@@ -23,3 +23,7 @@
 ## 1.0.16
 - Manter delegados de permissões e prompts coerentes com GeckoView 158; não aceitar permissões silenciosas de páginas.
 - Testar seletor de arquivos, tela cheia, câmera, microfone, localização e links externos antes de anunciar compatibilidade total.
+
+## 1.0.17
+- Branding atualizado: launcher icon azul com globo e anel dourado, assets por densidade e adaptive icon.
+- Próxima etapa planejada: privacidade e gerenciamento de cookies/cache/segurança.

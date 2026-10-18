@@ -1,8 +1,11 @@
-# Internet XP v1.0.16
+# Internet XP v1.0.17
 
 Navegador Android com GeckoView 158 e interface mobile inspirada no Windows XP/Internet Explorer.
 
-## Compatibilidade com sites (v1.0.16)
+## Ícone oficial (v1.0.17)
+Globo azul com anel dourado, integrado ao Android como ícone tradicional e adaptativo (launcher). Arquivo-fonte: `branding/internet_xp_icon_master.png`.
+
+## Compatibilidade com sites (introduzida na v1.0.16)
 - `<input type=file>` com seletor nativo de arquivos Android (um arquivo ou múltiplos).
 - Permissões em duas etapas: Android e confirmação do site para câmera, microfone e localização. Apenas origens HTTPS podem receber essas permissões nesta versão.
 - Reprodução HTML em tela cheia sem barras, com retorno por Voltar.
@@ -17,5 +20,8 @@ Navegador Android com GeckoView 158 e interface mobile inspirada no Windows XP/I
 
 ## Build e distribuição
 Três APKs Release assinados por ABI: `armeabi-v7a`, `arm64-v8a`, `x86_64`.
-Versão 1.0.16 / `versionCode` 17. Workflow publica APKs na GitHub Release (não Artifacts ZIP).
+Versão 1.0.17 / `versionCode` 18. Workflow publica APKs na GitHub Release (não Artifacts ZIP).
 Secrets de assinatura necessários: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+
+## Descrição curta para o GitHub
+Internet XP é um navegador Android com visual inspirado no Windows XP e no Internet Explorer clássico. Usa GeckoView do Firefox e oferece abas, histórico, favoritos, downloads, extensões e suporte a recursos modernos dos sites. Interface compacta, navegação prática e APKs separados por arquitetura.

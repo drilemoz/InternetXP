@@ -137,3 +137,9 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - [x] Adicionado teste JVM `SiteCompatibilityTest` com validação de origem HTTPS, esquemas de link, permissões e MIME.
 - [ ] Build Android/Gradle completo, Lint e teste instrumentado não executados localmente.
 - [ ] Testar: input file simples/múltiplo, negar upload, site HTTPS câmera/microfone/Geo, negar permissões, vídeo tela cheia, Voltar, links externos, pop-ups.
+
+## 1.0.17: verificação de launcher icon
+- Manifesto aponta `@mipmap/ic_launcher` e `@mipmap/ic_launcher_round`.
+- Ícones tradicionais PNG gerados para cinco densidades.
+- Ícones adaptativos em `mipmap-anydpi-v26` usam foreground gerado e cor de fundo.
+- A renderização pelo launcher Android e compilação Gradle completa ainda exigem execução no CI/aparelho.

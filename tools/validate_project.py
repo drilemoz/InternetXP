@@ -8,8 +8,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 17" in gradle
-assert "versionName '1.0.16'" in gradle
+assert "versionCode 18" in gradle
+assert "versionName '1.0.17'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -22,10 +22,10 @@ assert 'R.drawable.ic_refresh_ie_xp' in activity
 assert 'downloadsPanel.setVisibility(View.VISIBLE)' in activity
 assert 'rememberHistory(' in activity
 assert 'buildSuggestions(' in activity
-assert 'Internet XP 1.0.16' in activity
-assert "Internet XP.v1.0.16-${abi}.apk" in workflow_text
+assert 'Internet XP 1.0.17' in activity
+assert "Internet XP.v1.0.17-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.16' in workflow_text
+assert 'gh release create v1.0.17' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 workflow = yaml.load(workflow_text, Loader=yaml.BaseLoader)
@@ -43,9 +43,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='17' versionName='1.0.16'" in workflow_text
+assert "versionCode='18' versionName='1.0.17'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.16-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.17-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -68,7 +68,7 @@ assert 'if (!tab.loaded)' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistoryRecords.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/TabSessionStore.java').exists()
 
-# Compatibilidade v1.0.16
+# Compatibilidade v1.0.17
 assert 'onFilePrompt(' in activity
 assert 'onMediaPermissionRequest(' in activity
 assert 'onContentPermissionRequest(' in activity
@@ -79,3 +79,22 @@ assert 'onRequestPermissionsResult(' in activity
 assert 'onActivityResult(' in activity
 assert 'REQUEST_UPLOAD_FILES' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/SiteCompatibility.java').exists()
+
+# 1.0.17: launcher icons
+import struct
+manifest=(root/'app/src/main/AndroidManifest.xml').read_text()
+assert 'android:icon="@mipmap/ic_launcher"' in manifest
+assert 'android:roundIcon="@mipmap/ic_launcher_round"' in manifest
+for density, size in (('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)):
+    for icon in ('ic_launcher.png','ic_launcher_round.png'):
+        raw=(root/'app/src/main/res'/('mipmap-'+density)/icon).read_bytes()
+        assert raw[:8] == b'\x89PNG\r\n\x1a\n'
+        width,height=struct.unpack('>II',raw[16:24])
+        assert (width,height) == (size,size)
+for name in ('ic_launcher.xml','ic_launcher_round.xml'):
+    ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
+assert (root/'branding/internet_xp_icon_master.png').exists()
+
+assert '1.0.17' in (root/'README.md').read_text()
+assert '1.0.17' in (root/'CHANGELOG.md').read_text()
+assert '1.0.17' in (root/'docs/VALIDATION.md').read_text()
