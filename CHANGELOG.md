@@ -1,3 +1,11 @@
+## 1.0.28 (versionCode 29) - correção de compilação do workflow 27
+- Corrigido o erro `holder` sem declaração anterior no laço de atalhos do menu principal.
+- Removida animação referenciando `column` inexistente em `showModuleMenuDialog`, preservando a animação em `wrapper`.
+- Corrigida animação do Histórico, passando `column`, o contêiner existente nesse diálogo, em vez de `wrapper`.
+- Incluídas regressões estruturais por método no validador para bloquear os três erros reportados pelo `javac`.
+- Mantido o módulo de WebExtensions da 1.0.27, sem alegar validação de instalação em dispositivo antes do build.
+- Atualizados Novidades, README, AGENTS, documentação, tags da Release, arquivos APK por ABI e versionamento sequencial.
+
 ## 1.0.27 (versionCode 28) - central especial de extensões WebExtensions
 - Instalador real para arquivos `.xpi` já salvos em Downloads usando GeckoView, sem repetir o download.
 - Importação local SAF com limite de tamanho, inspeção do manifesto ZIP e validação efetiva da assinatura Mozilla pelo motor.

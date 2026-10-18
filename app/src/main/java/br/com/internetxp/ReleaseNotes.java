@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.27";
-    public static final int VERSION_CODE = 28;
-    public static final String HEADLINE = "Central de extensões com instalação XPI real.";
-    public static final String SUBTITLE = "Agora os pacotes XPI baixados podem ser enviados ao GeckoView, com importação local, diagnóstico, controles e exportação de complementos.";
+    public static final String VERSION_NAME = "1.0.28";
+    public static final int VERSION_CODE = 29;
+    public static final String HEADLINE = "Correção de compilação e estabilidade dos painéis.";
+    public static final String SUBTITLE = "Corrigidas três referências Java que impediam o APK da 1.0.27 de compilar. A central de extensões GeckoView permanece incluída.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,12 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Instalar XPI dos Downloads", "O arquivo XPI baixado ganhou ação Instalar XPI, que passa o pacote local ao instalador do motor Mozilla."),
-        new Feature("02", "Importar do aparelho", "O seletor Android importa arquivos XPI; o Internet XP inspeciona o manifesto e o GeckoView valida assinatura e permissões."),
-        new Feature("03", "Central dedicada", "Nova tela consultada diretamente do GeckoView; menu separado de ações com suporte inicial a botões e pop-ups dos complementos."),
-        new Feature("04", "Diagnóstico e segurança", "Versão, ID, assinatura, permissões e motivos de desativação ajudam a investigar incompatibilidades reais."),
-        new Feature("05", "Exportar e excluir", "Exportação do XPI quando o app preservou a cópia, ou JSON de diagnóstico; desinstalação real com limpeza do arquivo arquivado.")
+        new Feature("01", "Compilação do menu", "Corrigida a captura do diálogo nos atalhos do menu principal: a referência agora existe antes da criação dos cartões."),
+        new Feature("02", "Diálogo de ferramentas", "Eliminada referência inexistente durante a animação do painel modular."),
+        new Feature("03", "Histórico corrigido", "Animação do histórico agora utiliza o contêiner correto e deixa de acessar variável fora do escopo."),
+        new Feature("04", "Extensões preservadas", "Importação XPI, ações dos complementos, ativação, desativação, remoção e exportação continuam disponíveis para validação no Android."),
+        new Feature("05", "Validação preventiva", "Incluídas verificações específicas contra o retorno das três falhas de escopo encontradas no workflow 27.")
+
     };
 
     private ReleaseNotes() { }

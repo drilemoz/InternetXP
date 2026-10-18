@@ -1,8 +1,14 @@
-# Internet XP v1.0.27 (versionCode 28)
+# Internet XP v1.0.28 (versionCode 29)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
 
-## Extensões: implementação 1.0.27
+## 1.0.28: correção do workflow 27
+
+- Resolvidos os três erros de compilação Java em `MainActivity.java` indicados pelo workflow 27: `holder`, `column` e `wrapper` fora de escopo.
+- Atualizado o validador com guardas por método, sem remover funções da central de extensões.
+- Os recursos de extensões continuam **pendentes de validação real** após compilar o APK e executar testes no celular.
+
+## Extensões: implementação original 1.0.27
 
 - **Menu > Extensões** abre uma central independente para importar XPI do aparelho (SAF), instalar por URL HTTPS direta, abrir catálogo Mozilla e gerenciar complementos.
 - **Downloads > Instalar XPI** aparece nos downloads concluídos com nome `.xpi`: conecta o arquivo já baixado ao instalador **real** `GeckoRuntime.getWebExtensionController().install(fileUri)`.
@@ -21,7 +27,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.27`, `versionCode=28`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.28`, `versionCode=29`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

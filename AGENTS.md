@@ -98,3 +98,9 @@
 - Na nova versão manter serviço de downloads existente, listas privadas e sincronização obrigatória dos arquivos/versionCode da Release.
 
 - Extensões com browser_action/page_action precisam ter ação registrada por runtime/aba e apresentar pop-up em GeckoView próprio. Não afirmar que todas as APIs Firefox de UI já são cobertas pelo host.
+
+## 1.0.28: regressão de compilação
+- Corrigidos três símbolos inexistentes no `MainActivity.java` mostrados pelo workflow 27: referência a `holder` antes da declaração; animação de `column` inexistente no diálogo modular; animação de `wrapper` inexistente no Histórico.
+- Os diálogos devem animar apenas views declaradas no próprio método; `holder` precisa existir antes do primeiro uso, inclusive ao criar cards com lambdas.
+- `tools/validate_project.py` verifica cada um dos três contextos para barrar regressão de escopo.
+- Em toda próxima alteração incrementar a versão e sincronizar Novidades, Gradle, workflow, README, CHANGELOG e docs.

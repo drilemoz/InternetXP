@@ -1,3 +1,11 @@
+## 1.0.28: correção da compilação do workflow 27
+- O workflow 27 falhou em `:app:compileDebugJavaWithJavac` com três símbolos inexistentes em `MainActivity.java` (linhas originais 654, 870 e 1572).
+- `holder` agora é declarado antes de seu uso nos cartões principais de Menu; `showModuleMenuDialog` anima `wrapper`; `showHistory` anima `column`.
+- Executar `python3 tools/validate_project.py`: valida regressões por escopo/método e consistência de versões e workflow.
+- Executar `python3 -m unittest discover -s tools -p 'test_*.py'` e testes JVM do projeto.
+- Confirmar no GitHub Actions `:app:compileDebugJavaWithJavac`, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug` e Release por ABI. Rodar testes de instalação XPI em celular.
+- A correção dos símbolos é baseada diretamente nos logs; **não equivale a build Gradle local nem a instalação de extensões validada**.
+
 ## 1.0.27: instalação e gerenciamento de WebExtensions
 - Em **Downloads** baixar um XPI assinado Mozilla, aguardar conclusão e tocar **Instalar XPI**. Conferir prompt de permissões, sucesso/erro efetivo da instalação e persistência na lista depois de reiniciar o navegador.
 - Em **Menu > Extensões** importar o mesmo XPI pelo SAF. Validar arquivo corrompido, sem `manifest.json`, sem assinatura, manifesto V2/V3, tamanho acima de 40 MiB e URL que não é um XPI.

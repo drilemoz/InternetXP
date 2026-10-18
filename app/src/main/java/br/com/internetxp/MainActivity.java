@@ -633,6 +633,7 @@ public final class MainActivity extends Activity {
         quickSub.setPadding(0, dp(2), 0, dp(8));
         content.addView(quickSub);
 
+        final AlertDialog[] holder = new AlertDialog[1];
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         content.addView(grid);
@@ -667,7 +668,6 @@ public final class MainActivity extends Activity {
         toolsSub.setPadding(0, dp(2), 0, dp(8));
         content.addView(toolsSub);
 
-        final AlertDialog[] holder = new AlertDialog[1];
         for (MenuAction action : secondary) {
             LinearLayout row = createCompactMenuRow(action, holder);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
@@ -867,7 +867,6 @@ public final class MainActivity extends Activity {
         holder[0] = dialog;
         dialog.show();
         compactDialog(dialog);
-        animateDialogOpen(column, false);
         animateDialogOpen(wrapper, false);
     }
 
@@ -1569,7 +1568,7 @@ public final class MainActivity extends Activity {
         populateHistoryRows(results, "", dialog);
         dialog.show();
         compactDialog(dialog);
-        animateDialogOpen(wrapper, false);
+        animateDialogOpen(column, false);
         dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
