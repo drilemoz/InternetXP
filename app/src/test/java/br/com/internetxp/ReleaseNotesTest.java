@@ -5,13 +5,13 @@ import java.util.HashSet;
 public final class ReleaseNotesTest {
     @Test public void displaysAfterFreshInstallAndUpdate() {
         assertTrue(ReleaseNotes.shouldShow(0));
-        assertTrue(ReleaseNotes.shouldShow(22));
-        assertFalse(ReleaseNotes.shouldShow(23));
+        assertTrue(ReleaseNotes.shouldShow(23));
         assertFalse(ReleaseNotes.shouldShow(24));
+        assertFalse(ReleaseNotes.shouldShow(25));
     }
     @Test public void releaseEntriesAreUsefulAndUnique() {
-        assertEquals("1.0.22", ReleaseNotes.VERSION_NAME);
-        assertEquals(23, ReleaseNotes.VERSION_CODE);
+        assertEquals("1.0.23", ReleaseNotes.VERSION_NAME);
+        assertEquals(24, ReleaseNotes.VERSION_CODE);
         assertTrue(ReleaseNotes.FEATURES.length >= 3);
         HashSet<String> names = new HashSet<>();
         for (ReleaseNotes.Feature feature : ReleaseNotes.FEATURES) {

@@ -4,21 +4,22 @@ import android.app.Activity;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.app.AlertDialog;
-import android.app.DownloadManager;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.graphics.Color;
+import android.content.ActivityNotFoundException;
+import android.app.role.RoleManager;
+import android.os.Build;
+import android.provider.Settings;
 import android.content.res.ColorStateList;
-import android.os.SystemClock;
+import org.mozilla.geckoview.GeckoWebExecutor;
+import org.mozilla.geckoview.WebRequest;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.content.ActivityNotFoundException;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
@@ -34,13 +35,11 @@ import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ProgressBar;
 import android.widget.HorizontalScrollView;
-import android.widget.CheckBox;
 import android.widget.FrameLayout;
 import android.view.WindowManager;
 import java.net.URI;
@@ -128,7 +127,10 @@ public final class MainActivity extends Activity {
     private LinearLayout downloadsFilters;
     private int downloadFilter = 0; // 0 Todos, 1 Ativos, 2 Finalizados
     private boolean suppressSuggestionReload;
-    private static final int DOWNLOAD_CANCELLED = -2;
+    private static final int DOWNLOAD_CANCELLED = AppDownloadEngine.STATUS_CANCELLED;
+    private AppDownloadEngine nativeDownloads;
+    private DownloadItem exportTarget;
+    private static final int REQUEST_EXPORT_DOWNLOAD = 703;
     private static final long DOWNLOAD_REFRESH_MS = 2000L;
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Runnable downloadRefresh = new Runnable() {
@@ -165,6 +167,7 @@ public final class MainActivity extends Activity {
         long createdAt;
         int reason;
         boolean unmeteredOnly;
+        boolean privateDownload;
         long lastSampleBytes = -1;
         long lastSampleMs;
         long bytesPerSecond = -1;
@@ -271,6 +274,7 @@ public final class MainActivity extends Activity {
         loadStringList(PREF_HISTORY, history);
         loadHistoryDetails();
         loadDownloads();
+        nativeDownloads = AppDownloadEngine.get(getApplicationContext());
         trackingProtectionEnabled = storage.getBoolean(PREF_TRACKING_PROTECTION, true);
         homePageUrl = sanitizeHomePage(storage.getString(PREF_HOME_PAGE, HOME));
         faviconRepository = new FaviconRepository();
@@ -280,6 +284,7 @@ public final class MainActivity extends Activity {
             if (runtime == null) runtime = GeckoRuntime.create(getApplicationContext());
             extensionPrompts();
             if (!restoreTabs()) addTab(configuredHome());
+            handleIncomingLink(getIntent());
             // Novidades são exibidas apenas uma vez por versionCode e reaparecem ao atualizar.
             if (state == null && WhatsNewActivity.shouldShow(storage)) {
                 startActivity(new Intent(this, WhatsNewActivity.class));
@@ -569,6 +574,7 @@ public final class MainActivity extends Activity {
         actions.add(new MenuAction("⇪", "Compartilhar página", "Copie ou compartilhe o endereço atual em outros aplicativos.", this::share));
         actions.add(new MenuAction("ⓘ", "Novidades desta versão", "Consulte a tela estilizada com as mudanças mais recentes do projeto.", () -> startActivity(new Intent(this, WhatsNewActivity.class))));
         actions.add(new MenuAction("ℹ", "Sobre", "Informações da versão, motor e principais funções.", this::showAbout));
+        actions.add(new MenuAction("🌐", "Navegador padrão", "Permita que o Android sugira o Internet XP ao abrir links HTTP ou HTTPS.", this::requestDefaultBrowserRole));
         showModuleMenuDialog("Menu do Internet XP", "Ações e módulos com ícones, descrições e layout melhor para telas de telefone.", actions);
     }
 
@@ -732,7 +738,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showAbout() {
-        LinearLayout content = styledDialogContent("Internet XP 1.0.22", "Navegador com visual clássico e motor Mozilla GeckoView.");
+        LinearLayout content = styledDialogContent("Internet XP " + ReleaseNotes.VERSION_NAME, "Navegador com visual clássico e motor Mozilla GeckoView.");
         for (String line : new String[]{"Motor de navegação: GeckoView 158", "Android 8.0 ou superior", "Página inicial com pesquisa e atalhos", "Extensões, downloads, abas e privacidade", "Projeto independente, sem vínculo com Mozilla ou Microsoft"}) {
             TextView detail = text("•  " + line, 12, TEXT);
             detail.setPadding(dp(4), dp(6), dp(2), dp(6));
@@ -819,7 +825,7 @@ public final class MainActivity extends Activity {
                 if (tab == current()) status.setText("Falha da página. Reabra a aba.");
             }
             @Override public void onExternalResponse(GeckoSession s, WebResponse response) {
-                offerDownload(response);
+                offerDownload(response, tab.privateMode);
             }
         });
         session.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
@@ -1199,7 +1205,16 @@ public final class MainActivity extends Activity {
                 item.total = object.optLong("total", -1);
                 item.createdAt = object.optLong("createdAt", 0);
                 item.reason = object.optInt("reason", 0);
-                item.unmeteredOnly = object.optBoolean("unmeteredOnly", false);
+                item.unmeteredOnly = false;
+                item.privateDownload = object.optBoolean("privateDownload", false);
+                // Registros antigos usavam o DownloadManager do Android.
+                // Não reusar suas URIs nem fingir que agora são arquivos gerenciados pelo app.
+                if (object.optInt("engineVersion", 0) != 2 || isDownloadRunning(item.status)) {
+                    item.status = AppDownloadEngine.STATUS_FAILED;
+                    item.reason = AppDownloadEngine.REASON_INTERRUPTED;
+                    item.localUri = null;
+                    item.bytesPerSecond = -1;
+                }
                 downloads.add(item);
             }
         } catch (Exception ignored) { }
@@ -1220,7 +1235,9 @@ public final class MainActivity extends Activity {
                 object.put("total", item.total);
                 object.put("createdAt", item.createdAt);
                 object.put("reason", item.reason);
-                object.put("unmeteredOnly", item.unmeteredOnly);
+                object.put("unmeteredOnly", false);
+                object.put("privateDownload", item.privateDownload);
+                object.put("engineVersion", 2);
                 array.put(object);
             } catch (Exception ignored) { }
         }
@@ -1503,12 +1520,13 @@ public final class MainActivity extends Activity {
             LinearLayout actions = new LinearLayout(this);
             actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
             actions.setPadding(0, dp(4), 0, 0);
-            if (item.status == DownloadManager.STATUS_SUCCESSFUL) {
+            if (item.status == AppDownloadEngine.STATUS_SUCCESSFUL) {
                 addDownloadAction(actions, "Abrir", () -> openDownload(item));
                 addDownloadAction(actions, "Compartilhar", () -> shareDownload(item));
+                addDownloadAction(actions, "Salvar cópia", () -> exportDownload(item));
             } else if (isDownloadRunning(item.status)) {
                 addDownloadAction(actions, "Cancelar", () -> confirmCancelDownload(item));
-            } else if (item.status == DownloadManager.STATUS_FAILED || item.status == DOWNLOAD_CANCELLED) {
+            } else if (item.status == AppDownloadEngine.STATUS_FAILED || item.status == DOWNLOAD_CANCELLED) {
                 addDownloadAction(actions, "Tentar novamente", () -> retryDownload(item));
             }
             addDownloadAction(actions, "Detalhes", () -> showDownloadDetails(item));
@@ -1552,24 +1570,34 @@ public final class MainActivity extends Activity {
     }
 
     private Uri uriForDownload(DownloadItem item) {
-        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-        return manager == null ? null : manager.getUriForDownloadedFile(item.id);
+        if (item == null || item.status != AppDownloadEngine.STATUS_SUCCESSFUL) return null;
+        if (item.localUri == null || !item.localUri.startsWith("content://")) return null;
+        return Uri.parse(item.localUri);
     }
 
     private void shareDownload(DownloadItem item) {
         try {
             Uri uri = uriForDownload(item);
-            if (uri == null || !"content".equalsIgnoreCase(uri.getScheme())) {
-                Toast.makeText(this, "Arquivo não disponível para compartilhar", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            if (uri == null) { Toast.makeText(this, "Arquivo indisponível", Toast.LENGTH_SHORT).show(); return; }
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.setType(item.mime == null || item.mime.isEmpty() ? "application/octet-stream" : item.mime);
             intent.putExtra(Intent.EXTRA_STREAM, uri);
-            intent.setClipData(ClipData.newUri(getContentResolver(), "Arquivo baixado", uri));
+            intent.setClipData(ClipData.newUri(getContentResolver(), "Arquivo Internet XP", uri));
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(intent, "Compartilhar download"));
         } catch (RuntimeException error) { showError(error); }
+    }
+
+    private void exportDownload(DownloadItem item) {
+        if (uriForDownload(item) == null) { Toast.makeText(this, "Arquivo indisponível", Toast.LENGTH_SHORT).show(); return; }
+        try {
+            exportTarget = item;
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType(item.mime == null || item.mime.isEmpty() ? "application/octet-stream" : item.mime);
+            intent.putExtra(Intent.EXTRA_TITLE, item.fileName);
+            startActivityForResult(intent, REQUEST_EXPORT_DOWNLOAD);
+        } catch (ActivityNotFoundException e) { showError(e); }
     }
 
     private void showDownloadDetails(DownloadItem item) {
@@ -1577,11 +1605,9 @@ public final class MainActivity extends Activity {
                 + "\nStatus: " + downloadStatusText(item.status)
                 + "\nTamanho: " + formatBytes(item.total)
                 + "\nBaixado: " + formatBytes(item.bytes)
-                + "\nRede: " + (item.unmeteredOnly ? "Somente rede não tarifada" : "Todas as redes permitidas")
+                + "\nArmazenamento: gerenciado pelo Internet XP"
                 + "\nOrigem: " + item.url;
-        if (item.status == DownloadManager.STATUS_FAILED || item.status == DownloadManager.STATUS_PAUSED) {
-            message += "\nMotivo: " + downloadReason(item);
-        }
+        if (item.status == AppDownloadEngine.STATUS_FAILED) message += "\nMotivo: " + downloadReason(item);
         new AlertDialog.Builder(this).setTitle("Detalhes do download").setMessage(message)
                 .setPositiveButton("Fechar", null).show();
     }
@@ -1594,74 +1620,103 @@ public final class MainActivity extends Activity {
     }
 
     private boolean isDownloadRunning(int status) {
-        return status == DownloadManager.STATUS_PENDING || status == DownloadManager.STATUS_RUNNING
-                || status == DownloadManager.STATUS_PAUSED;
+        return status == AppDownloadEngine.STATUS_PENDING || status == AppDownloadEngine.STATUS_RUNNING;
     }
 
     private void confirmCancelDownload(DownloadItem item) {
-        new AlertDialog.Builder(this)
-            .setTitle("Cancelar download?")
-            .setMessage("O download será interrompido e o arquivo parcial poderá ser excluído pelo Android.")
-            .setPositiveButton("Cancelar download", (dialog, which) -> {
-                try {
-                    DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    if (manager != null) manager.remove(item.id);
-                    item.status = DOWNLOAD_CANCELLED;
-                    item.bytes = 0;
-                    item.total = -1;
-                    item.localUri = null;
-                    item.reason = 0;
-                    item.lastSampleBytes = -1;
+        new AlertDialog.Builder(this).setTitle("Cancelar download?")
+                .setMessage("O Internet XP interromperá a transferência e apagará o arquivo parcial.")
+                .setPositiveButton("Cancelar download", (d, w) -> {
+                    nativeDownloads.cancel(item.id);
+                    item.status = AppDownloadEngine.STATUS_CANCELLED;
                     item.bytesPerSecond = -1;
+                    item.localUri = null;
                     saveDownloads();
                     renderDownloadsPanel();
-                } catch (RuntimeException error) { showError(error); }
-            })
-            .setNegativeButton("Manter", null).show();
-    }
-
-    private DownloadManager.Request createDownloadRequest(String url, String fileName, boolean unmeteredOnly) {
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        request.setAllowedOverMetered(!unmeteredOnly);
-        request.setAllowedOverRoaming(false);
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
-        return request;
+                }).setNegativeButton("Manter", null).show();
     }
 
     private void retryDownload(DownloadItem item) {
-        if (item.url == null || !(item.url.startsWith("https://") || item.url.startsWith("http://"))) {
-            Toast.makeText(this, "Endereço do arquivo inválido", Toast.LENGTH_SHORT).show();
-            return;
+        if (!AppDownloadEngine.isWebUrl(item.url)) {
+            Toast.makeText(this, "Link inválido para download", Toast.LENGTH_SHORT).show(); return;
         }
         new AlertDialog.Builder(this)
-            .setTitle("Tentar novamente?")
-            .setMessage("Será iniciado um novo download desde o começo, não uma retomada do arquivo parcial.")
-            .setPositiveButton("Reiniciar", (dialog, which) -> {
-                try {
-                    DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    if (manager == null) throw new IllegalStateException("DownloadManager indisponível");
-                    // Remove failed/cancelled request and its partial file before reusing its name.
-                    if (item.id > 0) manager.remove(item.id);
-                    DownloadManager.Request request = createDownloadRequest(item.url, item.fileName, item.unmeteredOnly);
-                    item.id = manager.enqueue(request);
-                    item.status = DownloadManager.STATUS_PENDING;
-                    item.bytes = 0;
-                    item.total = -1;
-                    item.localUri = null;
-                    item.reason = 0;
-                    item.lastSampleBytes = -1;
-                    item.bytesPerSecond = -1;
-                    saveDownloads();
-                    renderDownloadsPanel();
-                } catch (RuntimeException error) { showError(error); }
-            })
-            .setNegativeButton("Voltar", null).show();
+                .setTitle("Baixar novamente?")
+                .setMessage("O Internet XP fará uma nova requisição pelo GeckoView. É um novo download, não retomada por partes.\nArquivos com login podem exigir nova autenticação.")
+                .setPositiveButton("Reiniciar", (dialog, which) -> fetchForDownload(item))
+                .setNegativeButton("Voltar", null).show();
+    }
+
+    private void startNativeDownload(DownloadItem item, WebResponse response) {
+        if (response.statusCode >= 400 || response.body == null) {
+            if (response.body != null) try { response.body.close(); } catch (Exception ignored) { }
+            item.status = AppDownloadEngine.STATUS_FAILED;
+            item.reason = response.statusCode >= 400 ? response.statusCode : AppDownloadEngine.REASON_MISSING_BODY;
+            saveDownloads();
+            if (!isFinishing() && !isDestroyed() && downloadsPanel.getVisibility() == View.VISIBLE) renderDownloadsPanel();
+            return;
+        }
+        item.status = AppDownloadEngine.STATUS_PENDING;
+        item.bytes = 0;
+        item.total = AppDownloadEngine.contentLength(response.headers);
+        item.reason = 0;
+        item.bytesPerSecond = -1;
+        item.localUri = null;
+        saveDownloads();
+        nativeDownloads.start(item.id, item.fileName, response.body, item.total, new AppDownloadEngine.Listener() {
+            @Override public void onProgress(long received, long total, long speed) {
+                if (item.status == AppDownloadEngine.STATUS_CANCELLED) return;
+                item.status = AppDownloadEngine.STATUS_RUNNING;
+                item.bytes = received;
+                item.total = total;
+                item.bytesPerSecond = speed;
+                if (!isFinishing() && !isDestroyed() && downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) renderDownloadsPanel();
+            }
+            @Override public void onDone(String savedUri, long received) {
+                if (item.status == AppDownloadEngine.STATUS_CANCELLED) return;
+                item.status = AppDownloadEngine.STATUS_SUCCESSFUL;
+                item.localUri = savedUri;
+                item.bytes = received;
+                item.total = received;
+                item.bytesPerSecond = -1;
+                saveDownloads();
+                if (status != null) status.setText("Download concluído: " + item.fileName);
+                if (!isFinishing() && !isDestroyed() && downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) renderDownloadsPanel();
+            }
+            @Override public void onError(int reason) {
+                if (item.status == AppDownloadEngine.STATUS_CANCELLED) return;
+                item.status = AppDownloadEngine.STATUS_FAILED;
+                item.reason = reason;
+                item.bytesPerSecond = -1;
+                saveDownloads();
+                if (!isFinishing() && !isDestroyed() && downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) renderDownloadsPanel();
+            }
+        });
+    }
+
+    private void fetchForDownload(DownloadItem item) {
+        if (runtime == null) return;
+        item.id = System.currentTimeMillis();
+        item.status = AppDownloadEngine.STATUS_PENDING;
+        item.bytes = 0; item.total = -1; item.localUri = null; item.reason = 0;
+        saveDownloads();
+        GeckoWebExecutor executor = new GeckoWebExecutor(runtime);
+        int flags = item.privateDownload ? GeckoWebExecutor.FETCH_FLAGS_PRIVATE : GeckoWebExecutor.FETCH_FLAGS_NONE;
+        try {
+            executor.fetch(new WebRequest.Builder(item.url).build(), flags)
+                    .accept(response -> runOnUiThread(() -> startNativeDownload(item, response)),
+                            error -> runOnUiThread(() -> {
+                                item.status = AppDownloadEngine.STATUS_FAILED;
+                                item.reason = AppDownloadEngine.REASON_NETWORK;
+                                saveDownloads();
+                                if (!isFinishing() && !isDestroyed() && downloadsPanel.getVisibility() == View.VISIBLE) renderDownloadsPanel();
+                            }));
+        } catch (Exception e) { item.status = AppDownloadEngine.STATUS_FAILED; item.reason = AppDownloadEngine.REASON_NETWORK; saveDownloads(); }
     }
 
     private String buildDownloadSubtitle(DownloadItem item) {
         String label = downloadStatusText(item.status);
-        if (item.status == DownloadManager.STATUS_RUNNING) {
+        if (item.status == AppDownloadEngine.STATUS_RUNNING) {
             long percent = DownloadDisplay.percent(item.bytes, item.total);
             String result = label + (percent >= 0 ? " • " + percent + "%" : "")
                     + " • " + formatBytes(item.bytes)
@@ -1673,43 +1728,29 @@ public final class MainActivity extends Activity {
             }
             return result;
         }
-        if (item.status == DownloadManager.STATUS_SUCCESSFUL)
+        if (item.status == AppDownloadEngine.STATUS_SUCCESSFUL)
             return label + (item.total > 0 ? " • " + formatBytes(item.total) : "");
-        if (item.status == DownloadManager.STATUS_PAUSED || item.status == DownloadManager.STATUS_FAILED)
+        if (item.status == AppDownloadEngine.STATUS_FAILED)
             return label + " • " + downloadReason(item);
         return label;
     }
 
     private String downloadReason(DownloadItem item) {
-        int reason = item.reason;
-        if (item.status == DownloadManager.STATUS_PAUSED) {
-            switch (reason) {
-                case DownloadManager.PAUSED_WAITING_TO_RETRY: return "aguardando nova tentativa";
-                case DownloadManager.PAUSED_WAITING_FOR_NETWORK: return "aguardando conexão";
-                case DownloadManager.PAUSED_QUEUED_FOR_WIFI: return "aguardando Wi-Fi";
-                default: return "aguardando condições do sistema";
-            }
-        }
-        if (reason >= 400 && reason <= 599) return "HTTP " + reason;
-        switch (reason) {
-            case DownloadManager.ERROR_INSUFFICIENT_SPACE: return "sem espaço de armazenamento";
-            case DownloadManager.ERROR_FILE_ALREADY_EXISTS: return "arquivo já existe";
-            case DownloadManager.ERROR_CANNOT_RESUME: return "transferência não retomável";
-            case DownloadManager.ERROR_HTTP_DATA_ERROR: return "erro de transferência HTTP";
-            case DownloadManager.ERROR_UNHANDLED_HTTP_CODE: return "resposta HTTP não suportada";
-            case DownloadManager.ERROR_TOO_MANY_REDIRECTS: return "redirecionamentos em excesso";
-            default: return "falha reportada pelo Android";
-        }
+        if (item.reason >= 400 && item.reason <= 599) return "HTTP " + item.reason;
+        if (item.reason == AppDownloadEngine.REASON_MISSING_BODY) return "servidor não entregou dados";
+        if (item.reason == AppDownloadEngine.REASON_INTERRUPTED) return "transferência antiga ou interrompida; reinicie";
+        if (item.reason == AppDownloadEngine.REASON_STORAGE) return "erro ao gravar no armazenamento";
+        if (item.reason == AppDownloadEngine.REASON_NETWORK) return "falha de transferência; confira conexão";
+        return "falha ao baixar";
     }
 
     private String downloadStatusText(int status) {
         switch (status) {
-            case DownloadManager.STATUS_PENDING: return "Na fila";
-            case DownloadManager.STATUS_RUNNING: return "Baixando";
-            case DownloadManager.STATUS_PAUSED: return "Pausado pelo sistema";
-            case DownloadManager.STATUS_SUCCESSFUL: return "Concluído";
-            case DownloadManager.STATUS_FAILED: return "Falhou";
-            case DOWNLOAD_CANCELLED: return "Cancelado";
+            case AppDownloadEngine.STATUS_PENDING: return "Na fila";
+            case AppDownloadEngine.STATUS_RUNNING: return "Baixando";
+            case AppDownloadEngine.STATUS_SUCCESSFUL: return "Concluído";
+            case AppDownloadEngine.STATUS_FAILED: return "Falhou";
+            case AppDownloadEngine.STATUS_CANCELLED: return "Cancelado";
             default: return "Desconhecido";
         }
     }
@@ -1717,126 +1758,59 @@ public final class MainActivity extends Activity {
     private String formatBytes(long bytes) { return DownloadDisplay.bytes(bytes); }
 
     private void refreshDownloadsState() {
-        if (downloads.isEmpty()) return;
-        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-        if (manager == null) return;
-        long[] ids = new long[downloads.size()];
-        for (int i = 0; i < downloads.size(); i++) ids[i] = downloads.get(i).id;
-        Cursor cursor = null;
-        boolean changed = false;
-        try {
-            cursor = manager.query(new DownloadManager.Query().setFilterById(ids));
-            if (cursor == null) return;
-            while (cursor.moveToNext()) {
-                long id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID));
-                DownloadItem item = findDownload(id);
-                if (item == null) continue;
-                int newStatus = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
-                long newBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
-                long newTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
-                int newReason = (newStatus == DownloadManager.STATUS_FAILED || newStatus == DownloadManager.STATUS_PAUSED)
-                        ? cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)) : 0;
-                if (newStatus != item.status || newBytes != item.bytes || newTotal != item.total || newReason != item.reason) changed = true;
-                long now = SystemClock.elapsedRealtime();
-                if (newStatus == DownloadManager.STATUS_RUNNING && item.lastSampleBytes >= 0) {
-                    long measured = DownloadDisplay.speed(item.lastSampleBytes, newBytes, now - item.lastSampleMs);
-                    item.bytesPerSecond = measured;
-                } else if (newStatus != DownloadManager.STATUS_RUNNING) {
-                    item.bytesPerSecond = -1;
-                }
-                item.lastSampleBytes = newStatus == DownloadManager.STATUS_RUNNING ? newBytes : -1;
-                item.lastSampleMs = now;
-                item.reason = newReason;
-                item.status = newStatus;
-                item.bytes = newBytes;
-                item.total = newTotal;
-                int titleColumn = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE);
-                if (titleColumn >= 0) {
-                    String filename = cursor.getString(titleColumn);
-                    if (filename != null && !filename.equals(item.fileName)) { item.fileName = filename; changed = true; }
-                }
-                int uriColumn = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI);
-                if (uriColumn >= 0) {
-                    String local = cursor.getString(uriColumn);
-                    if (local != null && !local.equals(item.localUri)) { item.localUri = local; changed = true; }
-                }
-                int mimeColumn = cursor.getColumnIndex(DownloadManager.COLUMN_MEDIA_TYPE);
-                if (mimeColumn >= 0) {
-                    String mime = cursor.getString(mimeColumn);
-                    if (mime != null && !mime.equals(item.mime)) { item.mime = mime; changed = true; }
-                }
-            }
-        } catch (Exception ignored) {
-        } finally {
-            if (cursor != null) cursor.close();
-            if (changed) saveDownloads();
-        }
-    }
-
-    private DownloadItem findDownload(long id) {
-        for (DownloadItem item : downloads) if (item.id == id) return item;
-        return null;
+        // Os bytes chegam pelo fluxo nativo do GeckoView; nenhum DownloadManager é consultado.
     }
 
     private void openDownload(DownloadItem item) {
         try {
             Uri uri = uriForDownload(item);
-            if (uri == null || !"content".equalsIgnoreCase(uri.getScheme())) {
-                Toast.makeText(this, "Arquivo não disponível para abrir", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            if (uri == null) { Toast.makeText(this, "Arquivo indisponível", Toast.LENGTH_SHORT).show(); return; }
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setDataAndType(uri, item.mime == null || item.mime.isEmpty() ? "*/*" : item.mime);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(intent, "Abrir download"));
-        } catch (Exception e) {
-            showError(e);
-        }
+            startActivity(Intent.createChooser(intent, "Abrir arquivo"));
+        } catch (Exception e) { showError(e); }
     }
 
-    private void offerDownload(WebResponse response) {
-        if (response.body != null) try { response.body.close(); } catch (Exception ignored) { }
+    private void offerDownload(WebResponse response, boolean fromPrivateTab) {
         String uri = response.uri;
-        if (uri == null || !(uri.startsWith("https://") || uri.startsWith("http://"))) {
-            status.setText("Download não suportado");
+        if (!AppDownloadEngine.isWebUrl(uri)) {
+            if (response.body != null) try { response.body.close(); } catch (Exception ignored) { }
+            status.setText("Download não suportado: somente HTTP(S)");
             return;
         }
-        String guessed = android.webkit.URLUtil.guessFileName(uri, null, response.headers == null ? null : response.headers.get("Content-Type"));
-        CheckBox unmetered = new CheckBox(this);
-        unmetered.setText("Somente redes não tarifadas (economizar dados)");
-        unmetered.setTextSize(12);
-        unmetered.setPadding(dp(10), dp(4), dp(8), dp(4));
-        boolean privateDownload = current() != null && current().privateMode;
+        String mime = AppDownloadEngine.header(response.headers, "Content-Type");
+        String disposition = AppDownloadEngine.header(response.headers, "Content-Disposition");
+        String filename = AppDownloadEngine.filename(uri, disposition, mime);
+        // O fluxo recebido pelo GeckoView não é descartado e não exige nova autenticação.
         new AlertDialog.Builder(this)
-                .setTitle(privateDownload ? "Baixar fora da navegação privada?" : "Baixar arquivo?")
-                .setMessage("Origem: " + uri + "\n\n" +
-                        (privateDownload ? "Aviso: o Android salva downloads fora do modo privado. O arquivo poderá aparecer em Downloads e outros aplicativos.\n\n" : "") +
-                        "Arquivos com login/cookies podem falhar nesta versão.")
-                .setView(unmetered)
+                .setTitle(fromPrivateTab ? "Baixar arquivo da aba privada?" : "Baixar com Internet XP?")
+                .setMessage("Arquivo: " + filename + "\nOrigem: " + uri + "\n\n"
+                        + "O Internet XP gerenciará o download. Para salvá-lo em outra pasta, use Salvar cópia após concluir."
+                        + (fromPrivateTab ? "\n\nAviso: o arquivo baixado continuará no armazenamento do aplicativo." : ""))
                 .setPositiveButton("Baixar", (d, n) -> {
-                    try {
-                        DownloadManager.Request request = createDownloadRequest(uri, guessed, unmetered.isChecked());
-                        long id = ((DownloadManager) getSystemService(DOWNLOAD_SERVICE)).enqueue(request);
-                        DownloadItem item = new DownloadItem();
-                        item.id = id;
-                        item.fileName = guessed;
-                        item.url = uri;
-                        item.mime = response.headers == null ? null : response.headers.get("Content-Type");
-                        item.status = DownloadManager.STATUS_PENDING;
-                        item.bytes = 0;
-                        item.total = -1;
-                        item.createdAt = System.currentTimeMillis();
-                        item.unmeteredOnly = unmetered.isChecked();
-                        downloads.add(0, item);
-                        while (downloads.size() > 40) downloads.remove(downloads.size() - 1);
-                        saveDownloads();
-                        showDownloads();
-                        status.setText("Download iniciado");
-                    } catch (Exception e) {
-                        showError(e);
-                    }
+                    DownloadItem item = new DownloadItem();
+                    item.id = System.currentTimeMillis();
+                    item.fileName = filename;
+                    item.url = uri;
+                    item.mime = mime;
+                    item.status = AppDownloadEngine.STATUS_PENDING;
+                    item.bytes = 0; item.total = -1;
+                    item.createdAt = System.currentTimeMillis();
+                    item.privateDownload = fromPrivateTab;
+                    downloads.add(0, item);
+                    while (downloads.size() > 40) downloads.remove(downloads.size() - 1);
+                    saveDownloads();
+                    showDownloads();
+                    if (response.body != null) startNativeDownload(item, response);
+                    else fetchForDownload(item);
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton("Cancelar", (d, n) -> {
+                    if (response.body != null) try { response.body.close(); } catch (Exception ignored) { }
+                })
+                .setOnCancelListener(d -> {
+                    if (response.body != null) try { response.body.close(); } catch (Exception ignored) { }
+                })
                 .show();
     }
 
@@ -1872,6 +1846,16 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_EXPORT_DOWNLOAD) {
+            DownloadItem file = exportTarget;
+            exportTarget = null;
+            if (resultCode == RESULT_OK && data != null && data.getData() != null && file != null) {
+                Uri source = uriForDownload(file);
+                if (source != null) nativeDownloads.exportCopy(source, data.getData(),
+                        () -> Toast.makeText(this, "Cópia salva", Toast.LENGTH_SHORT).show(), this::showError);
+            }
+            return;
+        }
         if (requestCode != REQUEST_UPLOAD_FILES || filePickerResult == null) return;
         GeckoResult<GeckoSession.PromptDelegate.PromptResponse> result = filePickerResult;
         GeckoSession.PromptDelegate.FilePrompt prompt = filePickerPrompt;
@@ -2308,6 +2292,39 @@ public final class MainActivity extends Activity {
                 .setMessage(String.valueOf(e.getMessage()))
                 .setPositiveButton("OK", null)
                 .show();
+    }
+
+    private void handleIncomingLink(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) return;
+        Uri link = intent.getData();
+        if (link == null || !AppDownloadEngine.isWebUrl(link.toString())) return;
+        Tab activeTab = current();
+        if (activeTab != null && activeTab.privateMode) addTab(link.toString());
+        else if (activeTab != null) navigate(link.toString());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingLink(intent);
+    }
+
+    private void requestDefaultBrowserRole() {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                RoleManager roles = (RoleManager) getSystemService(ROLE_SERVICE);
+                if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_BROWSER)) {
+                    if (roles.isRoleHeld(RoleManager.ROLE_BROWSER)) {
+                        Toast.makeText(this, "Internet XP já é o navegador padrão", Toast.LENGTH_LONG).show(); return;
+                    }
+                    startActivity(roles.createRequestRoleIntent(RoleManager.ROLE_BROWSER)); return;
+                }
+            }
+            startActivity(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS));
+        } catch (Exception error) {
+            Toast.makeText(this, "Defina o Internet XP nas configurações de apps padrão do Android", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override

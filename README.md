@@ -1,32 +1,24 @@
-# Internet XP v1.0.22
+# Internet XP v1.0.23
 
 Navegador Android com motor Mozilla GeckoView 158, visual inspirado no Windows XP/Internet Explorer e interface compacta para celulares.
 
-## Novidades (versionCode 23)
-- Página inicial nativa leve em `about:blank`, com busca centralizada e grade de favoritos.
-- Atalho **Adicionar** na página inicial e diálogo para salvar um endereço, sem perder a lista existente.
-- **Configurações** no menu: escolha entre a página inicial nativa do Internet XP ou a URL de um site.
-- Favicons buscados por HTTPS diretamente do domínio do favorito (sem terceiros), em segundo plano, com cache limitado e fallback por inicial.
-- Barra de endereço mantém cadeado separado do favicon, quando disponível.
-- Menus de Favoritos e Extensões em cartões com ícones; Sobre e Histórico estilizados; menu principal mais estreito e menos alto.
-- Barra de endereço seleciona o URL inteiro ao toque; botões compactos mantidos para Redmi A3.
-- Tela de Novidades atualizada para v1.0.22.
+## Novidades da v1.0.23 (versionCode 24)
+- Gerenciador de downloads próprio escrito em Java, sem Android DownloadManager.
+- Fluxo recebido por `GeckoSession.ContentDelegate.onExternalResponse` salvo pelo Internet XP, sem abrir navegador do sistema; fallback de download pelo `GeckoWebExecutor` nos casos em que não há corpo de resposta.
+- Progresso, velocidade observada, cancelamento, nova tentativa (reinicia do começo), visualização, compartilhamento e exportação SAF (Salvar cópia).
+- Arquivos salvos na área externa privativa do Internet XP, com `FileProvider`; não são enviados automaticamente para a pasta pública Downloads. Se desejar manter uma cópia visível no gerenciador de arquivos, use **Salvar cópia**.
+- Downloads anteriores gerenciados pelo Android não são migrados fisicamente nem apagados; a lista local é marcada para nova tentativa, e arquivos anteriores continuam onde o Android os salvou.
+- Navegador reconhecido pelo Android: intenção `ACTION_VIEW`/`BROWSABLE`/`DEFAULT` para `http` e `https`, tratamento de links recebidos e menu **Navegador padrão** usando `RoleManager` quando disponível.
+- Tela estilizada de Novidades 1.0.23 atualizada, com explicações das cinco mudanças.
 
-
-- Abas privadas reais pelo `GeckoSessionSettings.Builder.usePrivateMode(true)`, sem gravar URLs no histórico nem restaurá-las após reinício.
-- Cor roxa discreta para identificar abas privadas, com opção de fechar todas as abas privadas.
-- Estado de segurança do site mostrado a partir de `ProgressDelegate.onSecurityChange`, não só de `https://`.
-- Limpeza efetiva de cookies e autenticação, cache, permissões ou dados completos com `StorageController.clearData` após fechar todas as abas.
-- Controle para ligar/desligar proteção antirrastreamento por sessão, com preferência local persistente.
-- Consulta e revogação/bloqueio de permissões armazenadas para o site atual, quando a API suporta, com aviso para armazenamento persistente.
-- Aviso explícito sobre downloads iniciados em abas privadas: continuam salvos e visíveis ao Android.
-- Tela de Novidades atualizada obrigatoriamente nesta versão.
-
-### Limitações honestas
-A navegação privada evita salvar histórico/abas no Internet XP, mas não oculta atividade da rede, operadora, sites, sistema Android ou de eventuais extensões; arquivos baixados permanecem no aparelho. Fechar o app elimina abas privadas, mas testar em dispositivo é indispensável para confirmar o isolamento de cookies/dados do GeckoView.
+### Limitações
+- Transferências são processadas em um executor dentro do processo do aplicativo. **Não há serviço foreground persistente**; o Android pode interromper downloads se encerrar o processo. Ao reabrir, transferências interrompidas são marcadas como falhas e podem ser reiniciadas.
+- Não foi implementada retomada HTTP Range de transferências parciais; nova tentativa é um download novo.
+- A instalação de extensões XPI continua pelo `WebExtensionController` do GeckoView, separada do download de pacotes XPI.
+- Não é possível impedir que o Android ofereça outros navegadores ou force links verificados de determinados aplicativos; escolha o Internet XP no seletor ou em Apps padrão.
 
 ## Compilação e distribuição
-- `versionName 1.0.22`, `versionCode 23`, `minSdk 26`, `compileSdk 37`.
+- `versionName 1.0.23`, `versionCode 24`, `minSdk 26`, `compileSdk 37`.
 - Três APKs Release assinados: `armeabi-v7a`, `arm64-v8a`, `x86_64` diretamente no GitHub Releases; sem Artifact ZIP.
 - Quatro Repository Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP entregue é código-fonte, não APK instalável.

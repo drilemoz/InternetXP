@@ -63,3 +63,15 @@
 - Manter o indicador de segurança do GeckoView separado dos favicons; nenhum favicon comprova HTTPS confiável.
 - Favoritos, Extensões, Histórico, Sobre e Configurações devem seguir padrão visual XP; menu principal compacto e legível em Redmi A3.
 - Em todas as futuras alterações, atualizar ReleaseNotes, Novidades, Gradle, README, CHANGELOG, docs/VALIDATION, workflow e versionCode sequencialmente.
+
+
+## 1.0.23: gerenciador próprio e reconhecimento como navegador
+- **Não voltar a utilizar `android.app.DownloadManager` para baixar**. O código do Internet XP deve gerenciar o fluxo de download.
+- Prefira `WebResponse.body` vindo do GeckoView para preservar a resposta autenticada, fechando sempre o stream ao terminar ou cancelar.
+- Um fallback com `GeckoWebExecutor` pode reiniciar a requisição, inclusive na área privada quando informado; nunca alegar que a retomada parcial está implementada.
+- Compartilhar arquivos apenas por `content://` via `FileProvider`, sem `file://` e sem permissões globais do armazenamento.
+- O armazenamento principal de downloads é privativo do app. Para salvar em pasta escolhida pelo usuário, use SAF; não prometer que todo download ficará na pasta pública.
+- Até implementar serviço foreground com persistência real, não prometer sobrevivência a encerramento de processo Android.
+- No `AndroidManifest.xml`, manter `ACTION_VIEW`, `CATEGORY_BROWSABLE`, `CATEGORY_DEFAULT` e esquemas HTTP/HTTPS para ser candidato a navegador padrão. Tratar `onNewIntent` e novos links sem abrir navegador externo.
+- A instalação de XPI continua com GeckoView WebExtensionController (não basta baixar o arquivo).
+- Toda versão futura DEVE sincronizar ReleaseNotes, AGENTS, README, CHANGELOG, docs/VALIDATION, workflow e versionCode.

@@ -1,3 +1,14 @@
+## 1.0.23: download nativo e identificação como navegador
+- Validar `tools/validate_project.py`, testes JVM e integridade ZIP.
+- Testar download HTTP e HTTPS no Redmi A3 e Redmi Note 11 Pro+, verificando que outro navegador não é acionado.
+- Testar PDF, APK, ZIP e XPI, incluindo respostas com login (cookies) e arquivo sem corpo da resposta.
+- Testar progresso, cancelamento, falta de espaço, reinício de arquivo e seleção **Salvar cópia**.
+- Testar reconhecimento como navegador padrão com seletor Android, RoleManager e link externo de outro app.
+- Confirmar que downloads antigos continuam no local original e o aplicativo não os identifica falsamente como arquivos próprios.
+- Testar encerramento de processo durante download: deve marcar como interrompido no próximo início.
+- Verificar Tela de Novidades 1.0.23, assinatura e APKs por ABI no GitHub Actions.
+- A compilação Android Gradle completa e testes em aparelho **não foram executados localmente**; dependem de CI e teste real.
+
 ## 1.0.22: página inicial, atalhos e diálogos XP
 - Conferir a primeira instalação com página inicial em branco, busca central e tile Adicionar.
 - Testar a busca na página inicial e a navegação por favoritos, mantendo URLs pré-existentes.

@@ -1,5 +1,14 @@
 # Changelog
 
+
+## 1.0.23 (versionCode 24) - navegador padrão e gerenciador próprio
+- Implementado AppDownloadEngine com fluxo de dados do GeckoView, gravação em pasta privativa e download independente de DownloadManager.
+- Gerenciamento com progresso, cancelamento, recomeçar em caso de falha, abertura, compartilhamento via FileProvider e ação Salvar cópia pelo seletor SAF.
+- Registrados ACTION_VIEW, categorias DEFAULT/BROWSABLE e esquemas HTTP/HTTPS, além de tratamento de links recebidos.
+- Nova opção Navegador padrão solicita o papel `RoleManager.ROLE_BROWSER` em Android compatível.
+- Migração conservadora de históricos do DownloadManager sem fingir que arquivos antigos foram migrados.
+- Tela de Novidades, testes, docs/VALIDATION, versão, workflow e Release sincronizados.
+
 ## 1.0.22 (versionCode 23) - página inicial, favoritos e diálogos XP
 - Adicionada página inicial nativa (`about:blank`) com campo de pesquisa centralizado e grade de atalhos para favoritos.
 - Botão Adicionar disponível diretamente na página inicial, com confirmação de URL para salvar favoritos.

@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.22";
-    public static final int VERSION_CODE = 23;
-    public static final String HEADLINE = "Seu Internet XP, com um início personalizado.";
-    public static final String SUBTITLE = "Página inicial com pesquisa central e favoritos, configurações próprias, favicons e caixas de diálogo no visual XP.";
+    public static final String VERSION_NAME = "1.0.23";
+    public static final int VERSION_CODE = 24;
+    public static final String HEADLINE = "Downloads agora são do próprio Internet XP.";
+    public static final String SUBTITLE = "Novo gerenciador independente do Android e opção para tornar o Internet XP seu navegador padrão.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Nova página inicial", "Abra uma página em branco com pesquisa centralizada e atalhos rápidos para seus sites favoritos."),
-        new Feature("02", "Favoritos em ícones", "Adicione favoritos diretamente na página inicial e abra seus sites pelos cartões de acesso rápido."),
-        new Feature("03", "Configurações da página inicial", "Escolha entre a página inicial do Internet XP ou um endereço de site personalizado."),
-        new Feature("04", "Favicons dos sites", "O navegador tenta buscar o ícone HTTPS do próprio site para mostrar nos atalhos e na barra de endereço, quando disponível."),
-        new Feature("05", "Menus e diálogos refinados", "Favoritos, extensões, histórico e informações ganharam aparência mais alinhada ao XP, com menus menores e mais confortáveis no celular.")
+        new Feature("01", "Gerenciador de downloads próprio", "O Internet XP grava os arquivos diretamente, com progresso e cancelamento, sem delegar transferências ao DownloadManager do Android."),
+        new Feature("02", "Download pelo GeckoView", "Ao receber um arquivo, o aplicativo utiliza os dados da própria conexão do navegador, evitando abrir outro navegador ou repetir o pedido de login."),
+        new Feature("03", "Abrir, compartilhar e salvar cópia", "Arquivos concluídos podem ser abertos, compartilhados ou exportados para outra pasta escolhida pelo usuário."),
+        new Feature("04", "Internet XP como navegador", "O Android agora pode identificar o Internet XP para abrir links HTTP/HTTPS, com atalho para solicitar a função de navegador padrão."),
+        new Feature("05", "Histórico preservado e migração segura", "Downloads antigos não são confundidos com arquivos do novo gerenciador; a lista permite reiniciar a transferência quando necessário.")
     };
 
     private ReleaseNotes() { }
