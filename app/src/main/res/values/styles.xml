@@ -1,0 +1,1 @@
+<resources><style name="XPTheme" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:statusBarColor">#0874D6</item><item name="android:navigationBarColor">#151515</item><item name="android:windowLightStatusBar">false</item><item name="android:colorAccent">#0868C6</item></style></resources>
