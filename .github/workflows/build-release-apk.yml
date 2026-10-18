@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.9
+  group: internet-xp-v1.0.10
   cancel-in-progress: false
 jobs:
   apk:
@@ -40,21 +40,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - name: Preparar assinatura obrigatória para Release
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "$KEYSTORE_BASE64" || -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
-            echo '::error::Configure os quatro Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD). A v1.0.9 publica somente APKs Release otimizados e assinados.'
-            exit 1
-          fi
-          printf %s "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/assinatura.p12"
-          chmod 600 "$RUNNER_TEMP/assinatura.p12"
       - name: Testar validador de tamanho e arquitetura
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Testes, lint e compilação Debug (não publicada)
@@ -70,6 +55,30 @@ jobs:
           else
             echo 'Relatório Lint indisponível; veja o erro Gradle acima.'
           fi
+      - name: Preparar assinatura obrigatória para Release
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "$KEYSTORE_BASE64" ]] || missing+=(KEYSTORE_BASE64)
+          [[ -n "$KEYSTORE_PASSWORD" ]] || missing+=(KEYSTORE_PASSWORD)
+          [[ -n "$KEY_ALIAS" ]] || missing+=(KEY_ALIAS)
+          [[ -n "$KEY_PASSWORD" ]] || missing+=(KEY_PASSWORD)
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error::Secrets de assinatura AUSENTES no repositório que executou este workflow: ${missing[*]}"
+            echo '::error::No GitHub Manager, abra o repositório InternetXP > Secrets > Importar e selecione o TXT privado de assinatura já gerado.'
+            echo '::error::Secrets de Environment só funcionam se o job declarar o environment correspondente. Configure como Repository secrets.'
+            echo '::error::Nenhum APK Debug será publicado: configure os Secrets antes de executar novamente.'
+            exit 1
+          fi
+          printf %s "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/assinatura.p12"
+          chmod 600 "$RUNNER_TEMP/assinatura.p12"
+          test -s "$RUNNER_TEMP/assinatura.p12"
       - name: Compilar Release otimizada por ABI
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/assinatura.p12
@@ -92,17 +101,19 @@ jobs:
             exit 1
           fi
           for abi in armeabi-v7a arm64-v8a x86 x86_64; do
-            candidates=("$src_dir"/*"$abi"*-release.apk)
-            if [[ ${#candidates[@]} -ne 1 ]]; then
-              echo "::error::Esperado 1 APK da arquitetura $abi; encontrados ${#candidates[@]}"
+            # Nome padrão documentado pelo Android Gradle Plugin: app-ABI-release.apk.
+            # Evita falso positivo: buscar *x86* também encontra x86_64.
+            src="$src_dir/app-${abi}-release.apk"
+            if [[ ! -s "$src" ]]; then
+              echo "::error::APK da arquitetura $abi não encontrado: $src"
+              printf 'APKs existentes: %s\n' "${all_apks[@]}"
               exit 1
             fi
-            src="${candidates[0]}"
-            out="Internet XP.v1.0.9-${abi}.apk"
+            out="Internet XP.v1.0.10-${abi}.apk"
             cp "$src" "$out"
             "$aapt_bin" dump badging "$out" > "$RUNNER_TEMP/${abi}-badging.txt"
             grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-badging.txt"
-            grep -Fq "versionCode='10' versionName='1.0.9'" "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "versionCode='11' versionName='1.0.10'" "$RUNNER_TEMP/${abi}-badging.txt"
             python3 tools/report_apk.py "$out" "$abi"
             sha256sum "$out" > "$out.sha256"
             printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
@@ -116,12 +127,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
-          if gh release view v1.0.9 >/dev/null 2>&1; then
-            gh release upload v1.0.9 "${assets[@]}" --clobber
+          if gh release view v1.0.10 >/dev/null 2>&1; then
+            gh release upload v1.0.10 "${assets[@]}" --clobber
           else
-            gh release create v1.0.9 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.9' --notes 'Interface mobile sem barra de título, Android GeckoView. Quatro APKs Release assinados e otimizados com R8, recursos reduzidos e .so comprimidas. Use o APK da ABI do seu aparelho; teste a instalação e o desempenho. Sem Artifact ZIP.'
+            gh release create v1.0.10 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.10' --notes 'Interface mobile sem barra de título, Android GeckoView. Quatro APKs Release assinados e otimizados com R8, recursos reduzidos e .so comprimidas. Use o APK da ABI do seu aparelho; teste a instalação e o desempenho. Sem Artifact ZIP.'
           fi
-          gh release view v1.0.9 --json url,assets
+          gh release view v1.0.10 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

@@ -1,4 +1,4 @@
-# Internet XP v1.0.9
+# Internet XP v1.0.10
 
 Navegador Android com **GeckoView 158**, interface mobile baseada no visual XP e nas referências enviadas pelo usuário.
 
@@ -18,27 +18,27 @@ Navegador Android com **GeckoView 158**, interface mobile baseada no visual XP e
 3. **Sem publicação de Debug**. Os quatro Secrets de assinatura são obrigatórios para publicar a Release; Debug é só para testes locais/lint.
 4. `tools/report_apk.py` exige que cada APK tenha **exatamente uma ABI correta**, todas as bibliotecas nativas comprimidas e emite relatório de tamanho ZIP versus descompactado para identificar o peso do GeckoView.
 
-O GeckoView continua grande por conter um motor completo. **Não há promessa de tamanho final**: os cerca de 190 MB citados pelo usuário não são mensuração disponível neste ambiente. Precisa compilar a v1.0.9 e comparar o tamanho de cada APK.
+O GeckoView continua grande por conter um motor completo. **Não há promessa de tamanho final**: os cerca de 190 MB citados pelo usuário não são mensuração disponível neste ambiente. Precisa compilar a v1.0.10 e comparar o tamanho de cada APK.
 
 Os APKs esperados na aba GitHub Releases são:
 
-- `Internet XP.v1.0.9-armeabi-v7a.apk`
-- `Internet XP.v1.0.9-arm64-v8a.apk`
-- `Internet XP.v1.0.9-x86.apk`
-- `Internet XP.v1.0.9-x86_64.apk`
+- `Internet XP.v1.0.10-armeabi-v7a.apk`
+- `Internet XP.v1.0.10-arm64-v8a.apk`
+- `Internet XP.v1.0.10-x86.apk`
+- `Internet XP.v1.0.10-x86_64.apk`
 
 NÃO usar `actions/upload-artifact`, TAR.GZ ou Artifact ZIP. O **ZIP de código-fonte** é apenas para transferência ao repositório.
 
 ## Requisitos
 
 - JDK 17, Gradle 9.3.1, Android Gradle Plugin 9.1.1 e SDK Android 37.0.
-- `compileSdk 37`, `targetSdk 35`, `minSdk 26`, `versionCode 10` e `versionName 1.0.9`.
+- `compileSdk 37`, `targetSdk 35`, `minSdk 26`, `versionCode 11` e `versionName 1.0.10`.
 - GeckoView `158.0.20261007201254`, sem trocar por WebView.
 - Secrets existentes: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` (somente no GitHub, nunca no ZIP).
 
 ## Publicar
 
-Extraia o conteúdo da pasta `Internet-XP-v1.0.9` **na raiz** do repositório `Internet-XP`, incluindo `.github/workflows`. Importe os quatro Secrets de assinatura no GitHub Manager antes de executar o workflow. O workflow faz testes, lint, Release otimizada e checagem por ABI; publica os quatro APKs assinados diretamente na Release.
+Extraia o conteúdo da pasta `Internet-XP-v1.0.10` **na raiz** do repositório `InternetXP`, incluindo `.github/workflows`. Importe os quatro Secrets de assinatura no GitHub Manager antes de executar o workflow. O workflow faz testes, lint, Release otimizada e checagem por ABI; publica os quatro APKs assinados diretamente na Release.
 
 ## Limitações e verificações pendentes
 
@@ -48,3 +48,10 @@ Extraia o conteúdo da pasta `Internet-XP-v1.0.9` **na raiz** do repositório `I
 - Gerenciador de downloads não compartilha todos os cookies do GeckoView; downloads autenticados podem falhar.
 - Nem todas as extensões Firefox Desktop são compatíveis com Android.
 - Sem afiliação à Microsoft ou Mozilla.
+
+## Diagnóstico corrigido do workflow 10 (v1.0.10)
+- Os logs do build 10 mostram **quatro Secrets vazios** ao entrar na etapa de assinatura. A execução interrompeu antes dos testes, Lint e compilação Android. Não é falha comprovada no motor nem no código Java.
+- Confirme a importação como **Repository secrets** do repositório `InternetXP` que realmente executa o workflow. Se estiverem em um Environment, o job precisaria declarar esse Environment; esta versão espera Secrets do repositório.
+- Para não ocultar defeitos de código atrás de uma falha de credenciais, o workflow roda testes Python e Lint/testes Android antes da etapa de assinatura; nenhum APK é publicado se os Secrets faltarem.
+- Corrige um problema preventivo na seleção dos APKs: `x86` não pode casar com `x86_64`. O workflow usa o nome exato `app-${abi}-release.apk`, documentado pelo Android Gradle Plugin.
+- O arquivo de Secrets anterior, que deve ficar **fora do repositório e do ZIP**, continua válido; não foi gerada outra chave.

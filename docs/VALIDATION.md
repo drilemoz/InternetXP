@@ -91,3 +91,12 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - Java da Activity, workflow, vetores XML, validação de arquivo ZIP e script `tools/report_apk.py` passam por revisão estática e testes locais.
 - CI faz lint/testes, exige Secrets e monta Release com minificação R8, compactação de .so, APKs divididos por ABI e relatório de tamanho por categoria.
 - Pendente: execução Android/Gradle, medidas de MiB por ABI, atualização de APK existente, tempo/armazenamento de instalação e teste GeckoView na v1.0.9.
+
+
+## 1.0.10 - workflow 10
+- [x] Causa do log 10 identificada: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD ausentes no ambiente do workflow; falhou antes dos testes do app.
+- [x] TXT privado original verificado localmente: contém os quatro nomes e a base64 corresponde ao arquivo PKCS#12 gerado anteriormente (valores não incluídos nesta entrega).
+- [x] Workflow mantém publicação exclusiva de Release assinada e executa testes antes de validar Secrets.
+- [x] Corrigida correspondência ambígua de nomes `x86` e `x86_64` por caminho exato.
+- [ ] Importar os quatro Repository secrets no repositório InternetXP e executar GitHub Actions.
+- [ ] Confirmar compilação Android completa, APKs por ABI e tamanho real.

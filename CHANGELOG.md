@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.0.10 (versionCode 11) - diagnóstico dos Secrets e correção do split ABI
+- Logs da execução 10: as quatro variáveis de assinatura chegaram vazias; build parou antes de testar/compilar.
+- Continua proibido publicar APK Debug no lugar de Release assinada.
+- Move testes e Lint antes da exigência dos Secrets para coletar erros de código de forma independente e produzir log informativo sobre Secrets ausentes, sem registrar os valores.
+- Usa nomes exatos `app-${abi}-release.apk` para distinguir `x86` de `x86_64` na publicação dos APKs separados.
+- Mantém GeckoView 158, interface compacta, R8, ABI split, `minSdk 26` e assinatura anterior. Sincroniza v1.0.10/versionCode 11.
+- APK Release e tamanho real ainda dependem de executar o workflow após importar os Secrets no repositório correto.
+
+
 ## 1.0.9 (versionCode 10): interface sem barra de título e Release menor
 - Remove totalmente o cabeçalho azul do app, incluindo ícones de minimizar/maximizar e nome, preservando o status bar do Android.
 - O painel de endereço vira a primeira barra da interface. Cadeado emoji substituído por vetores; não sinaliza HTTPS onde o URL não usa HTTPS. Botão de atualizar virou vetor.
