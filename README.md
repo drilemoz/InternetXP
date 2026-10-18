@@ -1,4 +1,4 @@
-# Internet XP v1.0.0
+# Internet XP v1.0.1
 
 Projeto Android inicial com **GeckoView 158** (motor Firefox) e interface clássica inspirada na captura do Explorador XP e no Internet Explorer 6.
 
@@ -12,7 +12,7 @@ Projeto Android inicial com **GeckoView 158** (motor Firefox) e interface cláss
 ## GitHub Actions: somente APK direto na Release
 
 Crie o repositório `Internet-XP` e coloque os arquivos **incluindo a pasta oculta `.github`** na branch `main`.
-O primeiro push executa `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug` e publica o arquivo exato `Internet XP.v1.0.0.apk` na aba Releases, sem `actions/upload-artifact` e sem artefatos ZIP de workflow. Se todos os Secrets de assinatura estiverem presentes, publica APK Release assinado.
+Após corrigir a configuração do Android SDK, o push executa `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug` e publica o arquivo exato `Internet XP.v1.0.1.apk` na aba Releases, sem `actions/upload-artifact` e sem artefatos ZIP de workflow. Se todos os Secrets de assinatura estiverem presentes, publica APK Release assinado.
 
 **Estado atual:** código-fonte local criado; sem SDK Android e sem repositório GitHub acessível no ambiente, por isso **não foi compilado nem publicado um APK real**. Não instalar nenhum arquivo renomeado como APK antes de validar o build.
 
@@ -28,3 +28,6 @@ Java 17, Gradle 8.13, AGP 8.13.2, SDK 35, Android 7.0+ e dispositivo ARM64. Geck
 - GeckoView pode usar bastante RAM; não há medições reais de performance.
 
 Sem afiliação à Microsoft ou Mozilla. Visual baseado em referência do usuário.
+
+## Correção de compilação 1.0.1
+O workflow 1 falhou em `android-actions/setup-android@v3` ao executar `sdkmanager tools` (`Failed to find package 'tools'`). A versão 1.0.1 usa `android-actions/setup-android@v4` com `packages: platform-tools`, sem solicitar o pacote removido. A versão de SDK e Build Tools é instalada em etapa seguinte. O build Android completo continua pendente de validação no GitHub Actions.

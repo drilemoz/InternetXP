@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.0
+  group: internet-xp-v1.0.1
   cancel-in-progress: false
 jobs:
   apk:
@@ -19,9 +19,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
       - name: SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
@@ -35,7 +37,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -n "$KEYSTORE_BASE64" && -n "$KEYSTORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
+          count=0
+          for key in "$KEYSTORE_BASE64" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD"; do
+            if [[ -n "$key" ]]; then count=$((count+1)); fi
+          done
+          if [[ "$count" -gt 0 && "$count" -lt 4 ]]; then
+            echo '::error::Assinatura parcialmente configurada: informe os quatro Secrets ou nenhum.'
+            exit 1
+          fi
+          if [[ "$count" -eq 4 ]]; then
             printf %s "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/assinatura.p12"
             chmod 600 "$RUNNER_TEMP/assinatura.p12"
             echo 'mode=release' >> "$GITHUB_OUTPUT"
@@ -44,7 +54,7 @@ jobs:
             echo '::warning::Sem Secrets: APK Debug não garante atualização futura com assinatura Release.'
           fi
       - name: Testes, lint e compilação Android
-        run: gradle --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
       - name: Compilar Release assinado
         if: steps.signing.outputs.mode == 'release'
         env:
@@ -52,7 +62,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle --no-daemon :app:assembleRelease
+        run: gradle --no-daemon --stacktrace :app:assembleRelease
       - name: Preparar APK sem Artifact ZIP
         shell: bash
         run: |
@@ -60,20 +70,20 @@ jobs:
           if [[ '${{ steps.signing.outputs.mode }}' == 'release' ]]; then src=app/build/outputs/apk/release/app-release.apk
           else src=app/build/outputs/apk/debug/app-debug.apk; fi
           test -s "$src"
-          cp "$src" 'Internet XP.v1.0.0.apk'
-          sha256sum 'Internet XP.v1.0.0.apk' > 'Internet XP.v1.0.0.apk.sha256'
+          cp "$src" 'Internet XP.v1.0.1.apk'
+          sha256sum 'Internet XP.v1.0.1.apk' > 'Internet XP.v1.0.1.apk.sha256'
       - name: Publicar APK diretamente na Release GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v1.0.0 >/dev/null 2>&1; then
-            gh release upload v1.0.0 'Internet XP.v1.0.0.apk' 'Internet XP.v1.0.0.apk.sha256' --clobber
+          if gh release view v1.0.1 >/dev/null 2>&1; then
+            gh release upload v1.0.1 'Internet XP.v1.0.1.apk' 'Internet XP.v1.0.1.apk.sha256' --clobber
           else
-            gh release create v1.0.0 'Internet XP.v1.0.0.apk' 'Internet XP.v1.0.0.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.0' --notes 'Primeira versão: GeckoView e interface XP. Verificar assinatura antes de atualizar versões.'
+            gh release create v1.0.1 'Internet XP.v1.0.1.apk' 'Internet XP.v1.0.1.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.1' --notes 'Primeira versão: GeckoView e interface XP. Verificar assinatura antes de atualizar versões.'
           fi
-          gh release view v1.0.0 --json url,assets
+          gh release view v1.0.1 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"
