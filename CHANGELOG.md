@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.0.7 (versionCode 8) - barra de ferramentas mais compacta e Downloads
+- Ícones de 31 sp para 20 sp; botões de 66 dp para 49 dp, com legendas menores de 9 sp e espaçamento reduzido.
+- Ícone vetorial de Downloads na barra XP, abrindo o gerenciador de downloads do sistema Android; permanece a limitação de downloads com autenticação do GeckoView.
+- Largura adaptativa para nove ações em telas comuns e rolagem em telas muito estreitas. Adicionados testes JVM de cálculo de largura.
+- Mantidos GeckoView, assinatura por Secrets, minSdk e o workflow de APK na Release. Nome `Internet XP.v1.0.7.apk`.
+- Sincronizado versionCode 8, README, AGENTS, documentação e Sobre. Build Android completo pendente.
+
+
 ## 1.0.6 (versionCode 7) - correção do workflow 6
 - Logs da sexta execução analisados: a compilação Java e os testes unitários completaram, mas `:app:lintDebug` falhou com 2 erros `WrongConstant` e 9 avisos.
 - Ambos os erros estão em `MainActivity.java`, linhas 73 e 118, devido a `LinearLayout.setOrientation(1)`. Substitui por `LinearLayout.VERTICAL`, mesma orientação da versão anterior, mas com a constante reconhecida pelo Android Lint.

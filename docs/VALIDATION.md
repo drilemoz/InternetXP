@@ -1,3 +1,16 @@
+# Validação v1.0.7
+
+- [x] A barra original da v1.0.6 foi inspecionada; 8 botões grandes, sendo Downloads acessível somente pelo menu Ferramentas.
+- [x] Ícones compactados de 31 sp para 20 sp, área de cada botão de 66 dp para 49 dp; texto da legenda com 9 sp.
+- [x] Inserido botão Downloads com ícone vetorial próprio e ação `showDownloads()` já implementada.
+- [x] Cálculo responsivo para 9 itens, com mínimo de 38 dp e máximo de 48 dp, preservada rolagem horizontal em telas estreitas.
+- [x] Atualizados versionCode 8, versionName 1.0.7, workflow, menu Sobre, README, CHANGELOG e AGENTS.
+- [ ] Confirmar compilação do APK e executar Lint no GitHub Actions.
+- [ ] Avaliar legibilidade de legendas e posicionamento em smartphones com fontes ampliadas e modo paisagem.
+- [ ] Validar funcionamento real de Downloads e reinstalação/atualização do APK com assinatura correspondente.
+
+---
+
 # Validação v1.0.6
 
 - [x] Logs workflow 6: `:app:compileDebugJavaWithJavac` e `:app:testDebugUnitTest` passaram. `:app:lintDebug` falhou com 2 `WrongConstant` e 9 warnings.

@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.6
+  group: internet-xp-v1.0.7
   cancel-in-progress: false
 jobs:
   apk:
@@ -100,14 +100,14 @@ jobs:
           if [[ '${{ steps.signing.outputs.mode }}' == 'release' ]]; then src=app/build/outputs/apk/release/app-release.apk
           else src=app/build/outputs/apk/debug/app-debug.apk; fi
           test -s "$src"
-          cp "$src" 'Internet XP.v1.0.6.apk'
+          cp "$src" 'Internet XP.v1.0.7.apk'
           # Bloqueia publicacao de APK com versao ou minSdk inesperados.
-          apk_file='Internet XP.v1.0.6.apk'
+          apk_file='Internet XP.v1.0.7.apk'
           aapt_bin="${ANDROID_SDK_ROOT:-${ANDROID_HOME}}/build-tools/36.0.0/aapt"
           test -x "$aapt_bin"
           "$aapt_bin" dump badging "$apk_file" | tee "$RUNNER_TEMP/internetxp-badging.txt"
           grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/internetxp-badging.txt"
-          grep -Fq "versionCode='7' versionName='1.0.6'" "$RUNNER_TEMP/internetxp-badging.txt"
+          grep -Fq "versionCode='8' versionName='1.0.7'" "$RUNNER_TEMP/internetxp-badging.txt"
           sha256sum "$apk_file" > "$apk_file.sha256"
       - name: Publicar APK diretamente na Release GitHub
         env:
@@ -115,12 +115,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v1.0.6 >/dev/null 2>&1; then
-            gh release upload v1.0.6 'Internet XP.v1.0.6.apk' 'Internet XP.v1.0.6.apk.sha256' --clobber
+          if gh release view v1.0.7 >/dev/null 2>&1; then
+            gh release upload v1.0.7 'Internet XP.v1.0.7.apk' 'Internet XP.v1.0.7.apk.sha256' --clobber
           else
-            gh release create v1.0.6 'Internet XP.v1.0.6.apk' 'Internet XP.v1.0.6.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.6' --notes 'Internet XP 1.0.6: corrige dois erros WrongConstant no LinearLayout (orientação vertical explícita) identificados no workflow 6. APK depende da verificação do build.'
+            gh release create v1.0.7 'Internet XP.v1.0.7.apk' 'Internet XP.v1.0.7.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.7' --notes 'Internet XP 1.0.7: barra XP compacta com icones menores e acesso a Downloads. Compilacao e publicacao verificadas pelo workflow.'
           fi
-          gh release view v1.0.6 --json url,assets
+          gh release view v1.0.7 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

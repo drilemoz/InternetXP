@@ -19,6 +19,7 @@ import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -85,13 +86,14 @@ public final class MainActivity extends Activity {
   }
   menuScroll.addView(menuRow); root.addView(menuScroll); line(root,2);
   HorizontalScrollView toolScroll=new HorizontalScrollView(this); toolScroll.setHorizontalScrollBarEnabled(false);
-  LinearLayout toolbar=new LinearLayout(this); toolbar.setPadding(dp(3),dp(4),dp(3),dp(4));
+  LinearLayout toolbar=new LinearLayout(this); toolbar.setPadding(dp(3),dp(2),dp(3),dp(2));
   backIcon=tool(toolbar,"‹","Voltar",()-> { Tab t=current(); if(t!=null&&t.back)t.session.goBack(); });
   forwardIcon=tool(toolbar,"›","Avançar",()-> { Tab t=current(); if(t!=null&&t.forward)t.session.goForward(); });
   tool(toolbar,"⌂","Início",()->navigate(HOME));
   tool(toolbar,"×","Parar",()-> { Tab t=current(); if(t!=null)t.session.stop(); });
   tool(toolbar,"⌕","Pesquisar",()-> { urlBox.requestFocus(); urlBox.selectAll(); ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).showSoftInput(urlBox,InputMethodManager.SHOW_IMPLICIT); });
   tool(toolbar,"+","Novo",()->addTab(HOME));
+  toolDownloads(toolbar);
   tool(toolbar,"↻","Atualizar",()-> { Tab t=current(); if(t!=null)t.session.reload(); });
   tool(toolbar,"★","Favoritos",this::showBookmarks);
   toolScroll.addView(toolbar); root.addView(toolScroll); line(root,2);
@@ -114,12 +116,44 @@ public final class MainActivity extends Activity {
   TextView addons=text("▧ Extensões",12,BLUE); addons.setOnClickListener(v->showExtensions()); footer.addView(addons);
   root.addView(footer);
  }
+ /** Compactação das ferramentas: ícones reduzidos sem alterar os comandos existentes. */
+ private LinearLayout toolCell(LinearLayout toolbar,String caption,Runnable action) {
+  LinearLayout cell=new LinearLayout(this);
+  cell.setOrientation(LinearLayout.VERTICAL);
+  cell.setGravity(Gravity.CENTER);
+  cell.setContentDescription(caption);
+  cell.setFocusable(true);
+  cell.setOnClickListener(v->action.run());
+  // Mostra nove ferramentas em celulares comuns; em telas estreitas mantém a rolagem.
+  int screenPx=getResources().getDisplayMetrics().widthPixels;
+  int widthPx=ToolbarSizing.itemWidth(screenPx,dp(6),dp(38),dp(48),9);
+  toolbar.addView(cell,new LinearLayout.LayoutParams(widthPx,dp(49)));
+  return cell;
+ }
+ private void toolLabel(LinearLayout cell,String caption) {
+  TextView name=text(caption,9,0xff333333);
+  name.setGravity(Gravity.CENTER);
+  name.setSingleLine(true);
+  name.setTextScaleX(0.84f);
+  cell.addView(name,new LinearLayout.LayoutParams(-1,dp(19)));
+ }
  private TextView tool(LinearLayout toolbar,String icon,String caption,Runnable action) {
-  LinearLayout cell=new LinearLayout(this); cell.setOrientation(LinearLayout.VERTICAL); cell.setGravity(Gravity.CENTER); cell.setPadding(dp(2),0,dp(2),0);
-  TextView symbol=text(icon,31,BLUE); symbol.setTypeface(Typeface.DEFAULT_BOLD); symbol.setGravity(Gravity.CENTER);
-  cell.addView(symbol,new LinearLayout.LayoutParams(-1,dp(40)));
-  TextView name=text(caption,10,0xff333333); name.setGravity(Gravity.CENTER); cell.addView(name,new LinearLayout.LayoutParams(-1,dp(21)));
-  cell.setOnClickListener(v->action.run()); toolbar.addView(cell,new LinearLayout.LayoutParams(dp(65),dp(66))); return symbol;
+  LinearLayout cell=toolCell(toolbar,caption,action);
+  TextView symbol=text(icon,20,BLUE);
+  symbol.setTypeface(Typeface.DEFAULT_BOLD);
+  symbol.setGravity(Gravity.CENTER);
+  cell.addView(symbol,new LinearLayout.LayoutParams(-1,dp(30)));
+  toolLabel(cell,caption);
+  return symbol;
+ }
+ private void toolDownloads(LinearLayout toolbar) {
+  LinearLayout cell=toolCell(toolbar,"Downloads",this::showDownloads);
+  ImageView symbol=new ImageView(this);
+  symbol.setImageResource(R.drawable.ic_download_xp);
+  symbol.setPadding(dp(9),dp(4),dp(9),dp(4));
+  symbol.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+  cell.addView(symbol,new LinearLayout.LayoutParams(-1,dp(30)));
+  toolLabel(cell,"Downloads");
  }
  private void menu(View anchor,String name) {
   PopupMenu p=new PopupMenu(this,anchor);
@@ -130,7 +164,7 @@ public final class MainActivity extends Activity {
    case "Exibir": item(p,"Atualizar",()->{Tab t=current(); if(t!=null)t.session.reload();}); item(p,"Histórico",this::showHistory); break;
    case "Favoritos": item(p,"Adicionar ou remover favorito",this::toggleBookmark); item(p,"Ver favoritos",this::showBookmarks); break;
    case "Ferramentas": item(p,"Extensões",this::showExtensions); item(p,"Downloads",this::showDownloads); item(p,"Limpar histórico local",this::clearHistory); break;
-   default:item(p,"Sobre Internet XP",()->new AlertDialog.Builder(this).setTitle("Internet XP 1.0.6").setMessage("GeckoView e interface clássica XP. Projeto independente, sem vínculo com Microsoft ou Mozilla.").setPositiveButton("OK",null).show());
+   default:item(p,"Sobre Internet XP",()->new AlertDialog.Builder(this).setTitle("Internet XP 1.0.7").setMessage("GeckoView e interface clássica XP. Projeto independente, sem vínculo com Microsoft ou Mozilla.").setPositiveButton("OK",null).show());
   } p.show();
  }
  private void item(PopupMenu p,String caption,Runnable run) { p.getMenu().add(caption).setOnMenuItemClickListener(m->{run.run();return true;}); }
