@@ -1,6 +1,13 @@
-# Internet XP v1.0.28 (versionCode 29)
+# Internet XP v1.0.29 (versionCode 30)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.29: testes JUnit corrigidos após o workflow 28
+
+- O workflow 28 comprovou que o Java do aplicativo compilou e encontrou **2 falhas em 56 testes** no `ReleaseNotesTest.java`, por expectativas da v1.0.26/versionCode 27 em um app v1.0.28/versionCode 29.
+- `ReleaseNotesTest` usa a versão corrente para verificar instalação, atualização, mesma versão e códigos futuros, sem congelar números de releases anteriores.
+- O validador continua conferindo versão exata entre Gradle, `ReleaseNotes`, documentação e GitHub Actions; removeu apenas verificações de títulos específicos de notas antigas.
+- O módulo de extensões permaneceu sem alterações de implementação; sua execução continua pendente de testes reais de APK e aparelho.
 
 ## 1.0.28: correção do workflow 27
 
@@ -27,7 +34,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.28`, `versionCode=29`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.29`, `versionCode=30`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

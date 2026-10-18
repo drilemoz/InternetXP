@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.28";
-    public static final int VERSION_CODE = 29;
-    public static final String HEADLINE = "Correção de compilação e estabilidade dos painéis.";
-    public static final String SUBTITLE = "Corrigidas três referências Java que impediam o APK da 1.0.27 de compilar. A central de extensões GeckoView permanece incluída.";
+    public static final String VERSION_NAME = "1.0.29";
+    public static final int VERSION_CODE = 30;
+    public static final String HEADLINE = "Testes de atualização sincronizados.";
+    public static final String SUBTITLE = "Corrigidas verificações antigas da tela de Novidades que bloqueavam o workflow 28. O gerenciador de extensões GeckoView foi preservado.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Compilação do menu", "Corrigida a captura do diálogo nos atalhos do menu principal: a referência agora existe antes da criação dos cartões."),
-        new Feature("02", "Diálogo de ferramentas", "Eliminada referência inexistente durante a animação do painel modular."),
-        new Feature("03", "Histórico corrigido", "Animação do histórico agora utiliza o contêiner correto e deixa de acessar variável fora do escopo."),
-        new Feature("04", "Extensões preservadas", "Importação XPI, ações dos complementos, ativação, desativação, remoção e exportação continuam disponíveis para validação no Android."),
-        new Feature("05", "Validação preventiva", "Incluídas verificações específicas contra o retorno das três falhas de escopo encontradas no workflow 27.")
+        new Feature("01", "Testes de Novidades", "Os testes agora acompanham a versão atual e não rejeitam atualizações por números antigos fixos."),
+        new Feature("02", "Exibição após atualização", "Cobertura corrigida para mostrar Novidades somente quando o último versionCode visto é anterior ao atual."),
+        new Feature("03", "Proteção do versionamento", "Validação cruzada mantém Gradle, Novidades, nomes dos APKs e GitHub Release sincronizados."),
+        new Feature("04", "Extensões mantidas", "A central GeckoView conserva importação de XPI, listagem, ativação, desativação, remoção e exportação."),
+        new Feature("05", "Verificação de conteúdo", "Os testes conferem destaques únicos, textos não vazios e identificação de versão sem valores legados.")
 
     };
 

@@ -1,3 +1,11 @@
+## 1.0.29 (versionCode 30) - testes de Novidades corrigidos após o workflow 28
+- Corrigidos os 2 testes JUnit falhos da classe `ReleaseNotesTest` (56 executados, 2 falhas no workflow 28).
+- Removidas comparações desatualizadas com `1.0.26`/`versionCode 27`; testes de primeira abertura e atualizações utilizam `ReleaseNotes.VERSION_CODE` atual.
+- Cobertura reforçada para versões vistas anteriores, iguais e futuras, metadados não vazios e unicidade dos destaques.
+- Removidas travas de títulos antigos no validador Python, preservando os testes de versões sincronizadas entre Gradle, Novidades e GitHub Actions.
+- Mantidas as correções de Java e a central GeckoView para XPI, ainda sujeitas a validação em APK no aparelho.
+- Atualizados versionName/versionCode, README, Novidades, AGENTS, docs/VALIDATION, workflow e arquivos por ABI.
+
 ## 1.0.28 (versionCode 29) - correção de compilação do workflow 27
 - Corrigido o erro `holder` sem declaração anterior no laço de atalhos do menu principal.
 - Removida animação referenciando `column` inexistente em `showModuleMenuDialog`, preservando a animação em `wrapper`.

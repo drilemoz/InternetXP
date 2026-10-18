@@ -1,3 +1,12 @@
+## 1.0.29: correção dos testes JUnit da execução 28
+- Log real do workflow 28: `:app:compileDebugJavaWithJavac` concluído; `:app:testDebugUnitTest` falhou com 56 testes, 2 falhas em `ReleaseNotesTest`.
+- `releaseEntriesAreUsefulAndUnique`: ainda esperava `VERSION_NAME = 1.0.26` e `VERSION_CODE = 27` da v1.0.26. Teste reescrito para validar nome, código, descrições, identificadores e títulos sem versão congelada.
+- `displaysAfterFreshInstallAndUpdate`: ainda exigia `shouldShow(27) == false`, mesmo após o código já estar em 29. Agora usa códigos relativos a `ReleaseNotes.VERSION_CODE`.
+- O validador Python compara `VERSION_NAME`/`VERSION_CODE` com Gradle e com o workflow, mantendo validação rigorosa de correspondência sem obrigar títulos de outras versões.
+- Rodar: `python3 tools/validate_project.py` e `python3 -m unittest discover -s tools -p 'test_*.py' -v`.
+- Rodar no GitHub Actions: `:app:testDebugUnitTest :app:lintDebug` antes de `:app:assembleRelease` por ABI e instalar o APK no Android.
+- **Pendente**: compilação Android completa desta versão, instalação XPI e eficácia dos scripts de extensões em páginas reais.
+
 ## 1.0.28: correção da compilação do workflow 27
 - O workflow 27 falhou em `:app:compileDebugJavaWithJavac` com três símbolos inexistentes em `MainActivity.java` (linhas originais 654, 870 e 1572).
 - `holder` agora é declarado antes de seu uso nos cartões principais de Menu; `showModuleMenuDialog` anima `wrapper`; `showHistory` anima `column`.

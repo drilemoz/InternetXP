@@ -104,3 +104,9 @@
 - Os diálogos devem animar apenas views declaradas no próprio método; `holder` precisa existir antes do primeiro uso, inclusive ao criar cards com lambdas.
 - `tools/validate_project.py` verifica cada um dos três contextos para barrar regressão de escopo.
 - Em toda próxima alteração incrementar a versão e sincronizar Novidades, Gradle, workflow, README, CHANGELOG e docs.
+
+## 1.0.29: testes de Novidades sem versões congeladas
+- `ReleaseNotesTest` deve avaliar `shouldShow` com `ReleaseNotes.VERSION_CODE` em vez de versões numéricas antigas; cobrir primeira instalação, atualização, mesma versão e versão futura.
+- Validação de sincronização Gradle, `ReleaseNotes`, workflow e documentação permanece obrigatória no script `tools/validate_project.py`.
+- Não exigir textos de destaques de releases anteriores no validador; validar a existência dos destaques e seus conteúdos pelos testes JUnit para evitar falsos bloqueios.
+- Após mudar qualquer código, incrementar versionCode/versionName e sincronizar arquivos de release. Testar Java/JUnit em CI antes de anunciar APK pronto.
