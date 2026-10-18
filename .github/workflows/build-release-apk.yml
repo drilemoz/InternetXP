@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.1
+  group: internet-xp-v1.0.2
   cancel-in-progress: false
 jobs:
   apk:
@@ -23,10 +23,10 @@ jobs:
         with:
           packages: platform-tools
       - name: SDK
-        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+        run: sdkmanager --install 'platforms;android-37' 'build-tools;36.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '9.3.1'
       - name: Preparar assinatura opcional
         id: signing
         env:
@@ -70,20 +70,20 @@ jobs:
           if [[ '${{ steps.signing.outputs.mode }}' == 'release' ]]; then src=app/build/outputs/apk/release/app-release.apk
           else src=app/build/outputs/apk/debug/app-debug.apk; fi
           test -s "$src"
-          cp "$src" 'Internet XP.v1.0.1.apk'
-          sha256sum 'Internet XP.v1.0.1.apk' > 'Internet XP.v1.0.1.apk.sha256'
+          cp "$src" 'Internet XP.v1.0.2.apk'
+          sha256sum 'Internet XP.v1.0.2.apk' > 'Internet XP.v1.0.2.apk.sha256'
       - name: Publicar APK diretamente na Release GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v1.0.1 >/dev/null 2>&1; then
-            gh release upload v1.0.1 'Internet XP.v1.0.1.apk' 'Internet XP.v1.0.1.apk.sha256' --clobber
+          if gh release view v1.0.2 >/dev/null 2>&1; then
+            gh release upload v1.0.2 'Internet XP.v1.0.2.apk' 'Internet XP.v1.0.2.apk.sha256' --clobber
           else
-            gh release create v1.0.1 'Internet XP.v1.0.1.apk' 'Internet XP.v1.0.1.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.1' --notes 'Primeira versão: GeckoView e interface XP. Verificar assinatura antes de atualizar versões.'
+            gh release create v1.0.2 'Internet XP.v1.0.2.apk' 'Internet XP.v1.0.2.apk.sha256' --target "$GITHUB_SHA" --title 'Internet XP v1.0.2' --notes 'Internet XP 1.0.2: compatibilidade de build com GeckoView 158 / Android API 37 (AGP 9.1.1 e Gradle 9.3.1). Verifique a assinatura antes de atualizar versões.'
           fi
-          gh release view v1.0.1 --json url,assets
+          gh release view v1.0.2 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

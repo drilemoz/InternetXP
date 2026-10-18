@@ -1,9 +1,11 @@
-# Validação 1.0.1
-- [x] Logs do workflow 1 examinados: falha real `sdkmanager tools` em `setup-android@v3` antes de Gradle.
-- [x] Documentação oficial `android-actions/setup-android` verificada: `tools` obsoleto, v4 usa `platform-tools`.
-- [x] Dependência `org.mozilla.geckoview:geckoview:158.0.20261007201254` confirmada no repositório Maven Mozilla (índice público).
-- [x] Testes locais Java de resolução de endereços e XML/YAML/ZIP após a correção.
-- [ ] `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug` no GitHub Actions.
-- [ ] Assinatura Release por Secrets, instalação em aparelho, extensões reais, APK na Release.
+# Validação v1.0.2
 
-A falha anterior não avalia a validade de compilação do código Java, pois o workflow não executou Gradle.
+- [x] Logs do workflow 2 analisados (`InternetXP-Compilar-APK-e-publicar-na-Release-2-logs.zip`). Etapa de preparação SDK e Secrets concluída; `:app:checkDebugAarMetadata` falhou, com 11 requisitos insatisfeitos.
+- [x] Dependência GeckoView 158 exige `compileSdk >=37`; AndroidX Core 1.19 exige também AGP >=9.1.0; Media3 exige `compileSdk >=36`.
+- [x] Fonte Android: AGP 9.1.1 é compatível com API 37, Gradle mínimo 9.3.1, Build Tools 36.0.0, JDK 17. https://developer.android.com/build/releases/agp-9-1-0-release-notes
+- [x] `versionName` 1.0.2, `versionCode` 3, nomes da Release e documentação sincronizados.
+- [ ] Build de CI `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleDebug` completo e compilação Java do GeckoView.
+- [ ] Instalação em aparelho, teste real da navegação/extensões, verificação visual XP e publicação da Release.
+- [ ] Assinatura Release estável por Secrets quando a primeira distribuição for definida.
+
+Importante: aprovação local de arquivos, testes Java unitários isolados e integridade ZIP **não equivale** a build Android aprovado.
