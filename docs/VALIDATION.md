@@ -1,3 +1,11 @@
+## 1.0.20: privacidade e isolamento
+- Confirmar fluxo de abas privadas, sem histórico, sugestões, favoritos implícitos e restauração.
+- Confirmar que novas janelas abertas a partir de abas privadas também usam GeckoSession privado.
+- Confirmar `onSecurityChange` no cadeado e o conteúdo misto; não interpretar todo HTTPS como seguro.
+- Conferir limpeza de cookies, caches e permissões após fechamento de sessões, inclusive estado de erro assíncrono.
+- Confirmar a tela Novidades versão 1.0.20 e a persistência de exibição única por versionCode.
+- Testes locais cobrem regras puras, XML, scripts e versionamento. Compilação completa do Android e testes reais pendentes.
+
 # Validação v1.0.7
 
 - [x] A barra original da v1.0.6 foi inspecionada; 8 botões grandes, sendo Downloads acessível somente pelo menu Ferramentas.

@@ -48,6 +48,8 @@ import androidx.annotation.OptIn;
 import org.mozilla.geckoview.ExperimentalGeckoViewApi;
 import org.mozilla.geckoview.GeckoResult;
 import org.mozilla.geckoview.GeckoRuntime;
+import org.mozilla.geckoview.GeckoSessionSettings;
+import org.mozilla.geckoview.StorageController;
 import org.mozilla.geckoview.GeckoSession;
 import org.mozilla.geckoview.GeckoView;
 import org.mozilla.geckoview.WebExtension;
@@ -72,12 +74,14 @@ public final class MainActivity extends Activity {
     private static final int TEXT = 0xff222222;
     private static final int SUBTLE = 0xff6c7885;
     private static final int SUCCESS = 0xff2d8a57;
+    private static final int PRIVATE_PURPLE = 0xff663399;
     private static final String HOME = "about:blank";
     private static final String PREF_BOOKMARKS = "bookmarks";
     private static final String PREF_HISTORY = "history";
     private static final String PREF_DOWNLOADS = "downloads";
     private static final String PREF_HISTORY_DETAILS = "history_details";
     private static final String PREF_OPEN_TABS = "open_tabs_v1";
+    private static final String PREF_TRACKING_PROTECTION = "tracking_protection_v1";
     private static final int REQUEST_UPLOAD_FILES = 701;
     private static final int REQUEST_SITE_PERMISSIONS = 702;
 
@@ -96,6 +100,8 @@ public final class MainActivity extends Activity {
     private GeckoView view;
     private LinearLayout browserRoot;
     private boolean fullScreen;
+    private boolean trackingProtectionEnabled;
+    private LinearLayout addressPanel;
     private GeckoResult<GeckoSession.PromptDelegate.PromptResponse> filePickerResult;
     private GeckoSession.PromptDelegate.FilePrompt filePickerPrompt;
     private Runnable permissionGranted;
@@ -133,7 +139,9 @@ public final class MainActivity extends Activity {
         boolean opened;
         boolean loaded;
         boolean fullScreen;
-        Tab(GeckoSession s) { session = s; }
+        final boolean privateMode;
+        GeckoSession.ProgressDelegate.SecurityInformation securityInfo;
+        Tab(GeckoSession s, boolean privateMode) { session = s; this.privateMode = privateMode; }
     }
 
     private static final class DownloadItem {
@@ -188,6 +196,7 @@ public final class MainActivity extends Activity {
         loadStringList(PREF_HISTORY, history);
         loadHistoryDetails();
         loadDownloads();
+        trackingProtectionEnabled = storage.getBoolean(PREF_TRACKING_PROTECTION, true);
         createLayout();
         refreshSuggestionAdapter("");
         try {
@@ -211,7 +220,7 @@ public final class MainActivity extends Activity {
         setContentView(root);
 
         // Painel de endereço: mais baixo, mais largo e com seta de histórico ao estilo IE.
-        LinearLayout addressPanel = new LinearLayout(this);
+        addressPanel = new LinearLayout(this);
         addressPanel.setBackgroundColor(PANEL_BG);
         addressPanel.setGravity(Gravity.CENTER_VERTICAL);
         addressPanel.setPadding(dp(6), dp(6), dp(8), dp(6));
@@ -225,7 +234,8 @@ public final class MainActivity extends Activity {
         securityIcon = new ImageView(this);
         securityIcon.setImageResource(R.drawable.ic_globe_xp);
         securityIcon.setColorFilter(SUBTLE);
-        securityIcon.setContentDescription("Tipo de conexão");
+        securityIcon.setContentDescription("Informações de segurança da página");
+        securityIcon.setOnClickListener(v -> showSiteInfo());
         securityIcon.setPadding(dp(2), dp(8), dp(2), dp(8));
         addressBox.addView(securityIcon, new LinearLayout.LayoutParams(dp(22), dp(36)));
 
@@ -285,6 +295,10 @@ public final class MainActivity extends Activity {
         dropdownIcon.setPadding(dp(6), dp(9), dp(6), dp(9));
         dropdownIcon.setContentDescription("Abrir endereços do histórico");
         dropdownIcon.setOnClickListener(v -> {
+            if (current() != null && current().privateMode) {
+                Toast.makeText(this, "Histórico desativado na aba privada", Toast.LENGTH_SHORT).show();
+                return;
+            }
             refreshSuggestionAdapter(urlBox.getText().toString());
             if (urlBox.isPopupShowing()) urlBox.dismissDropDown();
             else {
@@ -433,6 +447,14 @@ public final class MainActivity extends Activity {
     private void showMainMenu() {
         PopupMenu p = new PopupMenu(this, menuAnchor, Gravity.END);
         item(p, "Nova aba", () -> addTab(HOME));
+        item(p, "Nova aba privada", () -> addPrivateTab(HOME));
+        if (current() != null && current().privateMode) {
+            item(p, "Fechar todas as abas privadas", this::closePrivateTabs);
+        }
+        item(p, "Privacidade e dados", this::showPrivacyMenu);
+        item(p, trackingProtectionEnabled ? "Proteção antirrastreamento: ligada" : "Proteção antirrastreamento: desligada",
+                this::toggleTrackingProtection);
+        item(p, "Segurança do site", this::showSiteInfo);
         item(p, "Fechar aba atual", () -> closeTab(active));
         item(p, "Atualizar", () -> { Tab t = current(); if (t != null) t.session.reload(); });
         item(p, "Copiar endereço", this::copyUrl);
@@ -446,8 +468,8 @@ public final class MainActivity extends Activity {
         item(p, "Novidades desta versão", () ->
                 startActivity(new Intent(this, WhatsNewActivity.class)));
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.19")
-                .setMessage("Compatibilidade com sites: envio de arquivos, tela cheia, permissões de localização e mídia, links externos e novas abas. Usa GeckoView. Projeto independente.")
+                .setTitle("Internet XP 1.0.20")
+                .setMessage("Navegação normal ou privada, limpeza de dados do GeckoView, gerenciamento de permissões e conexão HTTPS verificada pelo motor. Projeto independente.")
                 .setPositiveButton("OK", null).show());
         p.show();
     }
@@ -488,16 +510,27 @@ public final class MainActivity extends Activity {
     }
 
     private Tab createTab(String restoredUrl, String restoredTitle) {
-        GeckoSession session = new GeckoSession();
-        Tab tab = new Tab(session);
+        return createTab(restoredUrl, restoredTitle, false);
+    }
+
+    private Tab createTab(String restoredUrl, String restoredTitle, boolean privateMode) {
+        GeckoSessionSettings settings = new GeckoSessionSettings.Builder()
+                .usePrivateMode(privateMode)
+                .useTrackingProtection(trackingProtectionEnabled)
+                .suspendMediaWhenInactive(true)
+                .build();
+        GeckoSession session = new GeckoSession(settings);
+        Tab tab = new Tab(session, privateMode);
         tab.url = TabSessionStore.restorable(restoredUrl) ? restoredUrl : HOME;
         tab.title = TabSessionStore.safeTitle(restoredTitle);
         session.setContentDelegate(new GeckoSession.ContentDelegate() {
             @Override public void onTitleChange(GeckoSession s, String title) {
                 if (title != null && !title.trim().isEmpty()) {
                     tab.title = TabSessionStore.safeTitle(title);
-                    HistoryRecords.updateTitle(historyDetails, tab.url, tab.title);
-                    saveHistoryDetails();
+                    if (!tab.privateMode) {
+                        HistoryRecords.updateTitle(historyDetails, tab.url, tab.title);
+                        saveHistoryDetails();
+                    }
                     saveTabs();
                 }
                 if (tab == current()) updateChrome();
@@ -532,7 +565,7 @@ public final class MainActivity extends Activity {
                     return null;
                 }
                 // A nova janela é carregada pelo próprio GeckoView. Não chamar loadUri aqui.
-                Tab popup = createTab(HOME, "Nova aba");
+                Tab popup = createTab(HOME, "Nova aba", tab.privateMode);
                 popup.session.open(runtime);
                 popup.opened = true;
                 popup.loaded = true;
@@ -545,11 +578,12 @@ public final class MainActivity extends Activity {
                 if (uri == null) return;
                 if (!uri.equals(tab.url)) tab.title = "Nova aba";
                 tab.url = uri;
+                tab.securityInfo = null;
                 if (tab == current()) {
                     if (!urlBox.hasFocus()) setUrlBoxText(uri.equals(HOME) ? "" : uri);
                     updateSecurity(uri);
                 }
-                if (uri.startsWith("http://") || uri.startsWith("https://")) rememberHistory(uri, tab.title);
+                if (PrivacyRules.shouldRecordHistory(tab.privateMode, uri)) rememberHistory(uri, tab.title);
                 saveTabs();
             }
             @Override public void onCanGoBack(GeckoSession s, boolean b) {
@@ -585,21 +619,38 @@ public final class MainActivity extends Activity {
         });
         session.setProgressDelegate(new GeckoSession.ProgressDelegate() {
             @Override public void onPageStart(GeckoSession s, String uri) {
-                if (tab == current()) status.setText("Carregando…");
+                tab.securityInfo = null;
+                if (tab == current()) {
+                    status.setText(tab.privateMode ? "Privado • Carregando…" : "Carregando…");
+                    updateSecurity(tab.url);
+                }
+            }
+            @Override public void onSecurityChange(GeckoSession s,
+                    GeckoSession.ProgressDelegate.SecurityInformation info) {
+                tab.securityInfo = info;
+                if (tab == current()) updateSecurity(tab.url);
             }
             @Override public void onPageStop(GeckoSession s, boolean success) {
-                if (tab == current()) status.setText(success ? "Concluído" : "Erro ao carregar");
+                if (tab == current()) status.setText(tab.privateMode ? (success ? "Aba privada • Concluído" : "Aba privada • Erro") : (success ? "Concluído" : "Erro ao carregar"));
             }
         });
         return tab;
     }
 
     private void addTab(String url) {
+        addTab(url, false);
+    }
+
+    private void addPrivateTab(String url) {
+        addTab(url, true);
+    }
+
+    private void addTab(String url, boolean privateMode) {
         if (tabs.size() >= TabSessionStore.MAX_TABS) {
             Toast.makeText(this, "Limite de 8 abas para poupar memória", Toast.LENGTH_SHORT).show();
             return;
         }
-        tabs.add(createTab(url, "Nova aba"));
+        tabs.add(createTab(url, privateMode ? "Aba privada" : "Nova aba", privateMode));
         selectTab(tabs.size() - 1);
     }
 
@@ -617,9 +668,13 @@ public final class MainActivity extends Activity {
         }
         tab.session.setActive(true);
         view.setSession(tab.session);
-        if (!urlBox.hasFocus()) setUrlBoxText(tab.url.equals(HOME) ? "" : tab.url);
+        setUrlBoxText(tab.url.equals(HOME) ? "" : tab.url);
+        urlBox.dismissDropDown();
         updateSecurity(tab.url);
         updateChrome();
+        addressPanel.setBackgroundColor(tab.privateMode ? 0xffe9e1f4 : PANEL_BG);
+        if (tab.privateMode) status.setText("Aba privada • Não salva histórico");
+        refreshSuggestionAdapter("");
         if (tab.fullScreen) applyFullScreen(true);
         // Abas restauradas inativas não abrem motor nem página até serem selecionadas.
         if (!tab.loaded) {
@@ -658,24 +713,38 @@ public final class MainActivity extends Activity {
         JSONObject root = new JSONObject();
         JSONArray array = new JSONArray();
         try {
+            int selectedNormal = -1;
             for (Tab tab : tabs) {
+                if (tab.privateMode) continue;
+                if (tab == current()) selectedNormal = array.length();
                 JSONObject item = new JSONObject();
                 item.put("url", TabSessionStore.restorable(tab.url) ? tab.url : HOME);
                 item.put("title", TabSessionStore.safeTitle(tab.title));
                 array.put(item);
             }
+            if (array.length() == 0) {
+                JSONObject blank = new JSONObject();
+                blank.put("url", HOME);
+                blank.put("title", "Nova aba");
+                array.put(blank);
+            }
             root.put("tabs", array);
-            root.put("active", TabSessionStore.activeIndex(active, tabs.size()));
+            root.put("active", selectedNormal < 0 ? 0 : selectedNormal);
             storage.edit().putString(PREF_OPEN_TABS, root.toString()).apply();
         } catch (Exception ignored) { }
     }
 
     private void updateSecurity(String url) {
         if (securityIcon == null) return;
-        boolean secure = url != null && url.startsWith("https://");
+        Tab tab = current();
+        GeckoSession.ProgressDelegate.SecurityInformation info = tab == null ? null : tab.securityInfo;
+        boolean secure = PrivacyRules.isVerifiedSecure(url, info != null && info.isSecure,
+                info != null && info.isException,
+                info != null && info.mixedModeActive == GeckoSession.ProgressDelegate.SecurityInformation.CONTENT_LOADED);
         securityIcon.setImageResource(secure ? R.drawable.ic_lock_xp : R.drawable.ic_globe_xp);
-        securityIcon.setColorFilter(secure ? SUCCESS : SUBTLE);
-        securityIcon.setContentDescription(secure ? "Endereço HTTPS" : "Conexão não indicada como HTTPS");
+        securityIcon.setColorFilter(secure ? SUCCESS : tab != null && tab.privateMode ? PRIVATE_PURPLE : SUBTLE);
+        securityIcon.setContentDescription(secure ? "Conexão HTTPS verificada pelo GeckoView" :
+                "Segurança da conexão não confirmada, toque para detalhes");
     }
 
     private void updateChrome() {
@@ -714,8 +783,10 @@ public final class MainActivity extends Activity {
 
     private void drawTabs() {
         if (tabsBadge == null) return;
-        tabsBadge.setText("▤" + tabs.size());
-        tabsBadge.setContentDescription(tabs.size() == 1 ? "1 aba" : tabs.size() + " abas");
+        Tab selected = current();
+        tabsBadge.setText((selected != null && selected.privateMode ? "♟" : "▤") + tabs.size());
+        tabsBadge.setContentDescription((selected != null && selected.privateMode ? "Privada, " : "") +
+                (tabs.size() == 1 ? "1 aba" : tabs.size() + " abas"));
     }
 
     private void showTabs() {
@@ -742,11 +813,11 @@ public final class MainActivity extends Activity {
             LinearLayout card = new LinearLayout(this);
             card.setGravity(Gravity.CENTER_VERTICAL);
             card.setPadding(dp(10), dp(7), dp(3), dp(7));
-            card.setBackground(rounded(index == active ? 0xffe5f0ff : Color.WHITE, BORDER, 2));
+            card.setBackground(rounded(tab.privateMode ? 0xfff2ebfa : index == active ? 0xffe5f0ff : Color.WHITE, BORDER, 2));
 
             LinearLayout info = new LinearLayout(this);
             info.setOrientation(LinearLayout.VERTICAL);
-            TextView title = text((index == active ? "● " : "▣ ") + trim(tab.title, 36), 14, TEXT);
+            TextView title = text((tab.privateMode ? "♟ Privada • " : index == active ? "● " : "▣ ") + trim(tab.title, 36), 14, TEXT);
             title.setTypeface(Typeface.DEFAULT_BOLD);
             info.addView(title);
             TextView address = text(trim(tab.url.equals(HOME) ? "Página inicial" : tab.url, 56), 11, SUBTLE);
@@ -898,12 +969,17 @@ public final class MainActivity extends Activity {
     }
 
     private ArrayList<String> buildSuggestions(String query) {
+        if (current() != null && current().privateMode) return new ArrayList<>();
         return HistorySuggestions.filter(history, bookmarks, query, 24);
     }
 
     private void toggleBookmark() {
         Tab t = current();
         if (t == null || !t.url.startsWith("http")) return;
+        if (t.privateMode) {
+            Toast.makeText(this, "Não é possível salvar favoritos na aba privada", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (!bookmarks.remove(t.url)) bookmarks.add(0, t.url);
         saveStringList(PREF_BOOKMARKS, bookmarks);
         refreshSuggestionAdapter(urlBox.getText().toString());
@@ -929,6 +1005,10 @@ public final class MainActivity extends Activity {
     }
 
     private void showHistory() {
+        if (current() != null && current().privateMode) {
+            Toast.makeText(this, "Histórico indisponível na aba privada", Toast.LENGTH_SHORT).show();
+            return;
+        }
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setPadding(dp(10), dp(6), dp(10), dp(4));
@@ -1450,9 +1530,12 @@ public final class MainActivity extends Activity {
         unmetered.setText("Somente redes não tarifadas (economizar dados)");
         unmetered.setTextSize(12);
         unmetered.setPadding(dp(10), dp(4), dp(8), dp(4));
+        boolean privateDownload = current() != null && current().privateMode;
         new AlertDialog.Builder(this)
-                .setTitle("Baixar arquivo?")
-                .setMessage("Origem: " + uri + "\n\nArquivos com login/cookies podem falhar nesta versão.")
+                .setTitle(privateDownload ? "Baixar fora da navegação privada?" : "Baixar arquivo?")
+                .setMessage("Origem: " + uri + "\n\n" +
+                        (privateDownload ? "Aviso: o Android salva downloads fora do modo privado. O arquivo poderá aparecer em Downloads e outros aplicativos.\n\n" : "") +
+                        "Arquivos com login/cookies podem falhar nesta versão.")
                 .setView(unmetered)
                 .setPositiveButton("Baixar", (d, n) -> {
                     try {
@@ -1684,6 +1767,185 @@ public final class MainActivity extends Activity {
         int flags = enabled ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY : 0;
         getWindow().getDecorView().setSystemUiVisibility(flags);
+    }
+
+    private void closePrivateTabs() {
+        for (int index = tabs.size() - 1; index >= 0; index--) {
+            if (tabs.get(index).privateMode) closeTab(index);
+        }
+        refreshSuggestionAdapter("");
+    }
+
+    private void toggleTrackingProtection() {
+        trackingProtectionEnabled = !trackingProtectionEnabled;
+        storage.edit().putBoolean(PREF_TRACKING_PROTECTION, trackingProtectionEnabled).apply();
+        for (Tab tab : tabs) tab.session.getSettings().setUseTrackingProtection(trackingProtectionEnabled);
+        Toast.makeText(this, trackingProtectionEnabled ? "Proteção antirrastreamento ativada" :
+                "Proteção antirrastreamento desativada", Toast.LENGTH_LONG).show();
+    }
+
+    private void showSiteInfo() {
+        Tab tab = current();
+        if (tab == null) return;
+        GeckoSession.ProgressDelegate.SecurityInformation info = tab.securityInfo;
+        String message;
+        if (HOME.equals(tab.url)) {
+            message = "Nenhum site carregado.";
+        } else if (!tab.url.startsWith("https://")) {
+            message = "A página não usa HTTPS. A conexão pode não estar criptografada.";
+        } else if (info == null) {
+            message = "HTTPS detectado no endereço, mas a verificação pelo motor ainda não terminou.";
+        } else if (info.isException) {
+            message = "Há uma exceção de certificado. Esta conexão não é considerada verificada.";
+        } else if (!info.isSecure) {
+            message = "O GeckoView não confirmou uma conexão segura para esta página.";
+        } else if (info.mixedModeActive == GeckoSession.ProgressDelegate.SecurityInformation.CONTENT_LOADED) {
+            message = "HTTPS ativo, mas conteúdo misto inseguro foi carregado.";
+        } else {
+            message = "Conexão HTTPS confirmada pelo GeckoView.";
+            if (info.mixedModePassive == GeckoSession.ProgressDelegate.SecurityInformation.CONTENT_LOADED)
+                message += "\nA página contém conteúdo misto passivo.";
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Segurança da página")
+                .setMessage(PrivacyRules.displayHost(tab.url) + "\n\n" + message +
+                        "\n\n" + (tab.privateMode ? "Aba privada: o histórico local não é salvo." : "Aba normal."))
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
+    private void showPrivacyMenu() {
+        String[] options = {
+                "Limpar cookies e sessões de login",
+                "Limpar cache de páginas e imagens",
+                "Limpar permissões dos sites",
+                "Limpar todos os dados de navegação (inclui histórico)",
+                "Permissões do site atual",
+                "Fechar todas as abas privadas"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Privacidade e dados")
+                .setItems(options, (d, which) -> {
+                    switch (which) {
+                        case 0: confirmClearData(StorageController.ClearFlags.COOKIES |
+                                StorageController.ClearFlags.AUTH_SESSIONS, false, "cookies e sessões de login"); break;
+                        case 1: confirmClearData(StorageController.ClearFlags.ALL_CACHES, false, "cache de páginas e imagens"); break;
+                        case 2: confirmClearData(StorageController.ClearFlags.PERMISSIONS, false, "permissões de sites"); break;
+                        case 3: confirmClearData(StorageController.ClearFlags.ALL, true, "todos os dados de navegação"); break;
+                        case 4: showCurrentSitePermissions(); break;
+                        case 5: closePrivateTabs(); break;
+                        default: break;
+                    }
+                })
+                .setNegativeButton("Fechar", null)
+                .show();
+    }
+
+    private void confirmClearData(long flags, boolean clearLocalHistory, String what) {
+        new AlertDialog.Builder(this)
+                .setTitle("Apagar " + what + "?")
+                .setMessage("Para limpar de maneira consistente, todas as abas serão fechadas e uma página vazia será aberta. " +
+                        "Os favoritos e os arquivos já baixados serão preservados. Dados de sessão de sites e extensões podem ser afetados. Esta ação não pode ser desfeita.")
+                .setPositiveButton("Limpar", (d, n) -> clearBrowserData(flags, clearLocalHistory))
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void clearBrowserData(long flags, boolean clearLocalHistory) {
+        if (runtime == null) return;
+        uiHandler.removeCallbacks(downloadRefresh);
+        if (view != null) view.releaseSession();
+        for (Tab tab : tabs) if (tab.opened) tab.session.close();
+        tabs.clear();
+        active = -1;
+        // Remove URLs de abas antigas imediatamente, mesmo se o processo for morto
+        // antes da conclusão assíncrona de StorageController.clearData().
+        storage.edit().putString(PREF_OPEN_TABS,
+                "{\"tabs\":[{\"url\":\"about:blank\",\"title\":\"Nova aba\"}],\"active\":0}")
+                .apply();
+        if (clearLocalHistory) {
+            history.clear();
+            historyDetails.clear();
+            saveStringList(PREF_HISTORY, history);
+            saveHistoryDetails();
+        }
+        setUrlBoxText("");
+        refreshSuggestionAdapter("");
+        status.setText("Limpando dados do navegador…");
+        runtime.getStorageController().clearData(flags).accept(
+                result -> runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        addTab(HOME);
+                        status.setText("Dados do navegador limpos");
+                    }
+                }),
+                error -> runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        addTab(HOME);
+                        showError(error);
+                    }
+                }));
+    }
+
+    private void showCurrentSitePermissions() {
+        Tab tab = current();
+        if (runtime == null || tab == null || !tab.url.startsWith("http")) {
+            Toast.makeText(this, "Abra um site para consultar as permissões", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String url = tab.url;
+        runtime.getStorageController().getPermissions(url, tab.privateMode).accept(
+                permissions -> runOnUiThread(() -> displaySitePermissions(url, permissions)),
+                error -> runOnUiThread(() -> showError(error)));
+    }
+
+    private String permissionLabel(int type) {
+        switch (type) {
+            case GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION: return "Localização";
+            case GeckoSession.PermissionDelegate.PERMISSION_DESKTOP_NOTIFICATION: return "Notificações";
+            case GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE: return "Armazenamento persistente";
+            case GeckoSession.PermissionDelegate.PERMISSION_AUTOPLAY_AUDIBLE: return "Reprodução automática com áudio";
+            case GeckoSession.PermissionDelegate.PERMISSION_AUTOPLAY_INAUDIBLE: return "Reprodução automática sem áudio";
+            case GeckoSession.PermissionDelegate.PERMISSION_TRACKING: return "Exceção de rastreamento";
+            case GeckoSession.PermissionDelegate.PERMISSION_STORAGE_ACCESS: return "Cookies de terceiros";
+            default: return "Permissão tipo " + type;
+        }
+    }
+
+    private void displaySitePermissions(String url,
+            List<GeckoSession.PermissionDelegate.ContentPermission> permissions) {
+        if (permissions == null || permissions.isEmpty()) {
+            new AlertDialog.Builder(this).setTitle("Permissões do site")
+                    .setMessage("Nenhuma permissão armazenada para " + PrivacyRules.displayHost(url))
+                    .setPositiveButton("OK", null).show();
+            return;
+        }
+        String[] titles = new String[permissions.size()];
+        for (int i = 0; i < permissions.size(); i++) {
+            GeckoSession.PermissionDelegate.ContentPermission permission = permissions.get(i);
+            String state = permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW ? "Permitido" :
+                    permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY ? "Bloqueado" : "Perguntar";
+            titles[i] = permissionLabel(permission.permission) + " • " + state;
+        }
+        new AlertDialog.Builder(this).setTitle("Permissões • " + PrivacyRules.displayHost(url))
+                .setItems(titles, (d, index) -> {
+                    GeckoSession.PermissionDelegate.ContentPermission permission = permissions.get(index);
+                    if (permission.permission == GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE &&
+                            permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW) {
+                        new AlertDialog.Builder(this).setTitle("Armazenamento persistente")
+                                .setMessage("O GeckoView não permite revogar individualmente esta autorização. Use Privacidade e dados > Limpar todos os dados de navegação.")
+                                .setPositiveButton("OK", null).show();
+                        return;
+                    }
+                    new AlertDialog.Builder(this).setTitle(titles[index])
+                            .setItems(new String[]{"Perguntar novamente", "Bloquear"}, (d2, action) -> {
+                                int value = action == 0 ?
+                                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_PROMPT :
+                                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY;
+                                runtime.getStorageController().setPermission(permission, value);
+                                Toast.makeText(this, "Permissão atualizada", Toast.LENGTH_SHORT).show();
+                            }).setNegativeButton("Cancelar", null).show();
+                }).setNegativeButton("Fechar", null).show();
     }
 
     private void extensionPrompts() {

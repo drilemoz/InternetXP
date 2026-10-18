@@ -48,3 +48,10 @@
 - `tools/validate_project.py` DEVE verificar ambas dependências, o uso localizado de @OptIn, e as notas reais da versão.
 - Qualquer mudança futura DEVE atualizar `ReleaseNotes`, README, CHANGELOG, docs/VALIDATION e notas da Release.
 - Próxima etapa planejada de privacidade permanece adiada até validar compilação/instalação real.
+
+## 1.0.20: privacidade
+- Nunca armazenar URLs, títulos ou histórico de abas privadas em SharedPreferences, nem restaurá-las ao reiniciar o app. Novas janelas criadas de abas privadas devem manter privacidade.
+- Informação de cadeado deve vir de GeckoView ProgressDelegate.onSecurityChange, não apenas de prefixo HTTPS.
+- Para limpar dados persistentes via StorageController.clearData, encerrar todas as sessões antes de executar o comando assíncrono; não fingir sucesso antes do callback.
+- Fechar e limpar cache/cookies pode desconectar sites; downloads e favoritos não são apagados automaticamente. Avisar que downloads privados continuam fora do isolamento do navegador.
+- Em toda mudança atualizar ReleaseNotes.FEATURES e metadados, inclusive a versão 1.0.20 em todos os pontos.

@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.19";
-    public static final int VERSION_CODE = 20;
-    public static final String HEADLINE = "Correção importante na compilação.";
-    public static final String SUBTITLE = "Esta atualização corrige uma dependência necessária ao GeckoView e mantém a tela de Novidades e seus recursos.";
+    public static final String VERSION_NAME = "1.0.20";
+    public static final int VERSION_CODE = 21;
+    public static final String HEADLINE = "Mais controle sobre sua privacidade.";
+    public static final String SUBTITLE = "Abas privadas, informações de segurança verificadas pelo GeckoView e novas ferramentas para proteger seus dados.";
 
     public static final class Feature {
         public final String number;
@@ -21,10 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Compilação corrigida", "Adicionada a dependência AndroidX experimental necessária para compilar a anotação de permissão do GeckoView."),
-        new Feature("02", "Proteção para próximas versões", "O processo de validação agora verifica a presença das bibliotecas usadas pelas anotações experimentais."),
-        new Feature("03", "Novidades em dia", "Esta tela acompanha a versão 1.0.19 e continua aparecendo uma vez depois de cada atualização."),
-        new Feature("04", "Navegação preservada", "Mantidos o globo azul, as abas, os downloads e a distribuição assinada por arquitetura.")
+        new Feature("01", "Abas privadas", "Navegue em abas privadas separadas das normais, sem salvar histórico, sugestões ou restauração dessas páginas."),
+        new Feature("02", "Limpeza real de dados", "Apague cookies, sessões de login, cache, permissões ou todos os dados do GeckoView após fechar as abas."),
+        new Feature("03", "Segurança mais confiável", "O cadeado agora depende da verificação real da conexão pelo GeckoView, não apenas do prefixo HTTPS."),
+        new Feature("04", "Proteção contra rastreamento", "Ative ou desative a proteção do GeckoView e consulte as permissões armazenadas para o site atual."),
+        new Feature("05", "Atenção aos downloads", "Arquivos baixados em abas privadas permanecem visíveis ao Android. Um aviso explicita essa limitação.")
     };
 
     private ReleaseNotes() { }

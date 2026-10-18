@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.0.20 (versionCode 21) - navegação privada e segurança
+- GeckoSession privado, sem persistência no histórico e no backup local de abas.
+- Proteção antirrastreamento configurável com preferência persistente.
+- Limpeza de cookies, sessões de autenticação, cache, permissões e dados completos via GeckoView StorageController, com fechamento prévio das sessões.
+- Indicador HTTPS usa a informação de segurança real do GeckoView e informa conteúdo misto/exceção quando aplicável.
+- Gerenciamento de permissões da página e alerta sobre arquivos baixados em abas privadas.
+- Tela de Novidades 1.0.20 atualizada; README, AGENTS, validação e workflow sincronizados.
+
+# CHANGELOG
+
 ## 1.0.19 (versionCode 20) - corrige dependência @OptIn (workflow 19)
 - Logs da execução 19: `:app:compileDebugJavaWithJavac` falhou por falta de `androidx.annotation.OptIn` e `androidx.annotation.RequiresOptIn$Level`; o Lint nem chegou a executar.
 - Adicionadas dependências explícitas `androidx.annotation:annotation:1.11.0` e `androidx.annotation:annotation-experimental:1.6.0`, conforme documentação oficial AndroidX, para compilar @OptIn no código Java com GeckoView.
