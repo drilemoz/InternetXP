@@ -1,12 +1,12 @@
 # CHANGELOG
 
-## 1.0.20 (versionCode 21) - navegação privada e segurança
+## 1.0.21 (versionCode 22) - navegação privada e segurança
 - GeckoSession privado, sem persistência no histórico e no backup local de abas.
 - Proteção antirrastreamento configurável com preferência persistente.
 - Limpeza de cookies, sessões de autenticação, cache, permissões e dados completos via GeckoView StorageController, com fechamento prévio das sessões.
 - Indicador HTTPS usa a informação de segurança real do GeckoView e informa conteúdo misto/exceção quando aplicável.
 - Gerenciamento de permissões da página e alerta sobre arquivos baixados em abas privadas.
-- Tela de Novidades 1.0.20 atualizada; README, AGENTS, validação e workflow sincronizados.
+- Tela de Novidades 1.0.21 atualizada; README, AGENTS, validação e workflow sincronizados.
 
 # CHANGELOG
 

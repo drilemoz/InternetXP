@@ -1,0 +1,9 @@
+[
+  "tools/test_report_apk.py::ReportApkTest::test_accepts_x86_64_build",
+  "tools/test_report_apk.py::ReportApkTest::test_correct_abi_deflated",
+  "tools/test_report_apk.py::ReportApkTest::test_rejects_missing_native_libraries",
+  "tools/test_report_apk.py::ReportApkTest::test_rejects_uncompressed",
+  "tools/test_report_apk.py::ReportApkTest::test_rejects_universal",
+  "tools/test_report_apk.py::ReportApkTest::test_rejects_unsupported_x86_32_build",
+  "tools/test_report_apk.py::ReportApkTest::test_rejects_wrong_abi"
+]

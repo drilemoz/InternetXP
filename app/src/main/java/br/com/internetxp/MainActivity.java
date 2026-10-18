@@ -25,6 +25,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -161,8 +162,47 @@ public final class MainActivity extends Activity {
         long bytesPerSecond = -1;
     }
 
+    private static final class MenuAction {
+        final String icon;
+        final String title;
+        final String description;
+        final Runnable action;
+        MenuAction(String icon, String title, String description, Runnable action) {
+            this.icon = icon;
+            this.title = title;
+            this.description = description;
+            this.action = action;
+        }
+    }
+
     private int dp(int n) {
         return (int) (n * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private int screenWidthDp() {
+        return getResources().getConfiguration().screenWidthDp;
+    }
+
+    private int screenHeightDp() {
+        return getResources().getConfiguration().screenHeightDp;
+    }
+
+    private boolean isCompactPhone() {
+        int width = screenWidthDp();
+        return width > 0 && width <= 360;
+    }
+
+    private boolean isShortPhone() {
+        int height = screenHeightDp();
+        return height > 0 && height <= 720;
+    }
+
+    private int toolbarHeightDp() {
+        return isCompactPhone() ? 56 : 62;
+    }
+
+    private int downloadsPanelHeightDp() {
+        return isShortPhone() ? 180 : (isCompactPhone() ? 200 : 220);
     }
 
     private TextView text(String s, float sp, int color) {
@@ -219,17 +259,24 @@ public final class MainActivity extends Activity {
         browserRoot = root;
         setContentView(root);
 
-        // Painel de endereço: mais baixo, mais largo e com seta de histórico ao estilo IE.
+        final boolean compactPhone = isCompactPhone();
+        final int addressPanelHeight = compactPhone ? dp(34) : dp(38);
+        final int addressInnerHeight = compactPhone ? dp(32) : dp(36);
+        final int navIconHeight = compactPhone ? dp(22) : dp(24);
+        final float navLabelSize = compactPhone ? 6.4f : 7f;
+
+        // Painel de endereço: adaptativo para telas estreitas.
         addressPanel = new LinearLayout(this);
         addressPanel.setBackgroundColor(PANEL_BG);
         addressPanel.setGravity(Gravity.CENTER_VERTICAL);
-        addressPanel.setPadding(dp(6), dp(6), dp(8), dp(6));
+        addressPanel.setPadding(dp(compactPhone ? 4 : 6), dp(compactPhone ? 4 : 6), dp(compactPhone ? 4 : 8), dp(compactPhone ? 4 : 6));
 
         LinearLayout addressBox = new LinearLayout(this);
         addressBox.setOrientation(LinearLayout.HORIZONTAL);
         addressBox.setGravity(Gravity.CENTER_VERTICAL);
         addressBox.setBackground(rounded(Color.WHITE, BORDER, 0));
-        addressBox.setPadding(dp(8), 0, dp(4), 0);
+        addressBox.setPadding(dp(compactPhone ? 6 : 8), 0, dp(compactPhone ? 2 : 4), 0);
+        addressBox.setClickable(true);
 
         securityIcon = new ImageView(this);
         securityIcon.setImageResource(R.drawable.ic_globe_xp);
@@ -237,21 +284,28 @@ public final class MainActivity extends Activity {
         securityIcon.setContentDescription("Informações de segurança da página");
         securityIcon.setOnClickListener(v -> showSiteInfo());
         securityIcon.setPadding(dp(2), dp(8), dp(2), dp(8));
-        addressBox.addView(securityIcon, new LinearLayout.LayoutParams(dp(22), dp(36)));
+        addressBox.addView(securityIcon, new LinearLayout.LayoutParams(dp(compactPhone ? 18 : 22), addressInnerHeight));
 
         urlBox = new AutoCompleteTextView(this);
         urlBox.setSingleLine();
+        urlBox.setFocusable(true);
+        urlBox.setFocusableInTouchMode(true);
         // IE-like behavior: tapping the URL selects the entire address.
         // The very first typed character replaces the selection.
         urlBox.setSelectAllOnFocus(true);
-        urlBox.setOnClickListener(v -> urlBox.selectAll());
-        urlBox.setTextSize(13);
+        urlBox.setOnClickListener(v -> focusAddressBar(true));
+        urlBox.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) focusAddressBar(true);
+            return false;
+        });
+        addressBox.setOnClickListener(v -> focusAddressBar(true));
+        urlBox.setTextSize(compactPhone ? 12 : 13);
         urlBox.setTextColor(TEXT);
         urlBox.setHint("https://www.exemplo.com");
         urlBox.setThreshold(0);
-        urlBox.setDropDownHeight(dp(220));
+        urlBox.setDropDownHeight(dp(compactPhone ? 180 : 220));
         urlBox.setBackgroundColor(Color.TRANSPARENT);
-        urlBox.setPadding(dp(6), 0, dp(2), 0);
+        urlBox.setPadding(dp(compactPhone ? 4 : 6), 0, dp(2), 0);
         urlBox.setImeOptions(EditorInfo.IME_ACTION_GO);
         urlBox.setOnEditorActionListener((tv, action, event) -> {
             if (action == EditorInfo.IME_ACTION_GO ||
@@ -263,9 +317,11 @@ public final class MainActivity extends Activity {
         });
         urlBox.setOnFocusChangeListener((v, focused) -> {
             if (focused) {
-                urlBox.selectAll();
                 refreshSuggestionAdapter(urlBox.getText().toString());
-                urlBox.post(urlBox::showDropDown);
+                urlBox.post(() -> {
+                    urlBox.selectAll();
+                    if (current() == null || !current().privateMode) urlBox.showDropDown();
+                });
             }
         });
         urlBox.setOnItemClickListener((parent, v, position, id) -> {
@@ -287,7 +343,7 @@ public final class MainActivity extends Activity {
         });
         historyAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
         urlBox.setAdapter(historyAdapter);
-        addressBox.addView(urlBox, new LinearLayout.LayoutParams(0, dp(36), 1));
+        addressBox.addView(urlBox, new LinearLayout.LayoutParams(0, addressInnerHeight, 1));
 
         dropdownIcon = new ImageView(this);
         dropdownIcon.setImageResource(R.drawable.ic_dropdown_xp);
@@ -306,14 +362,14 @@ public final class MainActivity extends Activity {
                 urlBox.showDropDown();
             }
         });
-        addressBox.addView(dropdownIcon, new LinearLayout.LayoutParams(dp(26), dp(36)));
+        addressBox.addView(dropdownIcon, new LinearLayout.LayoutParams(dp(compactPhone ? 22 : 26), addressInnerHeight));
 
         TextView open = text("↗", 15, TEXT);
         open.setGravity(Gravity.CENTER);
         open.setOnClickListener(v -> submitAddress());
-        addressBox.addView(open, new LinearLayout.LayoutParams(dp(24), dp(36)));
+        addressBox.addView(open, new LinearLayout.LayoutParams(dp(compactPhone ? 18 : 24), addressInnerHeight));
 
-        addressPanel.addView(addressBox, new LinearLayout.LayoutParams(0, dp(38), 1));
+        addressPanel.addView(addressBox, new LinearLayout.LayoutParams(0, addressPanelHeight, 1));
 
         ImageView refresh = new ImageView(this);
         refresh.setImageResource(R.drawable.ic_refresh_ie_xp);
@@ -323,8 +379,8 @@ public final class MainActivity extends Activity {
             Tab t = current();
             if (t != null) t.session.reload();
         });
-        LinearLayout.LayoutParams refreshParams = new LinearLayout.LayoutParams(dp(40), dp(38));
-        refreshParams.leftMargin = dp(8);
+        LinearLayout.LayoutParams refreshParams = new LinearLayout.LayoutParams(dp(compactPhone ? 30 : 40), addressPanelHeight);
+        refreshParams.leftMargin = dp(compactPhone ? 4 : 8);
         addressPanel.addView(refresh, refreshParams);
 
         root.addView(addressPanel);
@@ -367,7 +423,7 @@ public final class MainActivity extends Activity {
         downloadsList = new LinearLayout(this);
         downloadsList.setOrientation(LinearLayout.VERTICAL);
         downloadsScroll.addView(downloadsList, new ScrollView.LayoutParams(-1, -2));
-        downloadsPanel.addView(downloadsScroll, new LinearLayout.LayoutParams(-1, dp(220)));
+        downloadsPanel.addView(downloadsScroll, new LinearLayout.LayoutParams(-1, dp(downloadsPanelHeightDp())));
         root.addView(downloadsPanel);
 
         divider(root, 1);
@@ -389,7 +445,7 @@ public final class MainActivity extends Activity {
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
         bottomBar.setBackgroundColor(PANEL_BG);
-        bottomBar.setPadding(dp(4), dp(4), dp(4), dp(4));
+        bottomBar.setPadding(dp(compactPhone ? 2 : 4), dp(compactPhone ? 2 : 4), dp(compactPhone ? 2 : 4), dp(compactPhone ? 2 : 4));
 
         backIcon = navText(bottomBar, "←", "Voltar", () -> {
             Tab t = current();
@@ -405,7 +461,7 @@ public final class MainActivity extends Activity {
         navText(bottomBar, "≡", "Menu", this::showMainMenu);
         menuAnchor = bottomBar.getChildAt(bottomBar.getChildCount() - 1);
 
-        root.addView(bottomBar, new LinearLayout.LayoutParams(-1, dp(62)));
+        root.addView(bottomBar, new LinearLayout.LayoutParams(-1, dp(toolbarHeightDp())));
     }
 
     private LinearLayout navCell(LinearLayout parent, String caption, Runnable action) {
@@ -422,11 +478,12 @@ public final class MainActivity extends Activity {
 
     private TextView navText(LinearLayout parent, String icon, String caption, Runnable action) {
         LinearLayout cell = navCell(parent, caption, action);
-        TextView symbol = text(icon, 20, XP_BLUE);
+        boolean compactPhone = isCompactPhone();
+        TextView symbol = text(icon, compactPhone ? 18 : 20, XP_BLUE);
         symbol.setTypeface(Typeface.DEFAULT_BOLD);
         symbol.setGravity(Gravity.CENTER);
-        cell.addView(symbol, new LinearLayout.LayoutParams(-1, dp(24)));
-        TextView name = text(caption, 7, TEXT);
+        cell.addView(symbol, new LinearLayout.LayoutParams(-1, isCompactPhone() ? dp(20) : dp(24)));
+        TextView name = text(caption, isCompactPhone() ? 6.4f : 7f, TEXT);
         name.setGravity(Gravity.CENTER);
         cell.addView(name, new LinearLayout.LayoutParams(-1, dp(18)));
         return symbol;
@@ -436,49 +493,104 @@ public final class MainActivity extends Activity {
         LinearLayout cell = navCell(parent, caption, action);
         ImageView icon = new ImageView(this);
         icon.setImageResource(drawable);
-        icon.setPadding(dp(8), dp(2), dp(8), dp(2));
+        icon.setPadding(dp(isCompactPhone() ? 6 : 8), dp(2), dp(isCompactPhone() ? 6 : 8), dp(2));
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        cell.addView(icon, new LinearLayout.LayoutParams(-1, dp(24)));
-        TextView name = text(caption, 7, TEXT);
+        cell.addView(icon, new LinearLayout.LayoutParams(-1, isCompactPhone() ? dp(20) : dp(24)));
+        TextView name = text(caption, isCompactPhone() ? 6.4f : 7f, TEXT);
         name.setGravity(Gravity.CENTER);
         cell.addView(name, new LinearLayout.LayoutParams(-1, dp(18)));
     }
 
     private void showMainMenu() {
-        PopupMenu p = new PopupMenu(this, menuAnchor, Gravity.END);
-        item(p, "Nova aba", () -> addTab(HOME));
-        item(p, "Nova aba privada", () -> addPrivateTab(HOME));
-        if (current() != null && current().privateMode) {
-            item(p, "Fechar todas as abas privadas", this::closePrivateTabs);
-        }
-        item(p, "Privacidade e dados", this::showPrivacyMenu);
-        item(p, trackingProtectionEnabled ? "Proteção antirrastreamento: ligada" : "Proteção antirrastreamento: desligada",
-                this::toggleTrackingProtection);
-        item(p, "Segurança do site", this::showSiteInfo);
-        item(p, "Fechar aba atual", () -> closeTab(active));
-        item(p, "Atualizar", () -> { Tab t = current(); if (t != null) t.session.reload(); });
-        item(p, "Copiar endereço", this::copyUrl);
-        item(p, "Compartilhar página", this::share);
-        item(p, "Favoritos", this::showBookmarks);
-        item(p, "Adicionar/remover favorito", this::toggleBookmark);
-        item(p, "Histórico pesquisável", this::showHistory);
-        item(p, "Downloads", this::showDownloads);
-        item(p, "Extensões", this::showExtensions);
-        item(p, "Limpar histórico local", this::clearHistory);
-        item(p, "Novidades desta versão", () ->
-                startActivity(new Intent(this, WhatsNewActivity.class)));
-        item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.20")
-                .setMessage("Navegação normal ou privada, limpeza de dados do GeckoView, gerenciamento de permissões e conexão HTTPS verificada pelo motor. Projeto independente.")
-                .setPositiveButton("OK", null).show());
-        p.show();
+        ArrayList<MenuAction> actions = new ArrayList<>();
+        actions.add(new MenuAction("＋", "Nova aba", "Abra uma nova aba normal para continuar navegando sem fechar a atual.", () -> addTab(HOME)));
+        actions.add(new MenuAction("◌", "Nova aba privada", "Use uma aba privada sem histórico local, sugestões ou restauração de sessão.", () -> addPrivateTab(HOME)));
+        actions.add(new MenuAction("↻", "Atualizar página", "Recarregue o site atual caso a página tenha travado ou demore a atualizar.", () -> { Tab t = current(); if (t != null) t.session.reload(); }));
+        actions.add(new MenuAction("★", "Favoritos", "Abra sua lista de favoritos ou adicione/remova rapidamente a página atual.", this::showBookmarks));
+        actions.add(new MenuAction("🕘", "Histórico", "Pesquise páginas visitadas recentemente e abra novamente qualquer endereço salvo.", this::showHistory));
+        actions.add(new MenuAction("↓", "Downloads", "Veja arquivos em andamento, concluídos, erros, velocidade e ações de compartilhamento.", this::showDownloads));
+        actions.add(new MenuAction("🔒", "Privacidade e dados", "Abra as opções para limpar cookies, cache, permissões e controlar a proteção antirrastreamento.", this::showPrivacyMenu));
+        actions.add(new MenuAction("🧩", "Extensões", "Gerencie suas extensões compatíveis do Firefox dentro do Internet XP.", this::showExtensions));
+        actions.add(new MenuAction("⇪", "Compartilhar página", "Copie ou compartilhe o endereço atual em outros aplicativos.", this::share));
+        actions.add(new MenuAction("ⓘ", "Novidades desta versão", "Consulte a tela estilizada com as mudanças mais recentes do projeto.", () -> startActivity(new Intent(this, WhatsNewActivity.class))));
+        actions.add(new MenuAction("ℹ", "Sobre", "Veja a versão atual e um resumo rápido do navegador.", () -> new AlertDialog.Builder(this)
+                .setTitle("Internet XP 1.0.21")
+                .setMessage("Menu em módulos com descrições, correções para telas estreitas como o Redmi A3 e barra de endereço com foco mais confiável. Projeto independente.")
+                .setPositiveButton("OK", null).show()));
+        showModuleMenuDialog("Menu do Internet XP", "Ações e módulos com ícones, descrições e layout melhor para telas de telefone.", actions);
     }
 
-    private void item(PopupMenu p, String caption, Runnable run) {
-        p.getMenu().add(caption).setOnMenuItemClickListener(m -> {
-            run.run();
-            return true;
-        });
+    private void showModuleMenuDialog(String title, String subtitle, List<MenuAction> actions) {
+        LinearLayout wrapper = new LinearLayout(this);
+        wrapper.setOrientation(LinearLayout.VERTICAL);
+        wrapper.setBackgroundColor(LIGHT_BG);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(dp(14), dp(12), dp(14), dp(10));
+        header.setBackground(rounded(PANEL_BG, BORDER, 0));
+        TextView titleView = text(title, 18, XP_BLUE);
+        titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        header.addView(titleView);
+        TextView subtitleView = text(subtitle, 12, SUBTLE);
+        subtitleView.setPadding(0, dp(4), 0, 0);
+        header.addView(subtitleView);
+        wrapper.addView(header);
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(10), dp(10), dp(10), dp(6));
+        scroll.addView(list);
+        wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(isShortPhone() ? 360 : 430)));
+
+        final AlertDialog[] holder = new AlertDialog[1];
+        for (MenuAction action : actions) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(10), dp(10), dp(10), dp(10));
+            row.setBackground(rounded(Color.WHITE, BORDER, 10));
+            row.setClickable(true);
+            row.setFocusable(true);
+
+            TextView icon = text(action.icon, 18, Color.WHITE);
+            icon.setTypeface(Typeface.DEFAULT_BOLD);
+            icon.setGravity(Gravity.CENTER);
+            icon.setBackground(rounded(XP_BLUE, 0, 10));
+            row.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
+
+            LinearLayout labels = new LinearLayout(this);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            labels.setPadding(dp(10), 0, dp(10), 0);
+            TextView rowTitle = text(action.title, 13, TEXT);
+            rowTitle.setTypeface(Typeface.DEFAULT_BOLD);
+            labels.addView(rowTitle);
+            TextView rowDesc = text(action.description, 11, SUBTLE);
+            rowDesc.setPadding(0, dp(2), 0, 0);
+            labels.addView(rowDesc);
+            row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+
+            TextView chevron = text("›", 18, XP_BLUE);
+            chevron.setGravity(Gravity.CENTER);
+            row.addView(chevron, new LinearLayout.LayoutParams(dp(22), dp(22)));
+
+            row.setOnClickListener(v -> {
+                if (holder[0] != null) holder[0].dismiss();
+                action.action.run();
+            });
+
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(8);
+            list.addView(row, params);
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(wrapper)
+                .setNegativeButton("Fechar", null)
+                .create();
+        holder[0] = dialog;
+        dialog.show();
     }
 
     private Tab current() {
@@ -496,6 +608,21 @@ public final class MainActivity extends Activity {
         urlBox.clearFocus();
         ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
                 .hideSoftInputFromWindow(urlBox.getWindowToken(), 0);
+    }
+
+    private void focusAddressBar(boolean showSuggestions) {
+        if (urlBox == null) return;
+        urlBox.setFocusable(true);
+        urlBox.setFocusableInTouchMode(true);
+        urlBox.requestFocus();
+        urlBox.post(() -> {
+            urlBox.selectAll();
+            urlBox.setSelection(0, urlBox.getText().length());
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(urlBox, InputMethodManager.SHOW_IMPLICIT);
+            refreshSuggestionAdapter(urlBox.getText().toString());
+            if (showSuggestions && (current() == null || !current().privateMode)) urlBox.showDropDown();
+        });
     }
 
     private void submitAddress() {
@@ -1815,30 +1942,15 @@ public final class MainActivity extends Activity {
     }
 
     private void showPrivacyMenu() {
-        String[] options = {
-                "Limpar cookies e sessões de login",
-                "Limpar cache de páginas e imagens",
-                "Limpar permissões dos sites",
-                "Limpar todos os dados de navegação (inclui histórico)",
-                "Permissões do site atual",
-                "Fechar todas as abas privadas"
-        };
-        new AlertDialog.Builder(this)
-                .setTitle("Privacidade e dados")
-                .setItems(options, (d, which) -> {
-                    switch (which) {
-                        case 0: confirmClearData(StorageController.ClearFlags.COOKIES |
-                                StorageController.ClearFlags.AUTH_SESSIONS, false, "cookies e sessões de login"); break;
-                        case 1: confirmClearData(StorageController.ClearFlags.ALL_CACHES, false, "cache de páginas e imagens"); break;
-                        case 2: confirmClearData(StorageController.ClearFlags.PERMISSIONS, false, "permissões de sites"); break;
-                        case 3: confirmClearData(StorageController.ClearFlags.ALL, true, "todos os dados de navegação"); break;
-                        case 4: showCurrentSitePermissions(); break;
-                        case 5: closePrivateTabs(); break;
-                        default: break;
-                    }
-                })
-                .setNegativeButton("Fechar", null)
-                .show();
+        ArrayList<MenuAction> actions = new ArrayList<>();
+        actions.add(new MenuAction("⌘", "Proteção antirrastreamento", trackingProtectionEnabled ? "Atualmente ligada. Toque para desligar ou religar a proteção do GeckoView." : "Atualmente desligada. Toque para ativar a proteção do GeckoView.", this::toggleTrackingProtection));
+        actions.add(new MenuAction("🍪", "Limpar cookies e sessões", "Remove cookies e sessões de login salvas pelo navegador.", () -> confirmClearData(StorageController.ClearFlags.COOKIES | StorageController.ClearFlags.AUTH_SESSIONS, false, "cookies e sessões de login")));
+        actions.add(new MenuAction("🗂", "Limpar cache", "Apaga o cache de páginas, imagens e outros arquivos temporários.", () -> confirmClearData(StorageController.ClearFlags.ALL_CACHES, false, "cache de páginas e imagens")));
+        actions.add(new MenuAction("✔", "Limpar permissões", "Esquece permissões concedidas anteriormente a sites, como câmera e localização.", () -> confirmClearData(StorageController.ClearFlags.PERMISSIONS, false, "permissões de sites")));
+        actions.add(new MenuAction("✖", "Limpeza completa", "Fecha as abas e limpa todos os dados de navegação, incluindo o histórico local.", () -> confirmClearData(StorageController.ClearFlags.ALL, true, "todos os dados de navegação")));
+        actions.add(new MenuAction("🔎", "Permissões do site atual", "Consulte ou redefina permissões armazenadas para o site aberto agora.", this::showCurrentSitePermissions));
+        actions.add(new MenuAction("◌", "Fechar abas privadas", "Fecha todas as abas privadas ainda abertas nesta sessão.", this::closePrivateTabs));
+        showModuleMenuDialog("Privacidade e dados", "Ferramentas para controlar rastreamento, permissões e dados locais do Internet XP.", actions);
     }
 
     private void confirmClearData(long flags, boolean clearLocalHistory, String what) {
