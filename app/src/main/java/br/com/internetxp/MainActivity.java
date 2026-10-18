@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.content.res.ColorStateList;
+import android.os.SystemClock;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -31,6 +33,9 @@ import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ProgressBar;
+import android.widget.HorizontalScrollView;
+import android.widget.CheckBox;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -82,6 +87,9 @@ public final class MainActivity extends Activity {
     private View menuAnchor;
     private LinearLayout downloadsPanel;
     private LinearLayout downloadsList;
+    private TextView downloadsSummary;
+    private LinearLayout downloadsFilters;
+    private int downloadFilter = 0; // 0 Todos, 1 Ativos, 2 Finalizados
     private boolean suppressSuggestionReload;
     private static final int DOWNLOAD_CANCELLED = -2;
     private static final long DOWNLOAD_REFRESH_MS = 2000L;
@@ -113,6 +121,11 @@ public final class MainActivity extends Activity {
         long bytes;
         long total;
         long createdAt;
+        int reason;
+        boolean unmeteredOnly;
+        long lastSampleBytes = -1;
+        long lastSampleMs;
+        long bytesPerSecond = -1;
     }
 
     private int dp(int n) {
@@ -288,17 +301,28 @@ public final class MainActivity extends Activity {
         TextView downloadsTitle = text("Downloads", 13, TEXT);
         downloadsTitle.setTypeface(Typeface.DEFAULT_BOLD);
         downloadsHeader.addView(downloadsTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView clearDone = text("Limpar finalizados", 11, XP_BLUE);
+        clearDone.setPadding(dp(7),dp(8),dp(8),dp(8));
+        clearDone.setOnClickListener(v -> confirmClearFinished());
+        downloadsHeader.addView(clearDone);
         TextView closeDownloads = text("Ocultar", 12, XP_BLUE);
         closeDownloads.setOnClickListener(v -> hideDownloadsPanel());
         downloadsHeader.addView(closeDownloads);
         downloadsPanel.addView(downloadsHeader);
+        downloadsSummary = text("", 11, SUBTLE);
+        downloadsSummary.setPadding(dp(10), dp(4), dp(8), dp(4));
+        downloadsPanel.addView(downloadsSummary);
+        downloadsFilters = new LinearLayout(this);
+        downloadsFilters.setGravity(Gravity.CENTER_VERTICAL);
+        downloadsFilters.setBackgroundColor(PANEL_BG);
+        downloadsPanel.addView(downloadsFilters, new LinearLayout.LayoutParams(-1, dp(36)));
         divider(downloadsPanel, 1);
 
         ScrollView downloadsScroll = new ScrollView(this);
         downloadsList = new LinearLayout(this);
         downloadsList.setOrientation(LinearLayout.VERTICAL);
         downloadsScroll.addView(downloadsList, new ScrollView.LayoutParams(-1, -2));
-        downloadsPanel.addView(downloadsScroll, new LinearLayout.LayoutParams(-1, dp(168)));
+        downloadsPanel.addView(downloadsScroll, new LinearLayout.LayoutParams(-1, dp(220)));
         root.addView(downloadsPanel);
 
         divider(root, 1);
@@ -389,7 +413,7 @@ public final class MainActivity extends Activity {
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.13")
+                .setTitle("Internet XP 1.0.14")
                 .setMessage("Interface mobile XP compacta, com sugestões de histórico, lista interna de downloads e GeckoView. Projeto independente, sem vínculo com Microsoft ou Mozilla.")
                 .setPositiveButton("OK", null).show());
         p.show();
@@ -572,6 +596,8 @@ public final class MainActivity extends Activity {
                 item.bytes = object.optLong("bytes", 0);
                 item.total = object.optLong("total", -1);
                 item.createdAt = object.optLong("createdAt", 0);
+                item.reason = object.optInt("reason", 0);
+                item.unmeteredOnly = object.optBoolean("unmeteredOnly", false);
                 downloads.add(item);
             }
         } catch (Exception ignored) { }
@@ -591,6 +617,8 @@ public final class MainActivity extends Activity {
                 object.put("bytes", item.bytes);
                 object.put("total", item.total);
                 object.put("createdAt", item.createdAt);
+                object.put("reason", item.reason);
+                object.put("unmeteredOnly", item.unmeteredOnly);
                 array.put(object);
             } catch (Exception ignored) { }
         }
@@ -711,18 +739,41 @@ public final class MainActivity extends Activity {
         return false;
     }
 
+    private void renderDownloadFilters() {
+        downloadsFilters.removeAllViews();
+        String[] labels = {"Todos", "Ativos", "Finalizados"};
+        for (int i = 0; i < labels.length; i++) {
+            final int filter = i;
+            TextView button = text(labels[i], 11, i == downloadFilter ? XP_BLUE : SUBTLE);
+            button.setTypeface(i == downloadFilter ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            button.setGravity(Gravity.CENTER);
+            button.setBackground(rounded(i == downloadFilter ? Color.WHITE : PANEL_BG,
+                    i == downloadFilter ? BORDER : 0, 0));
+            button.setOnClickListener(v -> {
+                downloadFilter = filter;
+                renderDownloadsPanel();
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(32), 1);
+            lp.setMargins(dp(4), dp(2), dp(4), dp(2));
+            downloadsFilters.addView(button, lp);
+        }
+    }
+
     private void renderDownloadsPanel() {
         refreshDownloadsState();
+        renderDownloadFilters();
         downloadsList.removeAllViews();
-        if (downloads.isEmpty()) {
-            TextView empty = text("Nenhum download registrado ainda.", 12, SUBTLE);
-            empty.setPadding(dp(12), dp(12), dp(12), dp(12));
-            downloadsList.addView(empty);
-            return;
-        }
-        int count = 0;
+        int activeCount = 0, doneCount = 0;
         for (DownloadItem item : downloads) {
-            if (count++ >= 12) break;
+            if (isDownloadRunning(item.status)) activeCount++;
+            else doneCount++;
+        }
+        downloadsSummary.setText(downloads.size() + " registrados • " + activeCount + " ativos • " + doneCount + " finalizados");
+        int visible = 0;
+        for (DownloadItem item : downloads) {
+            if (downloadFilter == 1 && !isDownloadRunning(item.status)) continue;
+            if (downloadFilter == 2 && isDownloadRunning(item.status)) continue;
+            if (visible++ >= 30) break;
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setPadding(dp(10), dp(8), dp(10), dp(8));
@@ -736,32 +787,103 @@ public final class MainActivity extends Activity {
             subtitle.setPadding(0, dp(2), 0, 0);
             card.addView(subtitle);
 
+            if (isDownloadRunning(item.status)) {
+                ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+                progress.setMax(100);
+                progress.setProgressTintList(ColorStateList.valueOf(XP_BLUE));
+                progress.setProgressBackgroundTintList(ColorStateList.valueOf(0xffdbe2ed));
+                long percent = DownloadDisplay.percent(item.bytes, item.total);
+                progress.setIndeterminate(percent < 0);
+                if (percent >= 0) progress.setProgress((int) percent);
+                LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(9));
+                progressParams.topMargin = dp(6);
+                card.addView(progress, progressParams);
+            }
+
             LinearLayout actions = new LinearLayout(this);
             actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-            actions.setPadding(0, dp(6), 0, 0);
+            actions.setPadding(0, dp(4), 0, 0);
             if (item.status == DownloadManager.STATUS_SUCCESSFUL) {
                 addDownloadAction(actions, "Abrir", () -> openDownload(item));
+                addDownloadAction(actions, "Compartilhar", () -> shareDownload(item));
             } else if (isDownloadRunning(item.status)) {
                 addDownloadAction(actions, "Cancelar", () -> confirmCancelDownload(item));
             } else if (item.status == DownloadManager.STATUS_FAILED || item.status == DOWNLOAD_CANCELLED) {
                 addDownloadAction(actions, "Tentar novamente", () -> retryDownload(item));
             }
+            addDownloadAction(actions, "Detalhes", () -> showDownloadDetails(item));
             if (!isDownloadRunning(item.status)) {
-                addDownloadAction(actions, "Remover da lista", () -> {
+                addDownloadAction(actions, "Remover", () -> {
                     downloads.remove(item);
                     saveDownloads();
                     renderDownloadsPanel();
                 });
             }
-            card.addView(actions);
+            HorizontalScrollView actionScroll = new HorizontalScrollView(this);
+            actionScroll.setHorizontalScrollBarEnabled(false);
+            actionScroll.addView(actions, new HorizontalScrollView.LayoutParams(-2, -2));
+            card.addView(actionScroll);
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-            params.leftMargin = dp(8);
-            params.rightMargin = dp(8);
-            params.topMargin = dp(6);
-            if (count == downloads.size()) params.bottomMargin = dp(6);
+            params.setMargins(dp(8),dp(5),dp(8),dp(2));
             downloadsList.addView(card, params);
         }
+        if (visible == 0) {
+            TextView empty = text(downloads.isEmpty() ? "Nenhum download registrado." : "Nenhum download neste filtro.", 12, SUBTLE);
+            empty.setPadding(dp(12), dp(12), dp(12), dp(12));
+            downloadsList.addView(empty);
+        }
+    }
+
+    private void confirmClearFinished() {
+        int finished = 0;
+        for (DownloadItem item : downloads) if (!isDownloadRunning(item.status)) finished++;
+        if (finished == 0) {
+            Toast.makeText(this, "Nenhum registro finalizado", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Limpar registros finalizados?")
+                .setMessage("Remove " + finished + " registros da lista do Internet XP, sem apagar os arquivos baixados do celular.")
+                .setPositiveButton("Limpar", (d,n) -> {
+                    downloads.removeIf(item -> !isDownloadRunning(item.status));
+                    saveDownloads();
+                    renderDownloadsPanel();
+                }).setNegativeButton("Cancelar", null).show();
+    }
+
+    private Uri uriForDownload(DownloadItem item) {
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        return manager == null ? null : manager.getUriForDownloadedFile(item.id);
+    }
+
+    private void shareDownload(DownloadItem item) {
+        try {
+            Uri uri = uriForDownload(item);
+            if (uri == null || !"content".equalsIgnoreCase(uri.getScheme())) {
+                Toast.makeText(this, "Arquivo não disponível para compartilhar", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType(item.mime == null || item.mime.isEmpty() ? "application/octet-stream" : item.mime);
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.setClipData(ClipData.newUri(getContentResolver(), "Arquivo baixado", uri));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "Compartilhar download"));
+        } catch (RuntimeException error) { showError(error); }
+    }
+
+    private void showDownloadDetails(DownloadItem item) {
+        String message = "Nome: " + item.fileName
+                + "\nStatus: " + downloadStatusText(item.status)
+                + "\nTamanho: " + formatBytes(item.total)
+                + "\nBaixado: " + formatBytes(item.bytes)
+                + "\nRede: " + (item.unmeteredOnly ? "Somente rede não tarifada" : "Todas as redes permitidas")
+                + "\nOrigem: " + item.url;
+        if (item.status == DownloadManager.STATUS_FAILED || item.status == DownloadManager.STATUS_PAUSED) {
+            message += "\nMotivo: " + downloadReason(item);
+        }
+        new AlertDialog.Builder(this).setTitle("Detalhes do download").setMessage(message)
+                .setPositiveButton("Fechar", null).show();
     }
 
     private void addDownloadAction(LinearLayout row, String label, Runnable callback) {
@@ -788,11 +910,23 @@ public final class MainActivity extends Activity {
                     item.bytes = 0;
                     item.total = -1;
                     item.localUri = null;
+                    item.reason = 0;
+                    item.lastSampleBytes = -1;
+                    item.bytesPerSecond = -1;
                     saveDownloads();
                     renderDownloadsPanel();
                 } catch (RuntimeException error) { showError(error); }
             })
             .setNegativeButton("Manter", null).show();
+    }
+
+    private DownloadManager.Request createDownloadRequest(String url, String fileName, boolean unmeteredOnly) {
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        request.setAllowedOverMetered(!unmeteredOnly);
+        request.setAllowedOverRoaming(false);
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+        return request;
     }
 
     private void retryDownload(DownloadItem item) {
@@ -809,14 +943,15 @@ public final class MainActivity extends Activity {
                     if (manager == null) throw new IllegalStateException("DownloadManager indisponível");
                     // Remove failed/cancelled request and its partial file before reusing its name.
                     if (item.id > 0) manager.remove(item.id);
-                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(item.url));
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, item.fileName);
+                    DownloadManager.Request request = createDownloadRequest(item.url, item.fileName, item.unmeteredOnly);
                     item.id = manager.enqueue(request);
                     item.status = DownloadManager.STATUS_PENDING;
                     item.bytes = 0;
                     item.total = -1;
                     item.localUri = null;
+                    item.reason = 0;
+                    item.lastSampleBytes = -1;
+                    item.bytesPerSecond = -1;
                     saveDownloads();
                     renderDownloadsPanel();
                 } catch (RuntimeException error) { showError(error); }
@@ -825,17 +960,46 @@ public final class MainActivity extends Activity {
     }
 
     private String buildDownloadSubtitle(DownloadItem item) {
-        String statusText = downloadStatusText(item.status);
-        if (item.status == DownloadManager.STATUS_RUNNING && item.total > 0) {
+        String label = downloadStatusText(item.status);
+        if (item.status == DownloadManager.STATUS_RUNNING) {
             long percent = DownloadDisplay.percent(item.bytes, item.total);
-            return statusText + " • " + percent + "% • " + formatBytes(item.bytes) + " / " + formatBytes(item.total);
+            String result = label + (percent >= 0 ? " • " + percent + "%" : "")
+                    + " • " + formatBytes(item.bytes)
+                    + (item.total > 0 ? " / " + formatBytes(item.total) : "");
+            if (item.bytesPerSecond > 0) {
+                result += " • " + DownloadDisplay.bytes(item.bytesPerSecond) + "/s";
+                long left = DownloadDisplay.remainingSeconds(item.bytes, item.total, item.bytesPerSecond);
+                if (left >= 0) result += " • ~" + DownloadDisplay.duration(left) + " restantes";
+            }
+            return result;
         }
-        if (item.status == DownloadManager.STATUS_SUCCESSFUL && item.total > 0) {
-            return statusText + " • " + formatBytes(item.total);
+        if (item.status == DownloadManager.STATUS_SUCCESSFUL)
+            return label + (item.total > 0 ? " • " + formatBytes(item.total) : "");
+        if (item.status == DownloadManager.STATUS_PAUSED || item.status == DownloadManager.STATUS_FAILED)
+            return label + " • " + downloadReason(item);
+        return label;
+    }
+
+    private String downloadReason(DownloadItem item) {
+        int reason = item.reason;
+        if (item.status == DownloadManager.STATUS_PAUSED) {
+            switch (reason) {
+                case DownloadManager.PAUSED_WAITING_TO_RETRY: return "aguardando nova tentativa";
+                case DownloadManager.PAUSED_WAITING_FOR_NETWORK: return "aguardando conexão";
+                case DownloadManager.PAUSED_QUEUED_FOR_WIFI: return "aguardando Wi-Fi";
+                default: return "aguardando condições do sistema";
+            }
         }
-        if (item.status == DownloadManager.STATUS_PAUSED) return statusText + " • aguardando condições de rede";
-        if (item.total > 0) return statusText + " • " + formatBytes(item.total);
-        return statusText;
+        if (reason >= 400 && reason <= 599) return "HTTP " + reason;
+        switch (reason) {
+            case DownloadManager.ERROR_INSUFFICIENT_SPACE: return "sem espaço de armazenamento";
+            case DownloadManager.ERROR_FILE_ALREADY_EXISTS: return "arquivo já existe";
+            case DownloadManager.ERROR_CANNOT_RESUME: return "transferência não retomável";
+            case DownloadManager.ERROR_HTTP_DATA_ERROR: return "erro de transferência HTTP";
+            case DownloadManager.ERROR_UNHANDLED_HTTP_CODE: return "resposta HTTP não suportada";
+            case DownloadManager.ERROR_TOO_MANY_REDIRECTS: return "redirecionamentos em excesso";
+            default: return "falha reportada pelo Android";
+        }
     }
 
     private String downloadStatusText(int status) {
@@ -870,7 +1034,19 @@ public final class MainActivity extends Activity {
                 int newStatus = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
                 long newBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
                 long newTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
-                if (newStatus != item.status || newBytes != item.bytes || newTotal != item.total) changed = true;
+                int newReason = (newStatus == DownloadManager.STATUS_FAILED || newStatus == DownloadManager.STATUS_PAUSED)
+                        ? cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)) : 0;
+                if (newStatus != item.status || newBytes != item.bytes || newTotal != item.total || newReason != item.reason) changed = true;
+                long now = SystemClock.elapsedRealtime();
+                if (newStatus == DownloadManager.STATUS_RUNNING && item.lastSampleBytes >= 0) {
+                    long measured = DownloadDisplay.speed(item.lastSampleBytes, newBytes, now - item.lastSampleMs);
+                    item.bytesPerSecond = measured;
+                } else if (newStatus != DownloadManager.STATUS_RUNNING) {
+                    item.bytesPerSecond = -1;
+                }
+                item.lastSampleBytes = newStatus == DownloadManager.STATUS_RUNNING ? newBytes : -1;
+                item.lastSampleMs = now;
+                item.reason = newReason;
                 item.status = newStatus;
                 item.bytes = newBytes;
                 item.total = newTotal;
@@ -904,9 +1080,8 @@ public final class MainActivity extends Activity {
 
     private void openDownload(DownloadItem item) {
         try {
-            DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-            Uri uri = manager == null ? null : manager.getUriForDownloadedFile(item.id);
-            if (uri == null) {
+            Uri uri = uriForDownload(item);
+            if (uri == null || !"content".equalsIgnoreCase(uri.getScheme())) {
                 Toast.makeText(this, "Arquivo não disponível para abrir", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -927,14 +1102,17 @@ public final class MainActivity extends Activity {
             return;
         }
         String guessed = android.webkit.URLUtil.guessFileName(uri, null, response.headers == null ? null : response.headers.get("Content-Type"));
+        CheckBox unmetered = new CheckBox(this);
+        unmetered.setText("Somente redes não tarifadas (economizar dados)");
+        unmetered.setTextSize(12);
+        unmetered.setPadding(dp(10), dp(4), dp(8), dp(4));
         new AlertDialog.Builder(this)
                 .setTitle("Baixar arquivo?")
                 .setMessage("Origem: " + uri + "\n\nArquivos com login/cookies podem falhar nesta versão.")
+                .setView(unmetered)
                 .setPositiveButton("Baixar", (d, n) -> {
                     try {
-                        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(uri));
-                        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, guessed);
+                        DownloadManager.Request request = createDownloadRequest(uri, guessed, unmetered.isChecked());
                         long id = ((DownloadManager) getSystemService(DOWNLOAD_SERVICE)).enqueue(request);
                         DownloadItem item = new DownloadItem();
                         item.id = id;
@@ -945,6 +1123,7 @@ public final class MainActivity extends Activity {
                         item.bytes = 0;
                         item.total = -1;
                         item.createdAt = System.currentTimeMillis();
+                        item.unmeteredOnly = unmetered.isChecked();
                         downloads.add(0, item);
                         while (downloads.size() > 40) downloads.remove(downloads.size() - 1);
                         saveDownloads();

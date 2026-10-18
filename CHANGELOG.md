@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.0.14 (versionCode 15) - Downloads 2.0
+- Progresso horizontal por transferência, velocidade calculada por amostras reais e ETA aproximada apenas se o tamanho total for conhecido.
+- Filtros Todos/Ativos/Finalizados, resumo de transferências, detalhes e motivos de falha do Android DownloadManager.
+- Compartilhamento de arquivo concluído com URI de conteúdo, confirmação de limpeza de registros finalizados sem excluir arquivos.
+- Configuração por download para redes não tarifadas, com roaming desativado; persistência da preferência na lista local e em novas tentativas.
+- Otimizações: leituras periódicas restritas ao painel aberto, status em memória e apresentação isolados para testes.
+- Mantidas seleção da URL ao toque, histórico, GeckoView 158, três APKs assinados por ABI e Secrets anteriores.
+- Limitações: pausa manual e retomada parcial não são suportadas pelo DownloadManager; não foi copiado código-fonte inacessível do Baixa Fácil.
+- Verificações locais passam, mas compilação Gradle Android completa e testes físicos continuam pendentes.
+
 ## 1.0.13 (versionCode 14) - seleção do endereço e primeira otimização
 - Seleção integral da URL ao tocar no campo de endereço, para substituição imediata ao digitar. Implementados `setSelectAllOnFocus` e `selectAll` no toque e foco, sem alterar as ações Ir, seta do histórico nem navegação do GeckoView.
 - Download interno atualizado: atualização periódica enquanto o painel estiver visível e houver downloads ativos; interrupção das consultas quando o painel é ocultado, a Activity é pausada ou destruída.

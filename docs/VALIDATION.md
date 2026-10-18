@@ -115,3 +115,9 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - Testar comportamento do campo de endereço no dispositivo com SwiftKey e Gboard, teclado aberto/fechado e colar URL.
 - Testar cancelamento real, falha/reinício, download pequeno e grande, ausência de rede, arquivos concluídos e conclusão com app fechado.
 - Lint/Gradle Android completo e testes físicos pendentes para esta versão.
+
+
+## 1.0.14
+- Novos testes JVM de velocidade real, ETA desconhecida, formatos de tamanho e duração.
+- Validação estática do workflow de assinatura e ABI, XML de recursos e integridade ZIP.
+- Não verificado neste ambiente: compilação Android Gradle/GeckoView, funcionamento de download HTTP real e aparência final no aparelho.

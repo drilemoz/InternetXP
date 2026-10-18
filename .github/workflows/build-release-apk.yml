@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.13
+  group: internet-xp-v1.0.14
   cancel-in-progress: false
 jobs:
   apk:
@@ -109,11 +109,11 @@ jobs:
               printf 'APKs existentes: %s\n' "${all_apks[@]}"
               exit 1
             fi
-            out="Internet XP.v1.0.13-${abi}.apk"
+            out="Internet XP.v1.0.14-${abi}.apk"
             cp "$src" "$out"
             "$aapt_bin" dump badging "$out" > "$RUNNER_TEMP/${abi}-badging.txt"
             grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-badging.txt"
-            grep -Fq "versionCode='14' versionName='1.0.13'" "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "versionCode='15' versionName='1.0.14'" "$RUNNER_TEMP/${abi}-badging.txt"
             python3 tools/report_apk.py "$out" "$abi"
             sha256sum "$out" > "$out.sha256"
             printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
@@ -127,12 +127,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
-          if gh release view v1.0.13 >/dev/null 2>&1; then
-            gh release upload v1.0.13 "${assets[@]}" --clobber
+          if gh release view v1.0.14 >/dev/null 2>&1; then
+            gh release upload v1.0.14 "${assets[@]}" --clobber
           else
-            gh release create v1.0.13 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.13' --notes 'Barra de endereço com seleção total no toque; histórico e progresso desacoplados; downloads com atualização sob demanda, cancelamento e nova tentativa. Três APKs Release assinados por ABI, sem Artifact ZIP.'
+            gh release create v1.0.14 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.14' --notes 'Downloads 2.0: filtros, barra de progresso real, velocidade por amostragem, ETA aproximada, motivos de erro, compartilhamento de arquivos concluídos e opção de rede não tarifada. Mantém seleção automática da URL, GeckoView e três APKs Release assinados por ABI, sem Artifact ZIP.'
           fi
-          gh release view v1.0.13 --json url,assets
+          gh release view v1.0.14 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"
