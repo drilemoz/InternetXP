@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.26";
-    public static final int VERSION_CODE = 27;
-    public static final String HEADLINE = "Pop-ups alinhados ao novo menu.";
-    public static final String SUBTITLE = "O Internet XP ficou mais consistente visualmente, com diálogos menos secos, abertura animada e melhor adaptação a telas compactas.";
+    public static final String VERSION_NAME = "1.0.27";
+    public static final int VERSION_CODE = 28;
+    public static final String HEADLINE = "Central de extensões com instalação XPI real.";
+    public static final String SUBTITLE = "Agora os pacotes XPI baixados podem ser enviados ao GeckoView, com importação local, diagnóstico, controles e exportação de complementos.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Pop-ups coerentes", "As janelas de Favoritos, Extensões, Sobre, erros e ações rápidas agora seguem melhor o visual azul e os cartões do novo menu."),
-        new Feature("02", "Cabeçalho refinado", "O menu ganhou um cabeçalho mais forte e a família de diálogos recebeu acabamento visual mais próximo da identidade do Internet XP."),
-        new Feature("03", "Abertura animada", "Painéis e pop-ups passaram a abrir com uma transição suave para deixar a navegação mais agradável."),
-        new Feature("04", "Mais compacto no Redmi A3", "Margens, textos e grade foram ajustados para caber melhor em telas menores sem perder legibilidade."),
-        new Feature("05", "Extensões integradas", "As ações de ativar, desativar, instalar e remover extensões passaram a usar diálogos próprios do aplicativo.")
+        new Feature("01", "Instalar XPI dos Downloads", "O arquivo XPI baixado ganhou ação Instalar XPI, que passa o pacote local ao instalador do motor Mozilla."),
+        new Feature("02", "Importar do aparelho", "O seletor Android importa arquivos XPI; o Internet XP inspeciona o manifesto e o GeckoView valida assinatura e permissões."),
+        new Feature("03", "Central dedicada", "Nova tela consultada diretamente do GeckoView; menu separado de ações com suporte inicial a botões e pop-ups dos complementos."),
+        new Feature("04", "Diagnóstico e segurança", "Versão, ID, assinatura, permissões e motivos de desativação ajudam a investigar incompatibilidades reais."),
+        new Feature("05", "Exportar e excluir", "Exportação do XPI quando o app preservou a cópia, ou JSON de diagnóstico; desinstalação real com limpeza do arquivo arquivado.")
     };
 
     private ReleaseNotes() { }

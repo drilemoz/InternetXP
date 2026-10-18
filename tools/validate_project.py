@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 27" in gradle
-assert "versionName '1.0.26'" in gradle
+assert "versionCode 28" in gradle
+assert "versionName '1.0.27'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -26,9 +26,9 @@ assert 'private void showModuleMenuDialog(' in activity
 assert 'addressBox.setOnClickListener(v -> focusAddressBar(true))' in activity
 assert 'urlBox.setOnTouchListener((v, event) -> {' in activity
 assert 'private void focusAddressBar(boolean showSuggestions)' in activity
-assert "Internet XP.v1.0.26-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.27-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.26' in workflow_text
+assert 'gh release create v1.0.27' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 assert 'name: Compilar APK e publicar na Release' in workflow_text
@@ -45,9 +45,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='27' versionName='1.0.26'" in workflow_text
+assert "versionCode='28' versionName='1.0.27'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.26-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.27-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -97,9 +97,9 @@ for name in ('ic_launcher.xml','ic_launcher_round.xml'):
     ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
 assert (root/'branding/internet_xp_icon_master.png').exists()
 
-assert '1.0.26' in (root/'README.md').read_text()
-assert '1.0.26' in (root/'CHANGELOG.md').read_text()
-assert '1.0.26' in (root/'docs/VALIDATION.md').read_text()
+assert '1.0.27' in (root/'README.md').read_text()
+assert '1.0.27' in (root/'CHANGELOG.md').read_text()
+assert '1.0.27' in (root/'docs/VALIDATION.md').read_text()
 
 # Mandatory per-update release notes: failed checks block CI before Android build.
 import ast
@@ -144,7 +144,7 @@ assert "implementation 'androidx.annotation:annotation:1.11.0'" in gradle, 'Depe
 assert 'import androidx.annotation.OptIn;' in activity
 assert '@OptIn(markerClass = ExperimentalGeckoViewApi.class)' in activity
 assert 'permission.notifyShown();' in activity
-assert 'new Feature("01", "Pop-ups coerentes"' in notes, 'Novidades desatualizadas'
+assert 'new Feature("01", "Instalar XPI dos Downloads"' in notes, 'Novidades desatualizadas'
 print('Dependencia AndroidX @OptIn e notas da versão atual: OK')
 
 # Versao 1.0.25: verificacao estrutural de privacidade
@@ -158,7 +158,7 @@ assert 'StorageController.ClearFlags.ALL_CACHES' in activity
 assert 'runtime.getStorageController().clearData(flags).accept(' in activity
 assert 'private void showCurrentSitePermissions()' in activity
 assert 'trackingProtectionEnabled' in activity
-assert 'new Feature("05", "Extensões integradas"' in notes
+assert 'new Feature("05", "Exportar e excluir"' in notes
 assert (root/'app/src/main/java/br/com/internetxp/PrivacyRules.java').exists()
 assert (root/'app/src/test/java/br/com/internetxp/PrivacyRulesTest.java').exists()
 print('Privacidade, seguranca e isolamento estrutural: OK')
@@ -180,14 +180,14 @@ assert 'private void showAddQuickAccess()' in activity
 assert 'new MenuAction("⚙", "Configurações"' in activity
 assert 'faviconRepository.load(t.url, faviconIcon)' in activity
 assert 'showModuleMenuDialog("Favoritos"' in activity
-assert 'showModuleMenuDialog("Extensões Firefox"' in activity
+assert 'startActivity(new Intent(this, ExtensionManagerActivity.class))' in activity
 assert 'styledDialogContent("Histórico de navegação"' in activity
 assert 'private void showAbout()' in activity
 assert (root/'app/src/main/java/br/com/internetxp/HomePageView.java').exists()
 assert (root/'app/src/main/java/br/com/internetxp/HomePageSettings.java').exists()
 assert (root/'app/src/main/java/br/com/internetxp/FaviconRepository.java').exists()
 assert (root/'app/src/test/java/br/com/internetxp/HomePageSettingsTest.java').exists()
-assert 'new Feature("05", "Extensões integradas"' in notes
+assert 'new Feature("05", "Exportar e excluir"' in notes
 print('Página inicial, favicons, Configurações e diálogos XP: OK')
 
 # v1.0.25: regras para próprio gerenciador e papel de navegador.
@@ -236,10 +236,37 @@ assert "Mais ferramentas" in activity
 print('Menu XP moderno: OK')
 
 
-# v1.0.26: pop-ups alinhados, animações e compactação
+# v1.0.27: pop-ups alinhados, animações e compactação
 assert "animateDialogOpen(" in activity
-assert "confirmUninstallExtension(" in activity
+assert "installDownloadedExtension(" in activity
 assert "isTinyPhone()" in activity
 assert "styleBottomMenuDialog(dialog);\n        animateDialogOpen(wrapper, true);" in activity
-assert "showModuleMenuDialog(name, x.metaData.enabled ?" in activity
+assert (root / 'app/src/main/java/br/com/internetxp/ExtensionManagerActivity.java').exists()
 print('Pop-ups alinhados e animações: OK')
+
+# 1.0.27: extensões são geridas pelo motor e não apenas pelo histórico de downloads
+manager = (root/'app/src/main/java/br/com/internetxp/ExtensionManagerActivity.java').read_text()
+package = (root/'app/src/main/java/br/com/internetxp/ExtensionPackageStore.java').read_text()
+assert 'android:name=".ExtensionManagerActivity"' in manifest_xml
+for token in ('WebExtensionController', '.install(', '.list()', '.disable(', '.enable(', '.uninstall(',
+              'ACTION_OPEN_DOCUMENT', 'ACTION_CREATE_DOCUMENT', 'store.copyToStage(', 'store.archive(',
+              'requiredPermissions', 'signedState', 'disabledFlags'):
+    assert token in manager, f'Modulo de extensoes sem recurso: {token}'
+assert 'MAX_PACKAGE_BYTES = 40L * 1024 * 1024' in package
+assert 'manifest.json' in package
+assert 'addDownloadAction(actions, "Instalar XPI"' in activity
+assert 'void importPackage(Uri source)' in manager
+assert 'void installStaged(File file)' in manager
+assert 'private void changeState(WebExtension x)' in manager
+assert 'private void exportMenu(WebExtension ext)' in manager
+assert '1.0.27' in (root/'AGENTS.md').read_text()
+print('Central real de WebExtensions, SAF e versionamento: OK')
+
+compat = (root/'app/src/main/java/br/com/internetxp/ExtensionCompatibility.java').read_text()
+assert 'isXpiFileName(' in compat and 'isSecurePackageUrl(' in compat
+assert 'attachExtensionActionListeners(' in activity
+assert 'private void showExtensionActions()' in activity
+assert 'onOpenPopup(WebExtension extension' in activity
+assert 'onTogglePopup(WebExtension extension' in activity
+assert (root/'app/src/test/java/br/com/internetxp/ExtensionCompatibilityTest.java').exists()
+print('Acoes de extensoes, popup e regras testaveis: OK')

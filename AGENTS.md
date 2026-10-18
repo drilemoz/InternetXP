@@ -90,3 +90,11 @@
 - Refinar cabeçalhos e animações sem transformar os painéis em tela cheia.
 - Em telas compactas como Redmi A3, reduzir margens, tipografia e altura de elementos quando necessário.
 - Toda alteração futura deve continuar atualizando a tela de Novidades e os metadados sincronizados.
+
+## 1.0.27: central de WebExtensions
+- Extensões são efetivamente instaladas/listadas/ativadas/desativadas/removidas pelo `WebExtensionController` do mesmo `GeckoRuntime` das abas; não inventar ativação a partir de um arquivo baixado.
+- Inspeção local de `.xpi` é preliminar; o GeckoView precisa validar assinatura Mozilla e permissões. Não afirmar suporte a toda extensão do Firefox Desktop.
+- Não exportar como XPI um JSON ou arquivo sintetizado: preservar pacote importado após sucesso para exportar, ou exportar somente metadados JSON.
+- Na nova versão manter serviço de downloads existente, listas privadas e sincronização obrigatória dos arquivos/versionCode da Release.
+
+- Extensões com browser_action/page_action precisam ter ação registrada por runtime/aba e apresentar pop-up em GeckoView próprio. Não afirmar que todas as APIs Firefox de UI já são cobertas pelo host.

@@ -69,6 +69,8 @@ import java.util.Date;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.HashMap;
 
 /** Navegador Android com GeckoView e layout XP compacto para tela de telefone. */
 public final class MainActivity extends Activity {
@@ -92,6 +94,12 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_SITE_PERMISSIONS = 702;
 
     private static GeckoRuntime runtime;
+    private final Map<String, WebExtension> activeExtensions = new HashMap<>();
+    private final Map<String, WebExtension.Action> defaultExtensionActions = new HashMap<>();
+    private final Map<String, Map<GeckoSession, WebExtension.Action>> sessionExtensionActions = new HashMap<>();
+    private GeckoSession extensionPopupSession;
+    private GeckoView extensionPopupView;
+    private AlertDialog extensionPopupDialog;
 
     private final ArrayList<Tab> tabs = new ArrayList<>();
     private final ArrayList<String> bookmarks = new ArrayList<>();
@@ -291,6 +299,7 @@ public final class MainActivity extends Activity {
             if (runtime == null) runtime = GeckoRuntime.create(getApplicationContext());
             extensionPrompts();
             if (!restoreTabs()) addTab(configuredHome());
+            registerExtensionActions();
             handleIncomingLink(getIntent());
             // Novidades são exibidas apenas uma vez por versionCode e reaparecem ao atualizar.
             if (state == null && WhatsNewActivity.shouldShow(storage)) {
@@ -580,7 +589,8 @@ public final class MainActivity extends Activity {
 
         secondary.add(new MenuAction("↻", "Atualizar página", "Recarregue o site atual caso algo não tenha carregado direito.", () -> { Tab t = current(); if (t != null) t.session.reload(); }));
         secondary.add(new MenuAction("🔒", "Privacidade e dados", "Limpe cookies, cache, permissões e ajuste o modo de proteção.", this::showPrivacyMenu));
-        secondary.add(new MenuAction("🧩", "Extensões", "Gerencie complementos do Firefox compatíveis com o Internet XP.", this::showExtensions));
+        secondary.add(new MenuAction("🧩", "Extensões", "Instalar, importar, excluir e configurar extensões Firefox.", this::showExtensions));
+        secondary.add(new MenuAction("▣", "Ações das extensões", "Execute botões dos complementos ativos, inclusive pop-ups.", this::showExtensionActions));
         secondary.add(new MenuAction("⇪", "Compartilhar página", "Copie ou compartilhe o endereço aberto em outros aplicativos.", this::share));
         secondary.add(new MenuAction("ⓘ", "Novidades desta versão", "Consulte a tela com o resumo estilizado das últimas alterações.", () -> startActivity(new Intent(this, WhatsNewActivity.class))));
         secondary.add(new MenuAction("ℹ", "Sobre", "Informações da versão, motor e principais recursos do navegador.", this::showAbout));
@@ -1076,6 +1086,7 @@ public final class MainActivity extends Activity {
                 // A nova janela é carregada pelo próprio GeckoView. Não chamar loadUri aqui.
                 Tab popup = createTab(HOME, "Nova aba", tab.privateMode);
                 popup.session.open(runtime);
+                attachExtensionActionListeners(popup.session);
                 popup.opened = true;
                 popup.loaded = true;
                 tabs.add(popup);
@@ -1174,6 +1185,7 @@ public final class MainActivity extends Activity {
         Tab tab = current();
         if (!tab.opened) {
             tab.session.open(runtime);
+            attachExtensionActionListeners(tab.session);
             tab.opened = true;
         }
         tab.session.setActive(true);
@@ -1749,6 +1761,8 @@ public final class MainActivity extends Activity {
             actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
             actions.setPadding(0, dp(4), 0, 0);
             if (item.status == AppDownloadEngine.STATUS_SUCCESSFUL) {
+                if (ExtensionCompatibility.isXpiFileName(item.fileName))
+                    addDownloadAction(actions, "Instalar XPI", () -> installDownloadedExtension(item));
                 addDownloadAction(actions, "Abrir", () -> openDownload(item));
                 addDownloadAction(actions, "Compartilhar", () -> shareDownload(item));
                 addDownloadAction(actions, "Salvar cópia", () -> exportDownload(item));
@@ -2327,6 +2341,7 @@ public final class MainActivity extends Activity {
     private void clearBrowserData(long flags, boolean clearLocalHistory) {
         if (runtime == null) return;
         uiHandler.removeCallbacks(downloadRefresh);
+        if (extensionPopupDialog != null) extensionPopupDialog.dismiss();
         if (view != null) view.releaseSession();
         for (Tab tab : tabs) if (tab.opened) tab.session.close();
         tabs.clear();
@@ -2453,80 +2468,126 @@ public final class MainActivity extends Activity {
         return r;
     }
 
-    private void showExtensions() {
+    private final WebExtension.ActionDelegate extensionActionDelegate = new WebExtension.ActionDelegate() {
+        @Override public void onBrowserAction(WebExtension extension, GeckoSession session, WebExtension.Action action) {
+            recordExtensionAction(extension, session, action);
+        }
+        @Override public void onPageAction(WebExtension extension, GeckoSession session, WebExtension.Action action) {
+            recordExtensionAction(extension, session, action);
+        }
+        @Override public GeckoResult<GeckoSession> onOpenPopup(WebExtension extension, WebExtension.Action action) {
+            return openExtensionPopup(extension, false);
+        }
+        @Override public GeckoResult<GeckoSession> onTogglePopup(WebExtension extension, WebExtension.Action action) {
+            return openExtensionPopup(extension, true);
+        }
+    };
+
+    private void recordExtensionAction(WebExtension extension, GeckoSession session, WebExtension.Action action) {
+        if (session == null) defaultExtensionActions.put(extension.id, action);
+        else {
+            Map<GeckoSession, WebExtension.Action> map = sessionExtensionActions.get(extension.id);
+            if (map == null) { map = new HashMap<>(); sessionExtensionActions.put(extension.id, map); }
+            map.put(session, action);
+        }
+    }
+
+    private void attachExtensionActionListeners(GeckoSession session) {
+        for (WebExtension ext : activeExtensions.values())
+            session.getWebExtensionController().setActionDelegate(ext, extensionActionDelegate);
+    }
+
+    private void registerExtensionActions() {
         if (runtime == null) return;
         runtime.getWebExtensionController().list().accept(list -> runOnUiThread(() -> {
             if (isFinishing() || isDestroyed()) return;
-            ArrayList<MenuAction> actions = new ArrayList<>();
-            actions.add(new MenuAction("＋", "Instalar extensão XPI", "Instale um pacote Mozilla assinado a partir de uma URL HTTPS.", this::installExtension));
-            actions.add(new MenuAction("🧩", "Catálogo Mozilla Add-ons", "Visite a página de complementos compatíveis com Firefox Android.", () -> navigate("https://addons.mozilla.org/android/")));
-            for (WebExtension extension : list) {
-                String name = extension.metaData.name == null ? extension.id : extension.metaData.name;
-                String description = extension.metaData.enabled ? "Ativada. Toque para gerenciar ou desinstalar." : "Desativada. Toque para ativar ou desinstalar.";
-                actions.add(new MenuAction("▣", name, description, () -> extensionActions(extension)));
+            activeExtensions.clear(); defaultExtensionActions.clear(); sessionExtensionActions.clear();
+            for (WebExtension ext : list) {
+                if (!ext.metaData.enabled) continue;
+                activeExtensions.put(ext.id, ext);
+                ext.setActionDelegate(extensionActionDelegate);
+                for (Tab tab : tabs) {
+                    if (tab.opened) tab.session.getWebExtensionController().setActionDelegate(ext, extensionActionDelegate);
+                }
             }
-            showModuleMenuDialog("Extensões Firefox", list.isEmpty() ? "Nenhuma extensão instalada. Explore o catálogo ou instale um XPI." : "Gerencie suas extensões e permissões.", actions);
-        }), error -> runOnUiThread(() -> showError(error)));
+        }), error -> android.util.Log.w("InternetXP", "Falha ao consultar ações de extensão", error));
     }
 
-    private void extensionActions(WebExtension x) {
-        String name = x.metaData.name == null ? x.id : x.metaData.name;
+    private WebExtension.Action currentExtensionAction(WebExtension extension) {
+        Map<GeckoSession, WebExtension.Action> specific = sessionExtensionActions.get(extension.id);
+        Tab current = current();
+        WebExtension.Action local = current == null || specific == null ? null : specific.get(current.session);
+        WebExtension.Action standard = defaultExtensionActions.get(extension.id);
+        if (local == null) return standard;
+        return standard == null ? local : local.withDefault(standard);
+    }
+
+    private void showExtensionActions() {
         ArrayList<MenuAction> actions = new ArrayList<>();
-        actions.add(new MenuAction(x.metaData.enabled ? "⏻" : "✓", x.metaData.enabled ? "Desativar" : "Ativar",
-                x.metaData.enabled ? "Desligue a extensão temporariamente sem removê-la." : "Ative a extensão novamente para uso imediato.", () -> {
-                    GeckoResult<WebExtension> r = x.metaData.enabled
-                            ? runtime.getWebExtensionController().disable(x, WebExtensionController.EnableSource.USER)
-                            : runtime.getWebExtensionController().enable(x, WebExtensionController.EnableSource.USER);
-                    r.accept(v -> runOnUiThread(this::showExtensions), e -> runOnUiThread(() -> showError(e)));
-                }));
-        actions.add(new MenuAction("✕", "Desinstalar", "Remova a extensão instalada do navegador.", () -> confirmUninstallExtension(x)));
-        showModuleMenuDialog(name, x.metaData.enabled ? "Extensão ativa. Escolha uma ação abaixo." : "Extensão desativada. Você pode ativá-la ou remover.", actions);
+        for (WebExtension ext : activeExtensions.values()) {
+            WebExtension.Action action = currentExtensionAction(ext);
+            if (action == null || Boolean.FALSE.equals(action.enabled)) continue;
+            String title = ext.metaData.name == null ? ext.id : ext.metaData.name;
+            String caption = action.title == null || action.title.isEmpty() ? "Executar botão ou abrir pop-up" : action.title;
+            actions.add(new MenuAction("▣", title, caption, () -> action.click()));
+        }
+        actions.add(new MenuAction("⚙", "Gerenciar extensões", "Instalar, ativar, desativar ou remover.", this::showExtensions));
+        showModuleMenuDialog("Ações das extensões", actions.size() == 1
+                ? "Nenhuma ação de botão disponível. Complementos que funcionam automaticamente podem não criar botões."
+                : "Execute a ação do complemento na aba aberta. Alguns precisam de permissão ou site compatível.", actions);
     }
 
-    private void confirmUninstallExtension(WebExtension x) {
-        LinearLayout content = styledDialogContent("Desinstalar extensão", "Remover este complemento do Internet XP?");
-        String name = x.metaData.name == null ? x.id : x.metaData.name;
-        TextView detail = text(name, 13, TEXT);
-        detail.setTypeface(Typeface.DEFAULT_BOLD);
-        detail.setPadding(dp(6), dp(8), dp(6), dp(8));
-        detail.setBackground(rounded(Color.WHITE, BORDER, 10));
-        content.addView(detail, new LinearLayout.LayoutParams(-1, -2));
+    private GeckoResult<GeckoSession> openExtensionPopup(WebExtension extension, boolean toggle) {
+        if (extensionPopupDialog != null && extensionPopupDialog.isShowing()) {
+            if (toggle) { extensionPopupDialog.dismiss(); return GeckoResult.fromValue(null); }
+            extensionPopupDialog.dismiss();
+        }
+        if (isFinishing() || isDestroyed()) return GeckoResult.fromValue(null);
+        GeckoSession popup = new GeckoSession();
+        popup.open(runtime);
+        GeckoView popupView = new GeckoView(this);
+        popupView.setSession(popup);
+        String title = extension.metaData.name == null ? "Extensão" : extension.metaData.name;
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(content)
-                .setPositiveButton("Remover", (d2, n2) -> runtime.getWebExtensionController().uninstall(x)
-                        .accept(v -> runOnUiThread(this::showExtensions), e -> runOnUiThread(() -> showError(e))))
-                .setNegativeButton("Cancelar", null)
+                .setTitle(title)
+                .setView(popupView)
+                .setNegativeButton("Fechar", (d, w) -> d.dismiss())
                 .create();
-        dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
+        extensionPopupSession = popup; extensionPopupView = popupView; extensionPopupDialog = dialog;
+        dialog.setOnDismissListener(d -> {
+            popupView.releaseSession(); popup.close();
+            if (extensionPopupSession == popup) {
+                extensionPopupSession = null; extensionPopupView = null; extensionPopupDialog = null;
+            }
+        });
+        dialog.show();
+        android.view.ViewGroup.LayoutParams popupParams = popupView.getLayoutParams();
+        if (popupParams != null) {
+            popupParams.height = dp(isShortPhone() ? 300 : 420);
+            popupView.setLayoutParams(popupParams);
+        }
+        return GeckoResult.fromValue(popup);
     }
 
-    private void installExtension() {
-        AutoCompleteTextView link = new AutoCompleteTextView(this);
-        link.setSingleLine();
-        link.setHint("https://.../complemento.xpi");
-        link.setTextSize(14);
-        link.setBackground(rounded(Color.WHITE, BORDER, 10));
-        link.setPadding(dp(10), dp(12), dp(10), dp(12));
-        LinearLayout content = styledDialogContent("Instalar extensão Mozilla assinada", "Cole o link direto HTTPS para o pacote XPI assinado.");
-        content.addView(link, new LinearLayout.LayoutParams(-1, -2));
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setView(content)
-                .setPositiveButton("Instalar", (d, n) -> {
-                    String uri = link.getText().toString().trim();
-                    if (!uri.startsWith("https://")) {
-                        Toast.makeText(this, "É obrigatório HTTPS", Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    runtime.getWebExtensionController().install(uri)
-                            .accept(x -> runOnUiThread(() -> {
-                                        status.setText("Extensão instalada");
-                                        showExtensions();
-                                    }),
-                                    e -> runOnUiThread(() -> showError(e)));
-                })
-                .setNegativeButton("Cancelar", null)
-                .create();
-        dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
+    /** Abre a central dedicada em vez de misturar extensões com o menu de ações rápidas. */
+    private void showExtensions() {
+        startActivity(new Intent(this, ExtensionManagerActivity.class));
+    }
+
+    static synchronized GeckoRuntime extensionRuntime(android.content.Context context) {
+        if (runtime == null) runtime = GeckoRuntime.create(context.getApplicationContext());
+        return runtime;
+    }
+
+    private void installDownloadedExtension(DownloadItem item) {
+        Uri source = uriForDownload(item);
+        if (source == null) {
+            Toast.makeText(this, "Pacote XPI não encontrado", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, ExtensionManagerActivity.class);
+        intent.putExtra("extension_xpi_uri", source);
+        startActivity(intent);
     }
 
     private void showError(Throwable e) {
@@ -2606,6 +2667,10 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (runtime != null) {
+            extensionPrompts();
+            registerExtensionActions();
+        }
         if (downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) {
             renderDownloadsPanel();
             scheduleDownloadRefresh();
@@ -2629,6 +2694,7 @@ public final class MainActivity extends Activity {
         permissionGranted = null;
         permissionDenied = null;
         uiHandler.removeCallbacks(downloadRefresh);
+        if (extensionPopupDialog != null) extensionPopupDialog.dismiss();
         if (view != null) view.releaseSession();
         for (Tab t : tabs) if (t.opened) t.session.close();
         tabs.clear();

@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.26
+  group: internet-xp-v1.0.27
   cancel-in-progress: false
 jobs:
   apk:
@@ -111,11 +111,11 @@ jobs:
               printf 'APKs existentes: %s\n' "${all_apks[@]}"
               exit 1
             fi
-            out="Internet XP.v1.0.26-${abi}.apk"
+            out="Internet XP.v1.0.27-${abi}.apk"
             cp "$src" "$out"
             "$aapt_bin" dump badging "$out" > "$RUNNER_TEMP/${abi}-badging.txt"
             grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-badging.txt"
-            grep -Fq "versionCode='27' versionName='1.0.26'" "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "versionCode='28' versionName='1.0.27'" "$RUNNER_TEMP/${abi}-badging.txt"
             python3 tools/report_apk.py "$out" "$abi"
             sha256sum "$out" > "$out.sha256"
             printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
@@ -129,12 +129,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
-          if gh release view v1.0.26 >/dev/null 2>&1; then
-            gh release upload v1.0.26 "${assets[@]}" --clobber
+          if gh release view v1.0.27 >/dev/null 2>&1; then
+            gh release upload v1.0.27 "${assets[@]}" --clobber
           else
-            gh release create v1.0.26 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.26' --notes 'Menu rápido redesenhado no estilo XP Moderno, com grade de atalhos principais, menos margem lateral e mais altura útil no popup; diálogos modulares ampliados e versão 1.0.26 com pop-ups alinhados, animação refinada e compactação melhor para telas pequenas. Três APKs Release assinados por ABI.'
+            gh release create v1.0.27 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.27' --notes 'Nova central dedicada de extensões WebExtensions com importação SAF de XPI, instalação real pelo GeckoView, instalação de downloads XPI, diagnóstico, exportação e ativar/desativar/excluir. Três APKs Release assinados por ABI.'
           fi
-          gh release view v1.0.26 --json url,assets
+          gh release view v1.0.27 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

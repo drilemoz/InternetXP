@@ -1,3 +1,14 @@
+## 1.0.27: instalação e gerenciamento de WebExtensions
+- Em **Downloads** baixar um XPI assinado Mozilla, aguardar conclusão e tocar **Instalar XPI**. Conferir prompt de permissões, sucesso/erro efetivo da instalação e persistência na lista depois de reiniciar o navegador.
+- Em **Menu > Extensões** importar o mesmo XPI pelo SAF. Validar arquivo corrompido, sem `manifest.json`, sem assinatura, manifesto V2/V3, tamanho acima de 40 MiB e URL que não é um XPI.
+- **Extensões instaladas**: alternar estado e observar `enabled` retornado por `list`; excluir e conferir remoção; testar sob bloqueio de assinatura ou compatibilidade.
+- **Exportar** XPI só após importação local; conferir bytes do arquivo e reimportação. Instalada por URL: exportar apenas JSON de diagnóstico, sem inventar cópia do XPI.
+- **Aplicação real**: instalar extensão simples com content script conhecido em página de teste compatível, conferir efeito na página; verificar que apenas `enabled=true` não demonstra execução de scripts em cada site.
+- **Ações**: testar um complemento com browser_action/page_action e pop-up (ex.: Cookie Editor), clicar em Menu > Ações das extensões, conferir que o pop-up abre na aba atual e que pode ser fechado sem travar o navegador. Testar também abas novas, inativas e privadas.
+- Testar Mozilla AMO aberto no Internet XP, incluindo links com redirecionamento e downloads com nome `.xpi`.
+- Conferir permissão de leitura SAF e `content://` de download interno, exportação, rotação e saída da Activity durante I/O.
+- Executar `python3 tools/validate_project.py`, testes JVM, `:app:lintDebug :app:assembleDebug` e `:app:assembleRelease` no GitHub Actions. O build Android e a instalação em aparelho real permanecem **não verificados localmente**.
+
 ## 1.0.26: pop-ups, animação e compactação
 - Verificar se Favoritos, Extensões, Sobre, Erros e diálogos de ações seguem o novo visual azul com cartões.
 - Confirmar animação de abertura no menu principal e nos diálogos modulares.

@@ -20,6 +20,7 @@
         android:grantUriPermissions="true">
       <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/xp_file_paths" />
     </provider>
+    <activity android:name=".ExtensionManagerActivity" android:exported="false" />
     <activity android:name=".WhatsNewActivity" android:exported="false" />
     <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>

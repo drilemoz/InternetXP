@@ -1,33 +1,29 @@
-# Internet XP v1.0.26
+# Internet XP v1.0.27 (versionCode 28)
 
-Navegador Android com motor Mozilla GeckoView 158, visual inspirado no Windows XP/Internet Explorer e interface compacta para celulares.
+Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
 
-## Novidades da v1.0.26
-- Outros pop-ups agora seguem melhor o novo menu, com cabeçalhos azulados, cartões brancos e visual mais coerente.
-- Cabeçalho do menu refinado e animação de abertura aplicada ao painel principal e aos diálogos modulares.
-- Menus e pop-ups mais compactos em telas menores como o Redmi A3, com menos margens laterais e ajustes de tipografia.
-- Ações de extensões agora usam diálogos no estilo do app, em vez de caixas secas do sistema.
-- Tela de Novidades, README, CHANGELOG, validações e workflow sincronizados com a versão 1.0.26.
+## Extensões: implementação 1.0.27
 
-## Novidades anteriores da v1.0.25 (versionCode 26)
-- Gerenciador de downloads próprio escrito em Java, sem Android DownloadManager.
-- Fluxo recebido por `GeckoSession.ContentDelegate.onExternalResponse` salvo pelo Internet XP, sem abrir navegador do sistema; fallback de download pelo `GeckoWebExecutor` nos casos em que não há corpo de resposta.
-- Progresso, velocidade observada, cancelamento, nova tentativa (reinicia do começo), visualização, compartilhamento e exportação SAF (Salvar cópia).
-- Arquivos salvos na área externa privativa do Internet XP, com `FileProvider`; não são enviados automaticamente para a pasta pública Downloads. Se desejar manter uma cópia visível no gerenciador de arquivos, use **Salvar cópia**.
-- Downloads anteriores gerenciados pelo Android não são migrados fisicamente nem apagados; a lista local é marcada para nova tentativa, e arquivos anteriores continuam onde o Android os salvou.
-- Navegador reconhecido pelo Android: intenção `ACTION_VIEW`/`BROWSABLE`/`DEFAULT` para `http` e `https`, tratamento de links recebidos e menu **Navegador padrão** usando `RoleManager` quando disponível.
-- Tela estilizada de Novidades 1.0.25 atualizada, com explicações das cinco mudanças.
+- **Menu > Extensões** abre uma central independente para importar XPI do aparelho (SAF), instalar por URL HTTPS direta, abrir catálogo Mozilla e gerenciar complementos.
+- **Downloads > Instalar XPI** aparece nos downloads concluídos com nome `.xpi`: conecta o arquivo já baixado ao instalador **real** `GeckoRuntime.getWebExtensionController().install(fileUri)`.
+- Importação local: cópia privada temporária com limite de 40 MiB, verificação básica do ZIP e `manifest.json` (MV2 ou MV3), `strict_min_version` quando presente, aviso sobre compatibilidade, depois confirmação de permissões e de assinatura pelo GeckoView.
+- A lista de complementos instalados é consultada do **runtime** do motor Mozilla, não de uma lista fictícia. Cada extensão permite ativar/desativar, examinar identificador/versão/permissões/flags de desativação, excluir e exportar.
+- **Menu > Ações das extensões** permite executar ações de botão de extensões ativas, com suporte inicial a pop-ups GeckoView e associação de ações à aba atual. Nem todas as APIs de um navegador Firefox completo estão implementadas pelo host.
+- Pacotes locais importados são preservados no armazenamento privado **somente após instalação bem-sucedida** e podem ser exportados como `.xpi` via SAF. Extensões instaladas diretamente da rede ou anteriores à atualização podem exportar informações de diagnóstico `.json`, mas o GeckoView não expõe seus arquivos XPI originais diretamente por API pública.
+- A remoção usa `uninstall` e apaga a cópia XPI privada associada, quando existir. A ativação/desativação também opera no `WebExtensionController`.
 
-### Limitações
-- Transferências são processadas em um executor dentro do processo do aplicativo. **Não há serviço foreground persistente**; o Android pode interromper downloads se encerrar o processo. Ao reabrir, transferências interrompidas são marcadas como falhas e podem ser reiniciadas.
-- Não foi implementada retomada HTTP Range de transferências parciais; nova tentativa é um download novo.
-- A instalação de extensões XPI continua pelo `WebExtensionController` do GeckoView, separada do download de pacotes XPI.
-- Não é possível impedir que o Android ofereça outros navegadores ou force links verificados de determinados aplicativos; escolha o Internet XP no seletor ou em Apps padrão.
+## O que a compatibilidade realmente significa
 
-## Compilação e distribuição
-- `versionName 1.0.25`, `versionCode 27`, `minSdk 26`, `compileSdk 37`.
-- Três APKs Release assinados: `armeabi-v7a`, `arm64-v8a`, `x86_64` diretamente no GitHub Releases; sem Artifact ZIP.
-- Quatro Repository Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
-- O ZIP entregue é código-fonte, não APK instalável.
+- A análise do manifesto é **preliminar**. O GeckoView faz as verificações efetivas de assinatura e instalação. Uma extensão de desktop ou específica de APIs Chromium pode não ser compatível, mesmo tendo manifest válido.
+- **Instalada e ativa** significa que a extensão está registrada e habilitada no motor. **Não comprova** que os scripts, menus ou ações dela modificam todas as páginas: isso depende de APIs, permissões, sites e restrições da própria extensão.
+- É necessário um **XPI assinado pela Mozilla** para o método de instalação normal. Pacotes XPI arbitrários de terceiros podem ser recusados. URLs devem apontar para o próprio pacote XPI, não apenas para a página de catálogo.
+- Não há exportação fiel de código ou configuração de extensões já instaladas sem que o pacote tenha sido preservado previamente.
 
-Consulte `AGENTS.md`, `CHANGELOG.md` e `docs/VALIDATION.md` antes de modificar.
+## Builds
+
+- `versionName=1.0.27`, `versionCode=28`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+- O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
+- As operações de download continuam no gerenciador interno e não no DownloadManager do Android.
+
+Veja `CHANGELOG.md`, `AGENTS.md` e `docs/VALIDATION.md` para detalhes e pendências de testes em aparelhos reais.

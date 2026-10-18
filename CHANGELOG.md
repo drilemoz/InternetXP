@@ -1,3 +1,12 @@
+## 1.0.27 (versionCode 28) - central especial de extensões WebExtensions
+- Instalador real para arquivos `.xpi` já salvos em Downloads usando GeckoView, sem repetir o download.
+- Importação local SAF com limite de tamanho, inspeção do manifesto ZIP e validação efetiva da assinatura Mozilla pelo motor.
+- Gerenciador de extensões em Activity independente: estados lidos no GeckoView, alternância de atividade, desinstalação, permissões, metadados e diagnóstico.
+- Novo menu Ações das extensões registra browser_action/page_action e oferece abertura inicial de pop-ups pela API GeckoView, para complementos que precisam de interação.
+- Exportação do XPI arquivado em importações locais, ou JSON de diagnóstico quando o pacote original não está disponível pela API.
+- Controles de confirmação, tarefas de I/O fora da thread de interface e documentação de limitações de compatibilidade.
+- Atualizadas tela de Novidades, README, AGENTS, workflow, validações e versão sequencial.
+
 # CHANGELOG
 
 ## 1.0.26 (versionCode 27) - pop-ups alinhados ao menu XP
