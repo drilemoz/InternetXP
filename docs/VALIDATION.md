@@ -1,3 +1,16 @@
+# Validação v1.0.4
+
+- [x] Logs da execução 4 lidos no ZIP enviado: a instalação do Android SDK 37.0 concluiu, `:app:checkDebugAarMetadata` passou e `:app:compileDebugJavaWithJavac` concluiu com aviso de API obsoleta (sem erro).
+- [x] Erro objetivo em `:app:processDebugMainManifest`: `uses-sdk:minSdkVersion 24 cannot be smaller than version 26 declared in library org.mozilla.geckoview:geckoview:158.0.20261007201254`.
+- [x] minSdk 24 → 26; nenhuma utilização de `tools:overrideLibrary`.
+- [x] `versionName` 1.0.4, `versionCode` 5, README, AGENTS, CHANGELOG, workflow, app e Sobre sincronizados.
+- [x] Workflow mantém publicação de APK direto na GitHub Release, sem ZIP em Artifacts.
+- [ ] Aguardar a compilação completa v1.0.4 no GitHub Actions e verificar o relatório `aapt dump badging`, APK e Release.
+- [ ] Validar instalação/lançamento, interface, navegação e extensões em aparelho Android 8.0+ ARM64.
+- [ ] Definir assinatura persistente com KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS e KEY_PASSWORD antes de distribuir atualização garantida.
+
+---
+
 # Validação v1.0.3
 
 - [x] Log do workflow 3 analisado: etapa `SDK` executou `sdkmanager --install 'platforms;android-37' 'build-tools;36.0.0'` e falhou com `Failed to find package 'platforms;android-37'`, código 1.

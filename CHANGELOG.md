@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.0.4 (versionCode 5) - correção do workflow 4
+- Logs da quarta execução: SDK 37.0 instalado, `:app:checkDebugAarMetadata` e `:app:compileDebugJavaWithJavac` aprovados; falha na tarefa `:app:processDebugMainManifest`.
+- Causa exata: o GeckoView `158.0.20261007201254` declara minSdk 26, enquanto o aplicativo mantinha minSdk 24.
+- Corrige minSdk 24 → 26 (Android 8.0+); mantém `compileSdk 37`, `targetSdk 35`, GeckoView 158, AGP 9.1.1 e Gradle 9.3.1.
+- Não usa `tools:overrideLibrary`, que ocultaria a incompatibilidade de APIs.
+- Verifica a versão e o minSdk do APK gerado no workflow antes de publicá-lo, mantendo GitHub Releases com APK direto e sem Artifacts ZIP.
+- Sincroniza `versionName` 1.0.4, `versionCode` 5, menu Sobre, README, AGENTS, notas da Release e documentação.
+- Ainda não existe APK 1.0.4 compilado e validado; serão necessários novos testes CI e no aparelho.
+
 ## 1.0.3 (versionCode 4) - correção do workflow 3
 - Logs da terceira execução analisados: `sdkmanager` encerrou com `Failed to find package 'platforms;android-37'` antes do Gradle.
 - Corrige o pacote para `platforms;android-37.0`, nome realmente disponibilizado pelo SDK Android 17.
