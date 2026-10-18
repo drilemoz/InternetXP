@@ -1,4 +1,14 @@
-# CHANGELOG
+# Changelog
+
+## 1.0.22 (versionCode 23) - página inicial, favoritos e diálogos XP
+- Adicionada página inicial nativa (`about:blank`) com campo de pesquisa centralizado e grade de atalhos para favoritos.
+- Botão Adicionar disponível diretamente na página inicial, com confirmação de URL para salvar favoritos.
+- Tela modular Configurações permite escolher a página inicial nativa ou uma URL personalizada, persistida localmente.
+- Favicons HTTPS carregados de `/favicon.ico` do próprio domínio, com cache de memória, limites de conexão e fallback por letra; sem terceiros.
+- Mostra favicon opcional ao lado do indicador de segurança, preservando o cadeado verificado pelo GeckoView.
+- Menus de Favoritos e Extensões convertidos em cartões estilo XP; Sobre e Histórico com layout estilizado.
+- Menu modular com largura e altura reduzidas para facilitar uso em telas como Redmi A3.
+- Novidades, AGENTS, documentação, testes, workflow e Release sincronizados.
 
 ## 1.0.21 (versionCode 22) - navegação privada e segurança
 - GeckoSession privado, sem persistência no histórico e no backup local de abas.

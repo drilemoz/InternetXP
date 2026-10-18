@@ -1,13 +1,16 @@
-# Internet XP v1.0.21
+# Internet XP v1.0.22
 
 Navegador Android com motor Mozilla GeckoView 158, visual inspirado no Windows XP/Internet Explorer e interface compacta para celulares.
 
-## Novidades (versionCode 22)
-- Menu principal substituído por um hub em módulos com ícones e descrições.
-- Barra de endereço com foco mais confiável ao toque e seleção automática do endereço.
-- Ajustes de densidade e altura para telas compactas, incluindo Redmi A3.
-- Painel de privacidade migrado para o mesmo estilo em módulos.
-- Barra inferior e painel de downloads mais compactos em telas pequenas.
+## Novidades (versionCode 23)
+- Página inicial nativa leve em `about:blank`, com busca centralizada e grade de favoritos.
+- Atalho **Adicionar** na página inicial e diálogo para salvar um endereço, sem perder a lista existente.
+- **Configurações** no menu: escolha entre a página inicial nativa do Internet XP ou a URL de um site.
+- Favicons buscados por HTTPS diretamente do domínio do favorito (sem terceiros), em segundo plano, com cache limitado e fallback por inicial.
+- Barra de endereço mantém cadeado separado do favicon, quando disponível.
+- Menus de Favoritos e Extensões em cartões com ícones; Sobre e Histórico estilizados; menu principal mais estreito e menos alto.
+- Barra de endereço seleciona o URL inteiro ao toque; botões compactos mantidos para Redmi A3.
+- Tela de Novidades atualizada para v1.0.22.
 
 
 - Abas privadas reais pelo `GeckoSessionSettings.Builder.usePrivateMode(true)`, sem gravar URLs no histórico nem restaurá-las após reinício.
@@ -23,7 +26,7 @@ Navegador Android com motor Mozilla GeckoView 158, visual inspirado no Windows X
 A navegação privada evita salvar histórico/abas no Internet XP, mas não oculta atividade da rede, operadora, sites, sistema Android ou de eventuais extensões; arquivos baixados permanecem no aparelho. Fechar o app elimina abas privadas, mas testar em dispositivo é indispensável para confirmar o isolamento de cookies/dados do GeckoView.
 
 ## Compilação e distribuição
-- `versionName 1.0.21`, `versionCode 22`, `minSdk 26`, `compileSdk 37`.
+- `versionName 1.0.22`, `versionCode 23`, `minSdk 26`, `compileSdk 37`.
 - Três APKs Release assinados: `armeabi-v7a`, `arm64-v8a`, `x86_64` diretamente no GitHub Releases; sem Artifact ZIP.
 - Quatro Repository Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP entregue é código-fonte, não APK instalável.

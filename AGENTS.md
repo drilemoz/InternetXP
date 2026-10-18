@@ -55,3 +55,11 @@
 - Para limpar dados persistentes via StorageController.clearData, encerrar todas as sessões antes de executar o comando assíncrono; não fingir sucesso antes do callback.
 - Fechar e limpar cache/cookies pode desconectar sites; downloads e favoritos não são apagados automaticamente. Avisar que downloads privados continuam fora do isolamento do navegador.
 - Em toda mudança atualizar ReleaseNotes.FEATURES e metadados, inclusive a versão 1.0.21 em todos os pontos.
+
+## 1.0.22: página inicial e consistência visual
+- Manter a página inicial nativa por padrão: fundo branco, pesquisa centralizada e grade de favoritos com Adicionar.
+- A página inicial personalizada deve ser persistida nas preferências e validada para URLs HTTP(S); não carregar termos de busca como sites iniciais.
+- Favicons opcionais devem ser buscados apenas por HTTPS diretamente do domínio, sem serviços de terceiros, com cache limitado e fallback.
+- Manter o indicador de segurança do GeckoView separado dos favicons; nenhum favicon comprova HTTPS confiável.
+- Favoritos, Extensões, Histórico, Sobre e Configurações devem seguir padrão visual XP; menu principal compacto e legível em Redmi A3.
+- Em todas as futuras alterações, atualizar ReleaseNotes, Novidades, Gradle, README, CHANGELOG, docs/VALIDATION, workflow e versionCode sequencialmente.

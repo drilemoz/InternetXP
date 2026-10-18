@@ -41,6 +41,9 @@ import android.widget.Toast;
 import android.widget.ProgressBar;
 import android.widget.HorizontalScrollView;
 import android.widget.CheckBox;
+import android.widget.FrameLayout;
+import android.view.WindowManager;
+import java.net.URI;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -83,6 +86,7 @@ public final class MainActivity extends Activity {
     private static final String PREF_HISTORY_DETAILS = "history_details";
     private static final String PREF_OPEN_TABS = "open_tabs_v1";
     private static final String PREF_TRACKING_PROTECTION = "tracking_protection_v1";
+    private static final String PREF_HOME_PAGE = "home_page_v1";
     private static final int REQUEST_UPLOAD_FILES = 701;
     private static final int REQUEST_SITE_PERMISSIONS = 702;
 
@@ -112,6 +116,10 @@ public final class MainActivity extends Activity {
     private TextView forwardIcon;
     private TextView tabsBadge;
     private ImageView securityIcon;
+    private ImageView faviconIcon;
+    private HomePageView homeScreen;
+    private FaviconRepository faviconRepository;
+    private String homePageUrl = HOME;
     private ImageView dropdownIcon;
     private View menuAnchor;
     private LinearLayout downloadsPanel;
@@ -205,6 +213,33 @@ public final class MainActivity extends Activity {
         return isShortPhone() ? 180 : (isCompactPhone() ? 200 : 220);
     }
 
+    private String sanitizeHomePage(String address) {
+        return HomePageSettings.normalize(address);
+    }
+
+    private String configuredHome() {
+        return homePageUrl == null ? HOME : homePageUrl;
+    }
+
+    private boolean isHomeVisible() {
+        Tab tab = current();
+        return tab != null && HOME.equals(tab.url);
+    }
+
+    private void updateHomeScreen() {
+        if (homeScreen == null) return;
+        boolean show = isHomeVisible() && !fullScreen;
+        homeScreen.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) homeScreen.showFavorites(bookmarks);
+        if (faviconIcon != null) {
+            Tab t = current();
+            faviconIcon.setImageDrawable(null);
+            faviconIcon.setVisibility(t != null && !HOME.equals(t.url) && FaviconRepository.origin(t.url) != null
+                    ? View.VISIBLE : View.GONE);
+            if (faviconIcon.getVisibility() == View.VISIBLE) faviconRepository.load(t.url, faviconIcon);
+        }
+    }
+
     private TextView text(String s, float sp, int color) {
         TextView v = new TextView(this);
         v.setText(s);
@@ -237,12 +272,14 @@ public final class MainActivity extends Activity {
         loadHistoryDetails();
         loadDownloads();
         trackingProtectionEnabled = storage.getBoolean(PREF_TRACKING_PROTECTION, true);
+        homePageUrl = sanitizeHomePage(storage.getString(PREF_HOME_PAGE, HOME));
+        faviconRepository = new FaviconRepository();
         createLayout();
         refreshSuggestionAdapter("");
         try {
             if (runtime == null) runtime = GeckoRuntime.create(getApplicationContext());
             extensionPrompts();
-            if (!restoreTabs()) addTab(HOME);
+            if (!restoreTabs()) addTab(configuredHome());
             // Novidades são exibidas apenas uma vez por versionCode e reaparecem ao atualizar.
             if (state == null && WhatsNewActivity.shouldShow(storage)) {
                 startActivity(new Intent(this, WhatsNewActivity.class));
@@ -285,6 +322,12 @@ public final class MainActivity extends Activity {
         securityIcon.setOnClickListener(v -> showSiteInfo());
         securityIcon.setPadding(dp(2), dp(8), dp(2), dp(8));
         addressBox.addView(securityIcon, new LinearLayout.LayoutParams(dp(compactPhone ? 18 : 22), addressInnerHeight));
+        faviconIcon = new ImageView(this);
+        faviconIcon.setContentDescription("Ícone do site atual");
+        faviconIcon.setVisibility(View.GONE);
+        LinearLayout.LayoutParams faviconParams = new LinearLayout.LayoutParams(dp(16), dp(16));
+        faviconParams.leftMargin = dp(3);
+        addressBox.addView(faviconIcon, faviconParams);
 
         urlBox = new AutoCompleteTextView(this);
         urlBox.setSingleLine();
@@ -386,9 +429,20 @@ public final class MainActivity extends Activity {
         root.addView(addressPanel);
         divider(root, 1);
 
+        FrameLayout webArea = new FrameLayout(this);
         view = new GeckoView(this);
         view.setBackgroundColor(Color.WHITE);
-        root.addView(view, new LinearLayout.LayoutParams(-1, 0, 1));
+        webArea.addView(view, new FrameLayout.LayoutParams(-1, -1));
+        homeScreen = new HomePageView(this, faviconRepository, new HomePageView.Actions() {
+            @Override public void open(String address) {
+                navigate(address);
+                hideKeyboard();
+            }
+            @Override public void addFavorite() { showAddQuickAccess(); }
+        });
+        homeScreen.setVisibility(View.GONE);
+        webArea.addView(homeScreen, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(webArea, new LinearLayout.LayoutParams(-1, 0, 1));
 
         downloadsPanel = new LinearLayout(this);
         downloadsPanel.setOrientation(LinearLayout.VERTICAL);
@@ -455,7 +509,7 @@ public final class MainActivity extends Activity {
             Tab t = current();
             if (t != null && t.forward) t.session.goForward();
         });
-        navText(bottomBar, "⌂", "Início", () -> navigate(HOME));
+        navText(bottomBar, "⌂", "Início", () -> navigate(configuredHome()));
         navImage(bottomBar, R.drawable.ic_download_xp, "Baixar", this::showDownloads);
         tabsBadge = navText(bottomBar, "▤", "Abas", this::showTabs);
         navText(bottomBar, "≡", "Menu", this::showMainMenu);
@@ -503,27 +557,25 @@ public final class MainActivity extends Activity {
 
     private void showMainMenu() {
         ArrayList<MenuAction> actions = new ArrayList<>();
-        actions.add(new MenuAction("＋", "Nova aba", "Abra uma nova aba normal para continuar navegando sem fechar a atual.", () -> addTab(HOME)));
-        actions.add(new MenuAction("◌", "Nova aba privada", "Use uma aba privada sem histórico local, sugestões ou restauração de sessão.", () -> addPrivateTab(HOME)));
+        actions.add(new MenuAction("＋", "Nova aba", "Abra uma nova aba normal para continuar navegando sem fechar a atual.", () -> addTab(configuredHome())));
+        actions.add(new MenuAction("◌", "Nova aba privada", "Use uma aba privada sem histórico local, sugestões ou restauração de sessão.", () -> addPrivateTab(configuredHome())));
         actions.add(new MenuAction("↻", "Atualizar página", "Recarregue o site atual caso a página tenha travado ou demore a atualizar.", () -> { Tab t = current(); if (t != null) t.session.reload(); }));
         actions.add(new MenuAction("★", "Favoritos", "Abra sua lista de favoritos ou adicione/remova rapidamente a página atual.", this::showBookmarks));
         actions.add(new MenuAction("🕘", "Histórico", "Pesquise páginas visitadas recentemente e abra novamente qualquer endereço salvo.", this::showHistory));
         actions.add(new MenuAction("↓", "Downloads", "Veja arquivos em andamento, concluídos, erros, velocidade e ações de compartilhamento.", this::showDownloads));
+        actions.add(new MenuAction("⚙", "Configurações", "Escolha a página inicial, personalize o início e organize seu acesso rápido.", this::showBrowserSettings));
         actions.add(new MenuAction("🔒", "Privacidade e dados", "Abra as opções para limpar cookies, cache, permissões e controlar a proteção antirrastreamento.", this::showPrivacyMenu));
         actions.add(new MenuAction("🧩", "Extensões", "Gerencie suas extensões compatíveis do Firefox dentro do Internet XP.", this::showExtensions));
         actions.add(new MenuAction("⇪", "Compartilhar página", "Copie ou compartilhe o endereço atual em outros aplicativos.", this::share));
         actions.add(new MenuAction("ⓘ", "Novidades desta versão", "Consulte a tela estilizada com as mudanças mais recentes do projeto.", () -> startActivity(new Intent(this, WhatsNewActivity.class))));
-        actions.add(new MenuAction("ℹ", "Sobre", "Veja a versão atual e um resumo rápido do navegador.", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.21")
-                .setMessage("Menu em módulos com descrições, correções para telas estreitas como o Redmi A3 e barra de endereço com foco mais confiável. Projeto independente.")
-                .setPositiveButton("OK", null).show()));
+        actions.add(new MenuAction("ℹ", "Sobre", "Informações da versão, motor e principais funções.", this::showAbout));
         showModuleMenuDialog("Menu do Internet XP", "Ações e módulos com ícones, descrições e layout melhor para telas de telefone.", actions);
     }
 
     private void showModuleMenuDialog(String title, String subtitle, List<MenuAction> actions) {
         LinearLayout wrapper = new LinearLayout(this);
         wrapper.setOrientation(LinearLayout.VERTICAL);
-        wrapper.setBackgroundColor(LIGHT_BG);
+        wrapper.setBackground(rounded(LIGHT_BG, BORDER, 14));
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
@@ -542,7 +594,8 @@ public final class MainActivity extends Activity {
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(10), dp(10), dp(10), dp(6));
         scroll.addView(list);
-        wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(isShortPhone() ? 360 : 430)));
+        int contentHeight = Math.min(isShortPhone() ? 290 : 350, Math.max(230, (int) (screenHeightDp() * .40f)));
+        wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(contentHeight)));
 
         final AlertDialog[] holder = new AlertDialog[1];
         for (MenuAction action : actions) {
@@ -591,6 +644,102 @@ public final class MainActivity extends Activity {
                 .create();
         holder[0] = dialog;
         dialog.show();
+        compactDialog(dialog);
+    }
+
+    private void compactDialog(AlertDialog dialog) {
+        if (dialog.getWindow() == null) return;
+        int width = dp(Math.min(Math.max(288, screenWidthDp() - 48), 390));
+        dialog.getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+    }
+
+    private void showBrowserSettings() {
+        ArrayList<MenuAction> actions = new ArrayList<>();
+        actions.add(new MenuAction("⌂", "Página inicial: Internet XP", HOME.equals(configuredHome())
+                ? "Ativa. Página em branco com pesquisa central e atalhos." : "Definir a página inicial padrão do Internet XP.",
+                () -> setHomePage(HOME)));
+        actions.add(new MenuAction("↗", "Escolher um site inicial", "Informe o endereço de uma página para abrir ao usar Início ou Nova aba.", this::askCustomHomePage));
+        actions.add(new MenuAction("★", "Adicionar acesso rápido", "Salve um site favorito para aparecer abaixo da pesquisa na página inicial.", this::showAddQuickAccess));
+        actions.add(new MenuAction("⚙", "Ver página inicial", "Abra a página inicial definida nas configurações.", () -> navigate(configuredHome())));
+        showModuleMenuDialog("Configurações", "Personalize o início da navegação e os atalhos do Internet XP.", actions);
+    }
+
+    private void setHomePage(String chosen) {
+        homePageUrl = sanitizeHomePage(chosen);
+        storage.edit().putString(PREF_HOME_PAGE, homePageUrl).apply();
+        Toast.makeText(this, HOME.equals(homePageUrl) ? "Página inicial Internet XP definida" : "Site inicial definido", Toast.LENGTH_SHORT).show();
+    }
+
+    private void askCustomHomePage() {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setTextSize(14);
+        input.setHint("https://exemplo.com");
+        if (!HOME.equals(configuredHome())) input.setText(configuredHome());
+        LinearLayout content = styledDialogContent("Página inicial personalizada", "Escolha o site aberto pelo botão Início.");
+        content.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
+        AlertDialog d = new AlertDialog.Builder(this).setView(content)
+                .setPositiveButton("Salvar", (dialog, which) -> {
+                    String entered = input.getText().toString().trim();
+                    String resolved = BrowserAddress.resolve(entered);
+                    if (entered.isEmpty() || HOME.equals(HomePageSettings.normalize(entered))) {
+                        Toast.makeText(this, "Informe o endereço válido de um site", Toast.LENGTH_LONG).show();
+                    } else setHomePage(resolved);
+                }).setNegativeButton("Cancelar", null).create();
+        d.show(); compactDialog(d);
+    }
+
+    private void showAddQuickAccess() {
+        if (current() != null && current().privateMode) {
+            Toast.makeText(this, "Adicione favoritos numa aba normal", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LinearLayout content = styledDialogContent("Adicionar favorito", "Salve um endereço para aparecer na página inicial.");
+        EditText input = new EditText(this);
+        input.setHint("https://exemplo.com");
+        input.setSingleLine(true);
+        input.setTextSize(14);
+        Tab t = current();
+        if (t != null && t.url.startsWith("http")) input.setText(t.url);
+        content.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
+        AlertDialog d = new AlertDialog.Builder(this).setView(content).setPositiveButton("Adicionar", (dialog, which) -> {
+            String address = BrowserAddress.resolve(input.getText().toString());
+            if (HOME.equals(HomePageSettings.normalize(input.getText().toString()))) {
+                Toast.makeText(this, "Endereço inválido", Toast.LENGTH_LONG).show();
+                return;
+            }
+            bookmarks.remove(address);
+            bookmarks.add(0, address);
+            saveStringList(PREF_BOOKMARKS, bookmarks);
+            refreshSuggestionAdapter("");
+            updateHomeScreen();
+        }).setNegativeButton("Cancelar", null).create();
+        d.show(); compactDialog(d);
+    }
+
+    private LinearLayout styledDialogContent(String title, String subtitle) {
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(dp(14), dp(12), dp(14), dp(10));
+        body.setBackground(rounded(LIGHT_BG, BORDER, 12));
+        TextView heading = text(title, 17, XP_BLUE);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        body.addView(heading);
+        TextView explanation = text(subtitle, 11, SUBTLE);
+        explanation.setPadding(0, dp(4), 0, dp(10));
+        body.addView(explanation);
+        return body;
+    }
+
+    private void showAbout() {
+        LinearLayout content = styledDialogContent("Internet XP 1.0.22", "Navegador com visual clássico e motor Mozilla GeckoView.");
+        for (String line : new String[]{"Motor de navegação: GeckoView 158", "Android 8.0 ou superior", "Página inicial com pesquisa e atalhos", "Extensões, downloads, abas e privacidade", "Projeto independente, sem vínculo com Mozilla ou Microsoft"}) {
+            TextView detail = text("•  " + line, 12, TEXT);
+            detail.setPadding(dp(4), dp(6), dp(2), dp(6));
+            content.addView(detail);
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(content).setPositiveButton("Fechar", null).create();
+        dialog.show(); compactDialog(dialog);
     }
 
     private Tab current() {
@@ -709,6 +858,7 @@ public final class MainActivity extends Activity {
                 if (tab == current()) {
                     if (!urlBox.hasFocus()) setUrlBoxText(uri.equals(HOME) ? "" : uri);
                     updateSecurity(uri);
+                    updateHomeScreen();
                 }
                 if (PrivacyRules.shouldRecordHistory(tab.privateMode, uri)) rememberHistory(uri, tab.title);
                 saveTabs();
@@ -799,6 +949,7 @@ public final class MainActivity extends Activity {
         urlBox.dismissDropDown();
         updateSecurity(tab.url);
         updateChrome();
+        updateHomeScreen();
         addressPanel.setBackgroundColor(tab.privateMode ? 0xffe9e1f4 : PANEL_BG);
         if (tab.privateMode) status.setText("Aba privada • Não salva histórico");
         refreshSuggestionAdapter("");
@@ -891,7 +1042,7 @@ public final class MainActivity extends Activity {
         if (closing.opened) closing.session.close();
         if (tabs.isEmpty()) {
             active = -1;
-            addTab(HOME);
+            addTab(configuredHome());
         } else if (isActive) {
             active = -1;
             selectTab(Math.min(index, tabs.size() - 1));
@@ -925,7 +1076,7 @@ public final class MainActivity extends Activity {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Abas abertas • " + tabs.size())
                 .setView(scroll)
-                .setPositiveButton("+ Nova aba", (d, n) -> addTab(HOME))
+                .setPositiveButton("+ Nova aba", (d, n) -> addTab(configuredHome()))
                 .setNegativeButton("Fechar", null)
                 .create();
         populateTabCards(list, dialog);
@@ -1110,25 +1261,21 @@ public final class MainActivity extends Activity {
         if (!bookmarks.remove(t.url)) bookmarks.add(0, t.url);
         saveStringList(PREF_BOOKMARKS, bookmarks);
         refreshSuggestionAdapter(urlBox.getText().toString());
+        updateHomeScreen();
     }
 
     private void showBookmarks() {
-        if (bookmarks.isEmpty()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Favoritos")
-                    .setMessage("Nenhum favorito salvo.")
-                    .setPositiveButton("Adicionar atual", (d, n) -> toggleBookmark())
-                    .setNegativeButton("Fechar", null)
-                    .show();
-            return;
+        ArrayList<MenuAction> actions = new ArrayList<>();
+        actions.add(new MenuAction("＋", "Adicionar favorito", "Crie um novo atalho para sua página inicial.", this::showAddQuickAccess));
+        Tab tab = current();
+        if (tab != null && tab.url.startsWith("http") && !tab.privateMode) {
+            actions.add(new MenuAction("★", "Favoritar página atual", "Adicionar ou remover o site aberto da sua lista.", this::toggleBookmark));
         }
-        String[] items = bookmarks.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Favoritos")
-                .setItems(items, (d, n) -> navigate(items[n]))
-                .setPositiveButton("Adicionar atual", (d, n) -> toggleBookmark())
-                .setNegativeButton("Fechar", null)
-                .show();
+        for (String address : bookmarks) {
+            String host = PrivacyRules.displayHost(address);
+            actions.add(new MenuAction("🌐", host, address, () -> navigate(address)));
+        }
+        showModuleMenuDialog("Favoritos", bookmarks.isEmpty() ? "Nenhum favorito salvo. Use Adicionar para criar seu primeiro atalho." : "Seus sites favoritos, também disponíveis na página inicial.", actions);
     }
 
     private void showHistory() {
@@ -1136,21 +1283,22 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Histórico indisponível na aba privada", Toast.LENGTH_SHORT).show();
             return;
         }
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(dp(10), dp(6), dp(10), dp(4));
+        LinearLayout column = styledDialogContent("Histórico de navegação", "Pesquise seus sites visitados, abra ou remova registros.");
         EditText search = new EditText(this);
         search.setSingleLine(true);
         search.setTextSize(14);
         search.setHint("Pesquisar título ou endereço");
-        column.addView(search, new LinearLayout.LayoutParams(-1, dp(48)));
+        search.setPadding(dp(10), 0, dp(10), 0);
+        search.setBackground(rounded(Color.WHITE, BORDER, 8));
+        column.addView(search, new LinearLayout.LayoutParams(-1, dp(46)));
         ScrollView scroll = new ScrollView(this);
         LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(results);
-        column.addView(scroll, new LinearLayout.LayoutParams(-1, dp(350)));
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, dp(Math.min(300, Math.max(180, (int) (screenHeightDp() * .37f)))));
+        scrollParams.topMargin = dp(8);
+        column.addView(scroll, scrollParams);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Histórico de navegação")
                 .setView(column)
                 .setPositiveButton("Limpar histórico", (d, n) -> clearHistory())
                 .setNegativeButton("Fechar", null)
@@ -1164,6 +1312,7 @@ public final class MainActivity extends Activity {
         });
         populateHistoryRows(results, "", dialog);
         dialog.show();
+        compactDialog(dialog);
         dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
@@ -2095,23 +2244,17 @@ public final class MainActivity extends Activity {
     private void showExtensions() {
         if (runtime == null) return;
         runtime.getWebExtensionController().list().accept(list -> runOnUiThread(() -> {
-            String[] options = new String[list.size() + 2];
-            options[0] = "+ Instalar XPI por URL HTTPS";
-            options[1] = "Catálogo Mozilla Add-ons";
-            for (int i = 0; i < list.size(); i++) {
-                WebExtension x = list.get(i);
-                options[i + 2] = (x.metaData.enabled ? "✓ " : "○ ") + (x.metaData.name == null ? x.id : x.metaData.name);
+            if (isFinishing() || isDestroyed()) return;
+            ArrayList<MenuAction> actions = new ArrayList<>();
+            actions.add(new MenuAction("＋", "Instalar extensão XPI", "Instale um pacote Mozilla assinado a partir de uma URL HTTPS.", this::installExtension));
+            actions.add(new MenuAction("🧩", "Catálogo Mozilla Add-ons", "Visite a página de complementos compatíveis com Firefox Android.", () -> navigate("https://addons.mozilla.org/android/")));
+            for (WebExtension extension : list) {
+                String name = extension.metaData.name == null ? extension.id : extension.metaData.name;
+                String description = extension.metaData.enabled ? "Ativada. Toque para gerenciar ou desinstalar." : "Desativada. Toque para ativar ou desinstalar.";
+                actions.add(new MenuAction("▣", name, description, () -> extensionActions(extension)));
             }
-            new AlertDialog.Builder(this)
-                    .setTitle("Extensões Firefox")
-                    .setItems(options, (d, n) -> {
-                        if (n == 0) installExtension();
-                        else if (n == 1) navigate("https://addons.mozilla.org/android/");
-                        else extensionActions(list.get(n - 2));
-                    })
-                    .setNegativeButton("Fechar", null)
-                    .show();
-        }), e -> runOnUiThread(() -> showError(e)));
+            showModuleMenuDialog("Extensões Firefox", list.isEmpty() ? "Nenhuma extensão instalada. Explore o catálogo ou instale um XPI." : "Gerencie suas extensões e permissões.", actions);
+        }), error -> runOnUiThread(() -> showError(error)));
     }
 
     private void extensionActions(WebExtension x) {
@@ -2224,6 +2367,7 @@ public final class MainActivity extends Activity {
         if (view != null) view.releaseSession();
         for (Tab t : tabs) if (t.opened) t.session.close();
         tabs.clear();
+        if (faviconRepository != null) faviconRepository.shutdown();
         super.onDestroy();
     }
 }
