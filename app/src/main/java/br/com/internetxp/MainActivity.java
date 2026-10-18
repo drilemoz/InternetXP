@@ -33,6 +33,13 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.view.ViewGroup;
+import java.util.ArrayDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -110,7 +117,19 @@ public final class MainActivity extends Activity {
     private SharedPreferences storage;
     private int active = -1;
     private AutoCompleteTextView urlBox;
-    private ArrayAdapter<String> historyAdapter;
+    private AddressSuggestionAdapter historyAdapter;
+    private final ArrayList<String> onlineSuggestions = new ArrayList<>();
+    private final Handler suggestionHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService suggestionWorker = Executors.newFixedThreadPool(2);
+    private Runnable pendingSuggestionRequest;
+    private int suggestionRequestId;
+    private String lastOnlineQuery = "";
+    private boolean onlineSuggestionsEnabled;
+    private static final String PREF_ONLINE_SUGGESTIONS = "online_suggestions_v1";
+    private ImageView copyAddressButton;
+    private ImageView pasteAddressButton;
+    private final ArrayDeque<View> moduleScreens = new ArrayDeque<>();
+    private FrameLayout moduleHost;
     private GeckoView view;
     private LinearLayout browserRoot;
     private boolean fullScreen;
@@ -145,7 +164,7 @@ public final class MainActivity extends Activity {
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private final Runnable downloadRefresh = new Runnable() {
         @Override public void run() {
-            if (isFinishing() || isDestroyed() || downloadsPanel == null || downloadsPanel.getVisibility() != View.VISIBLE) return;
+            if (isFinishing() || isDestroyed() || downloadsPanel == null || !downloadsPanel.isShown()) return;
             renderDownloadsPanel();
             scheduleDownloadRefresh();
         }
@@ -286,6 +305,7 @@ public final class MainActivity extends Activity {
     public void onCreate(Bundle state) {
         super.onCreate(state);
         storage = getSharedPreferences("local", MODE_PRIVATE);
+        onlineSuggestionsEnabled = storage.getBoolean(PREF_ONLINE_SUGGESTIONS, true);
         loadStringList(PREF_BOOKMARKS, bookmarks);
         loadStringList(PREF_HISTORY, history);
         loadHistoryDetails();
@@ -316,7 +336,10 @@ public final class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(LIGHT_BG);
         browserRoot = root;
-        setContentView(root);
+        FrameLayout layoutHost = new FrameLayout(this);
+        layoutHost.addView(root, new FrameLayout.LayoutParams(-1, -1));
+        moduleHost = layoutHost;
+        setContentView(layoutHost);
 
         final boolean compactPhone = isCompactPhone();
         final int addressPanelHeight = compactPhone ? dp(34) : dp(38);
@@ -381,6 +404,8 @@ public final class MainActivity extends Activity {
             return false;
         });
         urlBox.setOnFocusChangeListener((v, focused) -> {
+            if (copyAddressButton != null) copyAddressButton.setVisibility(focused ? View.VISIBLE : View.GONE);
+            if (pasteAddressButton != null) pasteAddressButton.setVisibility(focused ? View.VISIBLE : View.GONE);
             if (focused) {
                 refreshSuggestionAdapter(urlBox.getText().toString());
                 urlBox.post(() -> {
@@ -390,10 +415,10 @@ public final class MainActivity extends Activity {
             }
         });
         urlBox.setOnItemClickListener((parent, v, position, id) -> {
-            String selected = historyAdapter.getItem(position);
+            SuggestionItem selected = historyAdapter.getItem(position);
             if (selected != null) {
-                setUrlBoxText(selected);
-                navigate(BrowserAddress.resolve(selected));
+                setUrlBoxText(selected.value);
+                navigate(BrowserAddress.resolve(selected.value));
                 hideKeyboard();
             }
         });
@@ -404,11 +429,19 @@ public final class MainActivity extends Activity {
                 if (suppressSuggestionReload) return;
                 refreshSuggestionAdapter(s.toString());
                 if (urlBox.hasFocus()) urlBox.showDropDown();
+                scheduleOnlineSuggestions(s.toString());
             }
         });
-        historyAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
+        historyAdapter = new AddressSuggestionAdapter();
         urlBox.setAdapter(historyAdapter);
         addressBox.addView(urlBox, new LinearLayout.LayoutParams(0, addressInnerHeight, 1));
+
+        copyAddressButton = addressTool(android.R.drawable.ic_menu_copy, "Copiar endereço",
+                () -> { copyAddressText(); });
+        pasteAddressButton = addressTool(android.R.drawable.ic_menu_edit, "Colar texto",
+                () -> { pasteAddressText(); });
+        addressBox.addView(copyAddressButton, new LinearLayout.LayoutParams(dp(compactPhone ? 24 : 28), addressInnerHeight));
+        addressBox.addView(pasteAddressButton, new LinearLayout.LayoutParams(dp(compactPhone ? 24 : 28), addressInnerHeight));
 
         dropdownIcon = new ImageView(this);
         dropdownIcon.setImageResource(R.drawable.ic_dropdown_xp);
@@ -421,6 +454,7 @@ public final class MainActivity extends Activity {
                 return;
             }
             refreshSuggestionAdapter(urlBox.getText().toString());
+            scheduleOnlineSuggestions(urlBox.getText().toString());
             if (urlBox.isPopupShowing()) urlBox.dismissDropDown();
             else {
                 urlBox.requestFocus();
@@ -441,6 +475,7 @@ public final class MainActivity extends Activity {
         refresh.setContentDescription("Atualizar página");
         refresh.setPadding(dp(9), dp(7), dp(9), dp(7));
         refresh.setOnClickListener(v -> {
+            hideKeyboard();
             Tab t = current();
             if (t != null) t.session.reload();
         });
@@ -499,7 +534,7 @@ public final class MainActivity extends Activity {
         downloadsList = new LinearLayout(this);
         downloadsList.setOrientation(LinearLayout.VERTICAL);
         downloadsScroll.addView(downloadsList, new ScrollView.LayoutParams(-1, -2));
-        downloadsPanel.addView(downloadsScroll, new LinearLayout.LayoutParams(-1, dp(downloadsPanelHeightDp())));
+        downloadsPanel.addView(downloadsScroll, new LinearLayout.LayoutParams(-1, 0, 1));
         root.addView(downloadsPanel);
 
         divider(root, 1);
@@ -584,14 +619,14 @@ public final class MainActivity extends Activity {
         ArrayList<MenuAction> primary = new ArrayList<>();
         ArrayList<MenuAction> secondary = new ArrayList<>();
 
-        primary.add(new MenuAction("＋", "Nova aba", "Abrir uma nova aba.", () -> addTab(configuredHome())));
-        primary.add(new MenuAction("◌", "Privada", "Abrir uma aba privada.", () -> addPrivateTab(configuredHome())));
+        primary.add(new MenuAction("＋", "Nova aba", "Abrir uma nova aba.", () -> { addTab(configuredHome()); closeModuleScreens(); }));
+        primary.add(new MenuAction("◌", "Privada", "Abrir uma aba privada.", () -> { addPrivateTab(configuredHome()); closeModuleScreens(); }));
         primary.add(new MenuAction("★", "Favoritos", "Seus sites salvos.", this::showBookmarks));
         primary.add(new MenuAction("🕘", "Histórico", "Páginas visitadas.", this::showHistory));
         primary.add(new MenuAction("↓", "Downloads", "Transferências do app.", this::showDownloads));
         primary.add(new MenuAction("⚙", "Configurações", "Página inicial e atalhos.", this::showBrowserSettings));
 
-        secondary.add(new MenuAction("↻", "Atualizar página", "Recarregue o site atual caso algo não tenha carregado direito.", () -> { Tab t = current(); if (t != null) t.session.reload(); }));
+        secondary.add(new MenuAction("↻", "Atualizar página", "Recarregue o site atual caso algo não tenha carregado direito.", () -> { closeModuleScreens(); Tab t = current(); if (t != null) t.session.reload(); }));
         secondary.add(new MenuAction("🔒", "Privacidade e dados", "Limpe cookies, cache, permissões e ajuste o modo de proteção.", this::showPrivacyMenu));
         secondary.add(new MenuAction("🧩", "Extensões", "Instalar, importar, excluir e configurar extensões Firefox.", this::showExtensions));
         secondary.add(new MenuAction("▣", "Ações das extensões", "Execute botões dos complementos ativos, inclusive pop-ups.", this::showExtensionActions));
@@ -603,41 +638,20 @@ public final class MainActivity extends Activity {
         showMainMenuHubDialog("Internet XP", "Menu rápido com aparência mais viva, atalhos principais em destaque e ferramentas extras abaixo.", primary, secondary);
     }
 
+    /** Painel de menu real. Não cria Window/Dialog em cima do GeckoView. */
     private void showMainMenuHubDialog(String title, String subtitle, List<MenuAction> primary, List<MenuAction> secondary) {
-        LinearLayout wrapper = new LinearLayout(this);
-        wrapper.setOrientation(LinearLayout.VERTICAL);
-        wrapper.setBackground(rounded(LIGHT_BG, BORDER, 18));
-
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(16), dp(14), dp(16), dp(12));
-        GradientDrawable headerBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xff3a8df3, XP_BLUE, 0xff0b58aa});
-        headerBg.setCornerRadii(new float[]{dp(18), dp(18), dp(18), dp(18), 0, 0, 0, 0});
-        header.setBackground(headerBg);
-        TextView titleView = text("◉  " + title, 19, Color.WHITE);
-        titleView.setTypeface(Typeface.DEFAULT_BOLD);
-        header.addView(titleView);
-        TextView subtitleView = text(subtitle, 11, 0xffe6effa);
-        subtitleView.setPadding(0, dp(4), 0, 0);
-        header.addView(subtitleView);
-        wrapper.addView(header);
-
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(isCompactPhone() ? 10 : 12), dp(12), dp(isCompactPhone() ? 10 : 12), dp(10));
+        content.setPadding(dp(12), dp(16), dp(12), dp(18));
         scroll.addView(content);
-
-        TextView quick = text("Acesso rápido", 12, XP_BLUE);
+        TextView quick = text("Acesso rápido", 16, XP_BLUE);
         quick.setTypeface(Typeface.DEFAULT_BOLD);
         content.addView(quick);
-        TextView quickSub = text("Os atalhos mais usados ficam logo no topo.", 10.5f, SUBTLE);
-        quickSub.setPadding(0, dp(2), 0, dp(8));
-        content.addView(quickSub);
-
-        final AlertDialog[] holder = new AlertDialog[1];
+        TextView hint = text("Atalhos principais do navegador", 12, SUBTLE);
+        hint.setPadding(0, 0, 0, dp(12));
+        content.addView(hint);
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         content.addView(grid);
@@ -646,55 +660,27 @@ public final class MainActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(-1, -2);
-            rowParams.bottomMargin = dp(8);
+            rowParams.bottomMargin = dp(10);
             grid.addView(row, rowParams);
             for (int c = 0; c < cols; c++) {
                 int index = i + c;
-                if (index >= primary.size()) {
-                    View spacer = new View(this);
-                    row.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
-                    continue;
-                }
-                MenuAction action = primary.get(index);
-                row.addView(createHubTile(action, holder), new LinearLayout.LayoutParams(0, -2, 1));
-                if (c < cols - 1) {
-                    View gap = new View(this);
-                    row.addView(gap, new LinearLayout.LayoutParams(dp(isCompactPhone() ? 6 : 8), 1));
-                }
+                if (index < primary.size()) row.addView(createHubTile(primary.get(index), null),
+                        new LinearLayout.LayoutParams(0, -2, 1));
+                else row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+                if (c < cols - 1) row.addView(new View(this), new LinearLayout.LayoutParams(dp(8), 1));
             }
         }
-
-        TextView tools = text("Mais ferramentas", 12, XP_BLUE);
+        TextView tools = text("Mais ferramentas", 16, XP_BLUE);
         tools.setTypeface(Typeface.DEFAULT_BOLD);
-        tools.setPadding(0, dp(6), 0, 0);
+        tools.setPadding(0, dp(10), 0, dp(10));
         content.addView(tools);
-        TextView toolsSub = text("Ações extras do navegador em uma lista mais compacta.", 10.5f, SUBTLE);
-        toolsSub.setPadding(0, dp(2), 0, dp(8));
-        content.addView(toolsSub);
-
         for (MenuAction action : secondary) {
-            LinearLayout row = createCompactMenuRow(action, holder);
+            LinearLayout row = createCompactMenuRow(action, null);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-            params.bottomMargin = dp(7);
+            params.bottomMargin = dp(9);
             content.addView(row, params);
         }
-
-        int contentHeight = Math.min(isCompactPhone() ? 560 : 600, Math.max(isCompactPhone() ? 390 : 420, (int) (screenHeightDp() * (isCompactPhone() ? .62f : .58f))));
-        wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(contentHeight)));
-
-        TextView close = text("Fechar", 13, XP_BLUE);
-        close.setTypeface(Typeface.DEFAULT_BOLD);
-        close.setGravity(Gravity.CENTER);
-        close.setPadding(dp(16), dp(12), dp(16), dp(14));
-        close.setBackground(rounded(Color.WHITE, BORDER, 0));
-        wrapper.addView(close, new LinearLayout.LayoutParams(-1, -2));
-
-        AlertDialog dialog = new XpDialogs.Builder(this).setView(wrapper).create();
-        holder[0] = dialog;
-        close.setOnClickListener(v -> dialog.dismiss());
-        dialog.show();
-        styleBottomMenuDialog(dialog);
-        animateDialogOpen(wrapper, true);
+        showModuleScreen("Menu Internet XP", subtitle, scroll);
     }
 
     private LinearLayout createHubTile(MenuAction action, AlertDialog[] holder) {
@@ -749,6 +735,13 @@ public final class MainActivity extends Activity {
         iconBg.setCornerRadius(dp(10));
         icon.setBackground(iconBg);
         row.addView(icon, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        if ("🌐".equals(action.icon) && FaviconRepository.origin(action.description) != null) {
+            ImageView favicon = new ImageView(this);
+            favicon.setImageResource(R.drawable.ic_globe_xp);
+            row.removeView(icon);
+            row.addView(favicon, 0, new LinearLayout.LayoutParams(dp(30), dp(30)));
+            faviconRepository.load(action.description, favicon);
+        }
 
         LinearLayout labels = new LinearLayout(this);
         labels.setOrientation(LinearLayout.VERTICAL);
@@ -796,82 +789,67 @@ public final class MainActivity extends Activity {
     }
 
     private void showModuleMenuDialog(String title, String subtitle, List<MenuAction> actions) {
-        LinearLayout wrapper = new LinearLayout(this);
-        wrapper.setOrientation(LinearLayout.VERTICAL);
-        wrapper.setBackground(rounded(LIGHT_BG, BORDER, 14));
-
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(14), dp(13), dp(14), dp(11));
-        GradientDrawable moduleHeader = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xff4b98f6, XP_BLUE});
-        moduleHeader.setCornerRadii(new float[]{dp(14), dp(14), dp(14), dp(14), 0, 0, 0, 0});
-        header.setBackground(moduleHeader);
-        TextView titleView = text(title, 18, Color.WHITE);
-        titleView.setTypeface(Typeface.DEFAULT_BOLD);
-        header.addView(titleView);
-        TextView subtitleView = text(subtitle, 11.5f, 0xffeef5ff);
-        subtitleView.setPadding(0, dp(4), 0, 0);
-        header.addView(subtitleView);
-        wrapper.addView(header);
-
         ScrollView scroll = new ScrollView(this);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(isCompactPhone() ? 8 : 10), dp(10), dp(isCompactPhone() ? 8 : 10), dp(6));
+        list.setPadding(dp(12), dp(14), dp(12), dp(16));
         scroll.addView(list);
-        int contentHeight = Math.min(isCompactPhone() ? 460 : (isShortPhone() ? 360 : 420), Math.max(isCompactPhone() ? 280 : 260, (int) (screenHeightDp() * (isCompactPhone() ? .50f : .48f))));
-        wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(contentHeight)));
-
-        final AlertDialog[] holder = new AlertDialog[1];
         for (MenuAction action : actions) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(10), dp(10), dp(10), dp(10));
-            row.setBackground(rounded(Color.WHITE, BORDER, 10));
-            row.setClickable(true);
-            row.setFocusable(true);
-
-            TextView icon = text(action.icon, 18, Color.WHITE);
-            icon.setTypeface(Typeface.DEFAULT_BOLD);
-            icon.setGravity(Gravity.CENTER);
-            icon.setBackground(rounded(XP_BLUE, 0, 10));
-            row.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
-
-            LinearLayout labels = new LinearLayout(this);
-            labels.setOrientation(LinearLayout.VERTICAL);
-            labels.setPadding(dp(10), 0, dp(10), 0);
-            TextView rowTitle = text(action.title, 13, TEXT);
-            rowTitle.setTypeface(Typeface.DEFAULT_BOLD);
-            labels.addView(rowTitle);
-            TextView rowDesc = text(action.description, 11, SUBTLE);
-            rowDesc.setPadding(0, dp(2), 0, 0);
-            rowDesc.setMaxLines(3);
-            labels.addView(rowDesc);
-            row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
-
-            TextView chevron = text("›", 18, XP_BLUE);
-            chevron.setGravity(Gravity.CENTER);
-            row.addView(chevron, new LinearLayout.LayoutParams(dp(22), dp(22)));
-
-            row.setOnClickListener(v -> {
-                if (holder[0] != null) holder[0].dismiss();
-                action.action.run();
-            });
-
+            LinearLayout row = createCompactMenuRow(action, null);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-            params.bottomMargin = dp(8);
+            params.bottomMargin = dp(10);
             list.addView(row, params);
         }
+        showModuleScreen(title, subtitle, scroll);
+    }
 
-        AlertDialog dialog = new XpDialogs.Builder(this)
-                .setView(wrapper)
-                .setNegativeButton("Fechar", null)
-                .create();
-        holder[0] = dialog;
-        dialog.show();
-        compactDialog(dialog);
-        animateDialogOpen(wrapper, false);
+    /** Pilha de telas internas, mantendo a mesma sessão GeckoView intacta por baixo. */
+    private void showModuleScreen(String title, String subtitle, View body) {
+        hideKeyboard();
+        if (!moduleScreens.isEmpty()) moduleScreens.peek().setVisibility(View.GONE);
+        LinearLayout screen = new LinearLayout(this);
+        screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setBackgroundColor(LIGHT_BG);
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(12), dp(12), dp(14), dp(12));
+        header.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff3789ef, XP_BLUE}));
+        TextView back = text("‹", 34, Color.WHITE);
+        back.setGravity(Gravity.CENTER);
+        back.setContentDescription("Voltar para a tela anterior");
+        back.setOnClickListener(v -> popModuleScreen());
+        header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(54)));
+        LinearLayout headings = new LinearLayout(this);
+        headings.setOrientation(LinearLayout.VERTICAL);
+        TextView name = text(title, 20, Color.WHITE);
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+        headings.addView(name);
+        TextView description = text(subtitle, 11, 0xffe5f0ff);
+        description.setMaxLines(2);
+        headings.addView(description);
+        header.addView(headings, new LinearLayout.LayoutParams(0, -2, 1));
+        screen.addView(header);
+        screen.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
+        moduleHost.addView(screen, new FrameLayout.LayoutParams(-1, -1));
+        moduleScreens.push(screen);
+    }
+
+    private void popModuleScreen() {
+        if (moduleScreens.isEmpty()) return;
+        View page = moduleScreens.pop();
+        if (downloadsPanel != null && downloadsPanel.getParent() == page) {
+            ((ViewGroup) page).removeView(downloadsPanel);
+            browserRoot.addView(downloadsPanel, 3);
+            downloadsPanel.setVisibility(View.GONE);
+            uiHandler.removeCallbacks(downloadRefresh);
+        }
+        moduleHost.removeView(page);
+        if (!moduleScreens.isEmpty()) moduleScreens.peek().setVisibility(View.VISIBLE);
+    }
+
+    private void closeModuleScreens() {
+        while (!moduleScreens.isEmpty()) popModuleScreen();
     }
 
     private void compactDialog(AlertDialog dialog) {
@@ -890,6 +868,13 @@ public final class MainActivity extends Activity {
                 () -> setHomePage(HOME)));
         actions.add(new MenuAction("↗", "Escolher um site inicial", "Informe o endereço de uma página para abrir ao usar Início ou Nova aba.", this::askCustomHomePage));
         actions.add(new MenuAction("★", "Adicionar acesso rápido", "Salve um site favorito para aparecer abaixo da pesquisa na página inicial.", this::showAddQuickAccess));
+        actions.add(new MenuAction("🔎", "Sugestões online: " + (onlineSuggestionsEnabled ? "ligadas" : "desligadas"),
+                "Quando ligadas, o texto digitado é enviado ao DuckDuckGo após 350 ms. Não envia em abas privadas.",
+                () -> { onlineSuggestionsEnabled = !onlineSuggestionsEnabled;
+                    storage.edit().putBoolean(PREF_ONLINE_SUGGESTIONS, onlineSuggestionsEnabled).apply();
+                    invalidateOnlineSuggestions();
+                    Toast.makeText(this, onlineSuggestionsEnabled ? "Sugestões online ativadas" : "Sugestões online desativadas", Toast.LENGTH_SHORT).show();
+                    popModuleScreen(); showBrowserSettings(); }));
         actions.add(new MenuAction("⚙", "Ver página inicial", "Abra a página inicial definida nas configurações.", () -> navigate(configuredHome())));
         showModuleMenuDialog("Configurações", "Personalize o início da navegação e os atalhos do Internet XP.", actions);
     }
@@ -975,17 +960,23 @@ public final class MainActivity extends Activity {
     }
 
     private void showAbout() {
-        LinearLayout content = styledDialogContent("Internet XP " + ReleaseNotes.VERSION_NAME, "Navegador com visual clássico, menu XP moderno e motor Mozilla GeckoView.");
-        for (String line : new String[]{"Motor de navegação: GeckoView 158", "Android 8.0 ou superior", "Página inicial com pesquisa e atalhos", "Extensões, downloads, abas e privacidade", "Projeto independente, sem vínculo com Mozilla ou Microsoft"}) {
-            TextView detail = text("•  " + line, 12, TEXT);
-            detail.setPadding(dp(6), dp(7), dp(4), dp(7));
-            detail.setBackground(rounded(Color.WHITE, BORDER, 10));
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(14), dp(20), dp(14), dp(20));
+        scroll.addView(content);
+        for (String line : new String[]{"Motor de navegação: GeckoView 158", "Android 8.0 ou superior",
+                "Página inicial com pesquisa e atalhos", "Extensões, downloads, abas e privacidade",
+                "Projeto independente, sem vínculo com Mozilla ou Microsoft"}) {
+            TextView detail = text("•  " + line, 14, TEXT);
+            detail.setPadding(dp(14), dp(16), dp(12), dp(16));
+            detail.setBackground(rounded(Color.WHITE, BORDER, 12));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-            params.bottomMargin = dp(8);
+            params.bottomMargin = dp(10);
             content.addView(detail, params);
         }
-        AlertDialog dialog = new XpDialogs.Builder(this).setView(content).setPositiveButton("Fechar", null).create();
-        dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
+        showModuleScreen("Sobre • " + ReleaseNotes.VERSION_NAME,
+                "Informações e recursos do navegador Internet XP", scroll);
     }
 
     private Tab current() {
@@ -1021,12 +1012,14 @@ public final class MainActivity extends Activity {
     }
 
     private void submitAddress() {
+        invalidateOnlineSuggestions();
         String value = urlBox.getText().toString();
         navigate(BrowserAddress.resolve(value));
         hideKeyboard();
     }
 
     private void navigate(String url) {
+        closeModuleScreens();
         Tab t = current();
         if (t != null) t.session.loadUri(url);
     }
@@ -1316,19 +1309,22 @@ public final class MainActivity extends Activity {
     }
 
     private void showTabs() {
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(12), dp(14), dp(12), dp(12));
+        TextView add = text("＋ Nova aba", 16, Color.WHITE);
+        add.setTypeface(Typeface.DEFAULT_BOLD);
+        add.setGravity(Gravity.CENTER);
+        add.setBackground(rounded(XP_BLUE, 0, 12));
+        add.setOnClickListener(v -> { addTab(configuredHome()); closeModuleScreens(); });
+        page.addView(add, new LinearLayout.LayoutParams(-1, dp(52)));
+        ScrollView scroll = new ScrollView(this);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(8), dp(8), dp(8), dp(8));
-        ScrollView scroll = new ScrollView(this);
         scroll.addView(list);
-        AlertDialog dialog = new XpDialogs.Builder(this)
-                .setTitle("Abas abertas • " + tabs.size())
-                .setView(scroll)
-                .setPositiveButton("+ Nova aba", (d, n) -> addTab(configuredHome()))
-                .setNegativeButton("Fechar", null)
-                .create();
-        populateTabCards(list, dialog);
-        dialog.show();
+        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        populateTabCards(list, null);
+        showModuleScreen("Abas abertas • " + tabs.size(), "Alterne, feche ou crie abas", page);
     }
 
     private void populateTabCards(LinearLayout container, AlertDialog dialog) {
@@ -1350,9 +1346,14 @@ public final class MainActivity extends Activity {
             address.setSingleLine(true);
             info.addView(address);
             info.setContentDescription("Abrir aba: " + tab.title);
+            ImageView favicon = new ImageView(this);
+            favicon.setImageResource(R.drawable.ic_globe_xp);
+            card.addView(favicon, new LinearLayout.LayoutParams(dp(32), dp(32)));
+            if (!tab.privateMode) faviconRepository.load(tab.url, favicon);
             info.setOnClickListener(v -> {
                 selectTab(index);
-                dialog.dismiss();
+                closeModuleScreens();
+                if (dialog != null) dialog.dismiss();
             });
             card.addView(info, new LinearLayout.LayoutParams(0, dp(54), 1));
             TextView close = text("×", 24, XP_BLUE);
@@ -1361,7 +1362,7 @@ public final class MainActivity extends Activity {
             close.setOnClickListener(v -> {
                 closeTab(index);
                 populateTabCards(container, dialog);
-                dialog.setTitle("Abas abertas • " + tabs.size());
+                if (dialog != null) dialog.setTitle("Abas abertas • " + tabs.size());
             });
             card.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
@@ -1499,10 +1500,140 @@ public final class MainActivity extends Activity {
 
     private void refreshSuggestionAdapter(String query) {
         if (historyAdapter == null) return;
-        ArrayList<String> items = buildSuggestions(query);
-        historyAdapter.clear();
-        historyAdapter.addAll(items);
-        historyAdapter.notifyDataSetChanged();
+        ArrayList<SuggestionItem> rows = new ArrayList<>();
+        ArrayList<String> sites = buildSuggestions(query);
+        for (String site : sites) {
+            String host = PrivacyRules.displayHost(site);
+            rows.add(new SuggestionItem(site, host, bookmarks.contains(site) ? "Favorito" : "Histórico", true));
+        }
+        if (onlineSuggestionsEnabled && query != null && query.equals(lastOnlineQuery)
+                && (current() == null || !current().privateMode)) {
+            for (String hint : onlineSuggestions) {
+                if (rows.size() >= 24) break;
+                rows.add(new SuggestionItem(hint, hint, "Sugestão DuckDuckGo", false));
+            }
+        }
+        historyAdapter.update(rows);
+    }
+
+    private ImageView addressTool(int icon, String label, Runnable action) {
+        ImageView button = new ImageView(this);
+        button.setImageResource(icon);
+        button.setColorFilter(XP_BLUE);
+        button.setPadding(dp(5), dp(8), dp(5), dp(8));
+        button.setContentDescription(label);
+        button.setVisibility(View.GONE);
+        button.setOnClickListener(v -> action.run());
+        return button;
+    }
+
+    private void copyAddressText() {
+        ClipboardManager manager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (manager == null) return;
+        manager.setPrimaryClip(ClipData.newPlainText("Endereço Internet XP", urlBox.getText().toString()));
+        Toast.makeText(this, "Endereço copiado", Toast.LENGTH_SHORT).show();
+    }
+
+    private void pasteAddressText() {
+        ClipboardManager manager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (manager == null || !manager.hasPrimaryClip()) return;
+        ClipData clip = manager.getPrimaryClip();
+        if (clip == null || clip.getItemCount() == 0) return;
+        CharSequence text = clip.getItemAt(0).coerceToText(this);
+        if (text == null) return;
+        String safe = text.toString();
+        if (safe.length() > 2048) safe = safe.substring(0, 2048);
+        urlBox.setText(safe);
+        urlBox.setSelection(urlBox.length());
+        urlBox.requestFocus();
+    }
+
+    private void invalidateOnlineSuggestions() {
+        ++suggestionRequestId;
+        if (pendingSuggestionRequest != null) suggestionHandler.removeCallbacks(pendingSuggestionRequest);
+        pendingSuggestionRequest = null;
+        lastOnlineQuery = "";
+        onlineSuggestions.clear();
+        if (historyAdapter != null && urlBox != null) refreshSuggestionAdapter(urlBox.getText().toString());
+    }
+
+    private void scheduleOnlineSuggestions(String input) {
+        invalidateOnlineSuggestions();
+        if (!onlineSuggestionsEnabled || (current() != null && current().privateMode)
+                || !OnlineSuggestions.isEligibleQuery(input)) return;
+        final String query = input.trim();
+        final int token = suggestionRequestId;
+        pendingSuggestionRequest = () -> suggestionWorker.execute(() -> {
+            ArrayList<String> received = OnlineSuggestions.fetch(query);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed() || token != suggestionRequestId ||
+                        !urlBox.hasFocus() || (current() != null && current().privateMode) ||
+                        !query.equals(urlBox.getText().toString().trim())) return;
+                onlineSuggestions.clear();
+                onlineSuggestions.addAll(received);
+                lastOnlineQuery = urlBox.getText().toString();
+                refreshSuggestionAdapter(lastOnlineQuery);
+                if (historyAdapter.getCount() > 0 && !urlBox.isPopupShowing()) urlBox.showDropDown();
+            });
+        });
+        suggestionHandler.postDelayed(pendingSuggestionRequest, 350);
+    }
+
+    /** Lista heterogênea, com ícone do domínio para favoritos/histórico e lupa nas buscas. */
+    private static final class SuggestionItem {
+        final String value, label, source;
+        final boolean site;
+        SuggestionItem(String value, String label, String source, boolean site) {
+            this.value = value; this.label = label; this.source = source; this.site = site;
+        }
+    }
+
+    private final class AddressSuggestionAdapter extends BaseAdapter implements Filterable {
+        private final ArrayList<SuggestionItem> entries = new ArrayList<>();
+        void update(List<SuggestionItem> items) { entries.clear(); entries.addAll(items); notifyDataSetChanged(); }
+        @Override public int getCount() { return entries.size(); }
+        @Override public SuggestionItem getItem(int position) { return entries.get(position); }
+        @Override public long getItemId(int position) { return position; }
+        @Override public View getView(int position, View convertView, ViewGroup parent) {
+            SuggestionItem item = getItem(position);
+            LinearLayout line = new LinearLayout(MainActivity.this);
+            line.setGravity(Gravity.CENTER_VERTICAL);
+            line.setPadding(dp(12), dp(7), dp(12), dp(7));
+            ImageView icon = new ImageView(MainActivity.this);
+            icon.setImageResource(item.site ? R.drawable.ic_globe_xp : android.R.drawable.ic_menu_search);
+            icon.setPadding(dp(3), dp(3), dp(3), dp(3));
+            line.addView(icon, new LinearLayout.LayoutParams(dp(30), dp(30)));
+            if (item.site) faviconRepository.load(item.value, icon);
+            LinearLayout labels = new LinearLayout(MainActivity.this);
+            labels.setOrientation(LinearLayout.VERTICAL);
+            labels.setPadding(dp(10), 0, 0, 0);
+            TextView name = text(item.label, 14, TEXT);
+            name.setSingleLine(true);
+            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            labels.addView(name);
+            TextView detail = text(item.site ? item.source + " • " + item.value : item.source, 11, SUBTLE);
+            detail.setSingleLine(true);
+            detail.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            labels.addView(detail);
+            line.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+            return line;
+        }
+        private final Filter filter = new Filter() {
+            @Override protected FilterResults performFiltering(CharSequence constraint) {
+                FilterResults result = new FilterResults();
+                // Os itens já foram filtrados por histórico e atualizados pela rede na UI.
+                result.values = null;
+                result.count = getCount();
+                return result;
+            }
+            @Override protected void publishResults(CharSequence constraint, FilterResults results) {
+                notifyDataSetChanged();
+            }
+            @Override public CharSequence convertResultToString(Object value) {
+                return value instanceof SuggestionItem ? ((SuggestionItem) value).value : "";
+            }
+        };
+        @Override public Filter getFilter() { return filter; }
     }
 
     private ArrayList<String> buildSuggestions(String query) {
@@ -1542,38 +1673,47 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Histórico indisponível na aba privada", Toast.LENGTH_SHORT).show();
             return;
         }
-        LinearLayout column = styledDialogContent("Histórico de navegação", "Pesquise seus sites visitados, abra ou remova registros.");
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(12), dp(12), dp(12), dp(12));
         EditText search = new EditText(this);
         search.setSingleLine(true);
-        search.setTextSize(14);
+        search.setTextSize(15);
         search.setHint("Pesquisar título ou endereço");
         search.setPadding(dp(10), 0, dp(10), 0);
-        search.setBackground(rounded(Color.WHITE, BORDER, 8));
-        column.addView(search, new LinearLayout.LayoutParams(-1, dp(46)));
+        search.setBackground(rounded(Color.WHITE, BORDER, 10));
+        page.addView(search, new LinearLayout.LayoutParams(-1, dp(48)));
         ScrollView scroll = new ScrollView(this);
         LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
+        results.setPadding(0, dp(12), 0, dp(6));
         scroll.addView(results);
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, dp(Math.min(300, Math.max(180, (int) (screenHeightDp() * .37f)))));
-        scrollParams.topMargin = dp(8);
-        column.addView(scroll, scrollParams);
-        AlertDialog dialog = new XpDialogs.Builder(this)
-                .setView(column)
-                .setPositiveButton("Limpar histórico", (d, n) -> clearHistory())
-                .setNegativeButton("Fechar", null)
-                .create();
+        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        TextView clear = text("Limpar histórico", 14, XP_BLUE);
+        clear.setGravity(Gravity.CENTER);
+        clear.setOnClickListener(v -> new XpDialogs.Builder(this).setTitle("Limpar histórico?")
+                .setMessage("Os registros locais serão apagados. Cookies e cache permanecerão.")
+                .setPositiveButton("Apagar", (d, n) -> { clearHistoryData(); populateHistoryRows(results, "", null); })
+                .setNegativeButton("Cancelar", null).show());
+        page.addView(clear, new LinearLayout.LayoutParams(-1, dp(52)));
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                populateHistoryRows(results, s.toString(), dialog);
+                populateHistoryRows(results, s.toString(), null);
             }
             @Override public void afterTextChanged(Editable editable) { }
         });
-        populateHistoryRows(results, "", dialog);
-        dialog.show();
-        compactDialog(dialog);
-        animateDialogOpen(column, false);
-        dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        populateHistoryRows(results, "", null);
+        showModuleScreen("Histórico", "Pesquise páginas visitadas e remova registros", page);
+        page.setFocusableInTouchMode(true);
+        page.requestFocus();
+    }
+
+    private void clearHistoryData() {
+        history.clear(); historyDetails.clear();
+        saveStringList(PREF_HISTORY, history);
+        saveHistoryDetails();
+        refreshSuggestionAdapter("");
     }
 
     private void populateHistoryRows(LinearLayout container, String query, AlertDialog dialog) {
@@ -1610,8 +1750,13 @@ public final class MainActivity extends Activity {
             labels.addView(url);
             labels.setOnClickListener(v -> {
                 navigate(entry.url);
-                dialog.dismiss();
+                if (dialog != null) dialog.dismiss();
             });
+            ImageView icon = new ImageView(this);
+            icon.setImageResource(R.drawable.ic_globe_xp);
+            icon.setPadding(dp(4), dp(4), dp(4), dp(4));
+            row.addView(icon, new LinearLayout.LayoutParams(dp(36), dp(36)));
+            faviconRepository.load(entry.url, icon);
             row.addView(labels, new LinearLayout.LayoutParams(0, dp(52), 1));
             TextView remove = text("×", 21, XP_BLUE);
             remove.setGravity(Gravity.CENTER);
@@ -1677,19 +1822,23 @@ public final class MainActivity extends Activity {
     }
 
     private void showDownloads() {
-        if (downloadsPanel.getVisibility() != View.VISIBLE) downloadsPanel.setVisibility(View.VISIBLE);
+        if (downloadsPanel.getParent() instanceof ViewGroup)
+            ((ViewGroup) downloadsPanel.getParent()).removeView(downloadsPanel);
+        downloadsPanel.setVisibility(View.VISIBLE);
+        showModuleScreen("Downloads", "Transferências gerenciadas pelo Internet XP", downloadsPanel);
         renderDownloadsPanel();
         scheduleDownloadRefresh();
     }
 
     private void hideDownloadsPanel() {
+        if (!moduleScreens.isEmpty() && downloadsPanel.getParent() == moduleScreens.peek()) popModuleScreen();
         downloadsPanel.setVisibility(View.GONE);
         uiHandler.removeCallbacks(downloadRefresh);
     }
 
     private void scheduleDownloadRefresh() {
         uiHandler.removeCallbacks(downloadRefresh);
-        if (downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE && hasActiveDownloads()) {
+        if (downloadsPanel != null && downloadsPanel.isShown() && hasActiveDownloads()) {
             uiHandler.postDelayed(downloadRefresh, DOWNLOAD_REFRESH_MS);
         }
     }
@@ -2343,6 +2492,8 @@ public final class MainActivity extends Activity {
 
     private void clearBrowserData(long flags, boolean clearLocalHistory) {
         if (runtime == null) return;
+        closeModuleScreens();
+        invalidateOnlineSuggestions();
         uiHandler.removeCallbacks(downloadRefresh);
         if (extensionPopupDialog != null) extensionPopupDialog.dismiss();
         if (view != null) view.releaseSession();
@@ -2648,6 +2799,7 @@ public final class MainActivity extends Activity {
             applyFullScreen(false);
             return;
         }
+        if (!moduleScreens.isEmpty()) { popModuleScreen(); return; }
         if (downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) {
             hideDownloadsPanel();
             return;
@@ -2701,6 +2853,9 @@ public final class MainActivity extends Activity {
         if (view != null) view.releaseSession();
         for (Tab t : tabs) if (t.opened) t.session.close();
         tabs.clear();
+        invalidateOnlineSuggestions();
+        suggestionHandler.removeCallbacksAndMessages(null);
+        suggestionWorker.shutdownNow();
         if (faviconRepository != null) faviconRepository.shutdown();
         super.onDestroy();
     }

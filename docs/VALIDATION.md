@@ -1,4 +1,15 @@
-## 1.0.30: layout horizontal, janelas XP e navegação ampliada
+## 1.0.31: fluxo de navegação e autocompletar
+- Tocar na barra: Copiar e Colar aparecem; sair dela: ambos desaparecem. Testar seleção integral, digitação, Enter e aba privada.
+- Digitar termo comum: histórico/favoritos aparecem com ícones; após 350ms podem aparecer sugestões DuckDuckGo, se habilitadas. Desabilitar em Configurações e testar sem rede.
+- Em aba privada, confirmar ausência de histórico local e ausência de envio de texto ao provedor. URLs com esquema ou endereços de domínio não devem iniciar sugestão remota.
+- Abrir Menu > Privacidade > Permissões, usar Voltar para retornar à Privacidade, Voltar para Menu e novamente Voltar para página carregada, sem reload.
+- Abrir Sobre, Configurações, Histórico, Favoritos, Downloads, Abas. Validar legibilidade e rolagem em 320/360/430dp; testar Android Voltar e Voltar visual.
+- Em Downloads, iniciar transferência, abrir painel novo, voltar e reabrir sem perder download; confirmar que atualização periódica só roda quando painel está visível e há downloads ativos.
+- Em Histórico, pesquisar, navegar, excluir entradas e limpar com confirmação; favicons são opcionais e não substituem cadeado HTTPS.
+- Testar Menu > Extensões, instalação de XPI e ações GeckoView, assegurando que pop-ups reais de extensões continuam funcionando.
+- Executar CI: `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` nas três ABIs. Ainda não executados no ambiente atual.
+
+## 1.0.31: layout horizontal, janelas XP e navegação ampliada
 - Conferir que os três comandos de Adicionar complemento aparecem em **uma única linha** na largura de 320 a 430dp.
 - Instalar Cookie Editor, verificar quatro comandos horizontais no cartão, sem truncamento grave em 320dp.
 - Abrir os diálogos de URL, confirmação XPI, permissão GeckoView, diagnóstico, exportação e exclusão; verificar cabeçalho azul, botões e fechamento/cancelamento.

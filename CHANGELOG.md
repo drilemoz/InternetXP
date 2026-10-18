@@ -1,4 +1,11 @@
-## 1.0.30 (versionCode 31) - módulos horizontais e diálogos XP reutilizáveis
+## 1.0.31 (versionCode 32) - barra de endereço inteligente e telas próprias
+- Menu, privacidade, Sobre, favoritos, histórico, downloads, configurações e abas agora utilizam telas internas completas com retorno; nenhuma sessão GeckoView é recriada por trocar de módulo.
+- Sugestões online opcionais e desativáveis por DuckDuckGo, bloqueadas em abas privadas e quando o texto parece ser uma URL; resultados locais continuam offline.
+- Botões de copiar e colar contextuais na barra e favicons HTTPS cacheados nas sugestões locais, no histórico, favoritos e abas.
+- Fluxo de download próprio, WebExtensions, permissões e confirmações conservados.
+- Testes Gradle e UI reais pendentes; validação sintática e estrutura realizadas localmente.
+
+## 1.0.31 (versionCode 31) - módulos horizontais e diálogos XP reutilizáveis
 - Três atalhos de instalação de extensões dispostos em linha única com dimensões iguais, textos curtos e descrições acessíveis.
 - Cada complemento instalado apresenta uma fileira com os quatro comandos, sem retirar operações ou seus avisos de segurança.
 - Central criado `XpDialogs.Builder`: estilização uniforme dos diálogos convencionais de extensões e tela principal, com título customizado, mensagens legíveis e botões com identidade XP.

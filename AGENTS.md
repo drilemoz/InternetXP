@@ -118,3 +118,11 @@
 - Barra de navegação inferior mantém seis itens e ícones/legendas ampliados.
 - A condição `metaData.enabled` não é diagnóstico de execução: validar funcionamento de cada complemento com efeitos observáveis em página real.
 - Novas mudanças exigem incremento de versionCode, Novidades, docs, validações e Release, conforme regra permanente.
+
+## 1.0.31: telas internas e sugestões com controle de privacidade
+- Preferir telas completas via pilha própria para Menu, Sobre, Privacidade, Histórico, Favoritos, Downloads, Configurações e Abas; deixar pop-ups para confirmação, entrada curta, permissões e pop-ups reais de extensões.
+- Manter a mesma GeckoSession ao transitar entre módulos, com Back visual e do Android retornando à tela anterior.
+- Favicons só por HTTPS do domínio como antes; falha é ícone genérico. Não buscar ícones por serviços agregadores externos.
+- Autocomplete remoto opcional e desligável, bloquear em modo privado e durante URLs digitadas, executar fora da thread principal e ignorar resultados antigos.
+- Ações Copiar/Colar da barra devem aparecer somente enquanto a barra estiver em foco.
+- Metadados da próxima versão seguem sequência 1.0.32/versionCode 33.

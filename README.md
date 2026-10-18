@@ -1,6 +1,16 @@
-# Internet XP v1.0.30 (versionCode 31)
+# Internet XP v1.0.31 (versionCode 31)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.31: navegação por telas e barra inteligente
+
+- O **Menu**, **Privacidade**, **Sobre**, **Configurações**, **Histórico**, **Favoritos**, **Abas** e **Downloads** agora abrem como telas internas completas com cabeçalho e retorno, sem recarregar a página GeckoView ao navegar entre módulos.
+- O menu de endereço mostra URLs de histórico e favoritos com favicon carregado do próprio site via HTTPS, mais sugestões de pesquisa recebidas do **DuckDuckGo**, com *debounce* de 350ms e limite de resposta.
+- **Privacidade**: sugestões online vêm ativadas nas abas normais, podem ser desligadas em Configurações, nunca consultam o provedor em aba privada nem são enviadas quando o usuário digita endereço URL. Histórico e favoritos não são enviados diretamente para o provedor.
+- **Copiar** e **Colar** aparecem somente durante o foco no endereço, ocultando quando a barra perde o foco. Colagem limita texto a 2048 caracteres para evitar travamento por conteúdos gigantes.
+- Favicons são cacheados em memória e têm ícone padrão quando indisponíveis. Módulos de permissão, confirmação e pop-up de extensão continuam como diálogos.
+- O build Android completo e os testes de UI seguem pendentes de GitHub Actions e validação em aparelho físico.
+
 
 ## 1.0.30: refinamento visual da central e dos diálogos
 
@@ -43,7 +53,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.30`, `versionCode=31`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.31`, `versionCode=31`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 31" in gradle
-assert "versionName '1.0.30'" in gradle
+assert "versionCode 32" in gradle
+assert "versionName '1.0.31'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -26,9 +26,9 @@ assert 'private void showModuleMenuDialog(' in activity
 assert 'addressBox.setOnClickListener(v -> focusAddressBar(true))' in activity
 assert 'urlBox.setOnTouchListener((v, event) -> {' in activity
 assert 'private void focusAddressBar(boolean showSuggestions)' in activity
-assert "Internet XP.v1.0.30-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.31-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.30' in workflow_text
+assert 'gh release create v1.0.31' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 assert 'name: Compilar APK e publicar na Release' in workflow_text
@@ -45,9 +45,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='31' versionName='1.0.30'" in workflow_text
+assert "versionCode='32' versionName='1.0.31'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.30-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.31-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -97,9 +97,9 @@ for name in ('ic_launcher.xml','ic_launcher_round.xml'):
     ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
 assert (root/'branding/internet_xp_icon_master.png').exists()
 
-assert '1.0.30' in (root/'README.md').read_text()
-assert '1.0.30' in (root/'CHANGELOG.md').read_text()
-assert '1.0.30' in (root/'docs/VALIDATION.md').read_text()
+assert '1.0.31' in (root/'README.md').read_text()
+assert '1.0.31' in (root/'CHANGELOG.md').read_text()
+assert '1.0.31' in (root/'docs/VALIDATION.md').read_text()
 
 # Mandatory per-update release notes: failed checks block CI before Android build.
 import ast
@@ -189,7 +189,7 @@ assert 'new MenuAction("⚙", "Configurações"' in activity
 assert 'faviconRepository.load(t.url, faviconIcon)' in activity
 assert 'showModuleMenuDialog("Favoritos"' in activity
 assert 'startActivity(new Intent(this, ExtensionManagerActivity.class))' in activity
-assert 'styledDialogContent("Histórico de navegação"' in activity
+assert 'showModuleScreen("Histórico",' in activity
 assert 'private void showAbout()' in activity
 assert (root/'app/src/main/java/br/com/internetxp/HomePageView.java').exists()
 assert (root/'app/src/main/java/br/com/internetxp/HomePageSettings.java').exists()
@@ -243,15 +243,15 @@ assert "Mais ferramentas" in activity
 print('Menu XP moderno: OK')
 
 
-# 1.0.30: regressoes dos pop-ups e das correcoes da compilacao
+# 1.0.31: regressoes dos pop-ups e das correcoes da compilacao
 assert "animateDialogOpen(" in activity
 assert "installDownloadedExtension(" in activity
 assert "isTinyPhone()" in activity
-assert "styleBottomMenuDialog(dialog);\n        animateDialogOpen(wrapper, true);" in activity
+assert 'showModuleScreen("Menu Internet XP", subtitle, scroll);' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/ExtensionManagerActivity.java').exists()
 print('Pop-ups alinhados e animações: OK')
 
-# 1.0.30: extensões são geridas pelo motor e não apenas pelo histórico de downloads
+# 1.0.31: extensões são geridas pelo motor e não apenas pelo histórico de downloads
 manager = (root/'app/src/main/java/br/com/internetxp/ExtensionManagerActivity.java').read_text()
 package = (root/'app/src/main/java/br/com/internetxp/ExtensionPackageStore.java').read_text()
 assert 'android:name=".ExtensionManagerActivity"' in manifest_xml
@@ -266,7 +266,7 @@ assert 'void importPackage(Uri source)' in manager
 assert 'void installStaged(File file)' in manager
 assert 'private void changeState(WebExtension x)' in manager
 assert 'private void exportMenu(WebExtension ext)' in manager
-assert '1.0.30' in (root/'AGENTS.md').read_text()
+assert '1.0.31' in (root/'AGENTS.md').read_text()
 print('Central real de WebExtensions, SAF e versionamento: OK')
 
 compat = (root/'app/src/main/java/br/com/internetxp/ExtensionCompatibility.java').read_text()
@@ -278,31 +278,15 @@ assert 'onTogglePopup(WebExtension extension' in activity
 assert (root/'app/src/test/java/br/com/internetxp/ExtensionCompatibilityTest.java').exists()
 print('Acoes de extensoes, popup e regras testaveis: OK')
 
-# Regressão do workflow 27: três erros Java de variáveis usadas fora do escopo.
-# Verificações por método impedem que um nome declarado em outro diálogo mas não
-# no método correto esconda um erro que o validador estrutural anterior deixou passar.
-def method_code(start, next_method):
-    assert start in activity and next_method in activity
-    block = activity.split(start, 1)[1].split(next_method, 1)[0]
-    assert block, start
-    return block
+# Os três erros anteriores não podem retornar: abandonar holders e contêineres de diálogos em telas inteiras.
+assert 'showModuleScreen("Menu Internet XP", subtitle, scroll);' in activity
+assert 'showModuleScreen(title, subtitle, scroll);' in activity
+assert 'showModuleScreen("Histórico",' in activity
+assert 'private void popModuleScreen()' in activity
+assert 'private void closeModuleScreens()' in activity
+print('Navegação por telas completas: OK')
 
-hub = method_code('private void showMainMenuHubDialog(', 'private LinearLayout createHubTile(')
-assert hub.count('final AlertDialog[] holder = new AlertDialog[1];') == 1
-assert hub.index('final AlertDialog[] holder = new AlertDialog[1];') < hub.index('createHubTile(action, holder)'), 'holder usado antes da declaração'
-assert 'holder[0] = dialog;' in hub
-module = method_code('private void showModuleMenuDialog(', 'private void compactDialog(')
-assert 'LinearLayout wrapper = new LinearLayout(this);' in module
-assert 'animateDialogOpen(wrapper, false);' in module
-assert 'animateDialogOpen(column, false)' not in module
-history = method_code('private void showHistory()', 'private void populateHistoryRows(')
-assert 'LinearLayout column = styledDialogContent(' in history
-assert 'animateDialogOpen(column, false);' in history
-assert 'animateDialogOpen(wrapper, false)' not in history
-print('Workflow 27: escopo dos tres dialogos Java corrigido: OK')
-
-
-# 1.0.30: acoes agrupadas horizontalmente, tema central e navegador legivel.
+# 1.0.31: acoes agrupadas horizontalmente, tema central e navegador legivel.
 manager = (root/'app/src/main/java/br/com/internetxp/ExtensionManagerActivity.java').read_text()
 shared = (root/'app/src/main/java/br/com/internetxp/XpDialogs.java').read_text()
 assert 'addHorizontalAction(addRow, "↓", "Importar XPI"' in manager
@@ -318,5 +302,17 @@ assert 'return isCompactPhone() ? 68 : 74' in activity
 assert 'compactPhone ? 26 : 29' in activity
 assert 'compactPhone ? 9.5f : 10.5f' in activity
 assert 'metaData.enabled' in manager and '.getWebExtensionController().install(' in manager
-assert '1.0.30' in (root/'AGENTS.md').read_text()
-print('1.0.30: faixa horizontal, tema compartilhado e barra ampliada: OK')
+assert '1.0.31' in (root/'AGENTS.md').read_text()
+print('1.0.31: faixa horizontal, tema compartilhado e barra ampliada: OK')
+
+# 1.0.31: privacidade, barra inteligente e ícones no histórico.
+assert 'private void scheduleOnlineSuggestions(String input)' in activity
+assert 'DuckDuckGo' in activity
+assert 'PREF_ONLINE_SUGGESTIONS' in activity
+assert 'copyAddressButton.setVisibility(focused ? View.VISIBLE : View.GONE)' in activity
+assert 'pasteAddressButton.setVisibility(focused ? View.VISIBLE : View.GONE)' in activity
+assert 'faviconRepository.load(entry.url, icon)' in activity
+assert 'private void showModuleScreen(' in activity
+assert 'new XpDialogs.Builder(this).setView(wrapper).create()' not in activity
+assert (root/'app/src/main/java/br/com/internetxp/OnlineSuggestions.java').exists()
+print('1.0.31: barra inteligente, privacidade e telas completas: OK')

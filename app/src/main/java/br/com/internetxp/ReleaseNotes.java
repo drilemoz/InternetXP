@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.30";
-    public static final int VERSION_CODE = 31;
-    public static final String HEADLINE = "Extensões mais compactas e diálogos com identidade XP.";
-    public static final String SUBTITLE = "Central de extensões em cartões horizontais, janelas reutilizáveis com identidade própria e barra inferior maior para facilitar os toques.";
+    public static final String VERSION_NAME = "1.0.31";
+    public static final int VERSION_CODE = 32;
+    public static final String HEADLINE = "Barra inteligente e módulos de navegação em tela inteira.";
+    public static final String SUBTITLE = "Sugestões opcionais do DuckDuckGo, favicons e copiar/colar contextual, com módulos que abrem como telas próprias.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Importar lado a lado", "Importar XPI, instalar por HTTPS e acessar o catálogo Mozilla agora ocupam uma única faixa horizontal."),
-        new Feature("02", "Comandos horizontais", "Ativar ou desativar, diagnóstico, exportação e exclusão compartilham uma linha em cada cartão instalado."),
-        new Feature("03", "Diálogos XP", "Janelas convencionais do navegador usam um construtor de estilo comum, com cabeçalho azul, cantos arredondados e ações padronizadas."),
-        new Feature("04", "Navegação ampliada", "Barra inferior com símbolos, ícone de downloads e textos mais visíveis, respeitando a largura do aparelho."),
-        new Feature("05", "Teste de funcionamento", "A central lembra que uma extensão ativada precisa ser testada em uma página real para comprovar sua função.")
+        new Feature("01", "Barra com sugestões", "Sugestões online opcionais pelo DuckDuckGo, com dados transmitidos apenas em abas normais e com opção de desligar em Configurações."),
+        new Feature("02", "Copiar e colar", "Botões de copiar e colar aparecem só quando a barra de endereço está selecionada."),
+        new Feature("03", "Favicons no navegador", "Ícones HTTPS de sites nos resultados locais do endereço, histórico, favoritos e abas, com cache limitado."),
+        new Feature("04", "Telas próprias", "Menu, privacidade, histórico, favoritos, downloads, abas, configurações e Sobre abrem como telas com Voltar."),
+        new Feature("05", "Extensões preservadas", "A central de WebExtensions e os diálogos de confirmação e permissão permanecem intactos.")
     };
 
     private ReleaseNotes() { }
