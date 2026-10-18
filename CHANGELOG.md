@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.0.12 (versionCode 13) - barra de endereço compacta, histórico e downloads internos
+- Reduz a altura da barra de endereço e da barra inferior principal, liberando espaço para o site.
+- Aumenta a largura útil da barra de endereço, reduzindo margens laterais desnecessárias.
+- Troca o botão Atualizar por um ícone mais coerente com o tema Internet Explorer/XP.
+- Adiciona a seta de lista no campo de endereço, abrindo rapidamente endereços do histórico.
+- Implementa sugestões de histórico e favoritos durante a digitação no campo de endereço.
+- Cria o módulo interno de downloads na parte inferior, com painel embutido, lista de downloads recentes, status, ação para abrir arquivos concluídos e remoção da lista local.
+- Mantém GeckoView 158, release assinada obrigatória e três APKs por ABI: armeabi-v7a, arm64-v8a e x86_64.
+
+# CHANGELOG
+
 ## 1.0.11 (versionCode 12) - corrigido build por ABI
 - Workflow 11: testes Java, Android Lint, assinatura e `:app:assembleRelease` aprovados com R8; a publicação falhou somente porque a variante x86 de 32 bits não inclui bibliotecas nativas do GeckoView 158.
 - Excluída ABI `x86` do split e do upload; mantidas `armeabi-v7a`, `arm64-v8a` e `x86_64`.
