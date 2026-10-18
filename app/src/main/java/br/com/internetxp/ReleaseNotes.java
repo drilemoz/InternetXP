@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.25";
-    public static final int VERSION_CODE = 26;
-    public static final String HEADLINE = "Menu rápido com mais personalidade.";
-    public static final String SUBTITLE = "O menu principal ficou mais vivo, mais alto e com menos espaço lateral, destacando atalhos em formato de hub.";
+    public static final String VERSION_NAME = "1.0.26";
+    public static final int VERSION_CODE = 27;
+    public static final String HEADLINE = "Pop-ups alinhados ao novo menu.";
+    public static final String SUBTITLE = "O Internet XP ficou mais consistente visualmente, com diálogos menos secos, abertura animada e melhor adaptação a telas compactas.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Menu rápido redesenhado", "O botão Menu agora abre um painel mais vivo, inspirado na proposta XP Moderno, com destaque para os atalhos mais usados."),
-        new Feature("02", "Atalhos principais em grade", "Nova aba, privada, favoritos, histórico, downloads e configurações ganharam cartões compactos, mais fáceis de localizar."),
-        new Feature("03", "Mais altura, menos margens", "O painel ocupa melhor a tela, sobe mais no eixo vertical e reduz o espaço lateral sem cobrir tudo."),
-        new Feature("04", "Ferramentas extras abaixo", "As demais ações continuam acessíveis em uma lista compacta, mais organizada e menos seca visualmente."),
-        new Feature("05", "Pop-ups coerentes", "Os diálogos modulares também ficaram um pouco maiores para seguir melhor a identidade do restante do navegador.")
+        new Feature("01", "Pop-ups coerentes", "As janelas de Favoritos, Extensões, Sobre, erros e ações rápidas agora seguem melhor o visual azul e os cartões do novo menu."),
+        new Feature("02", "Cabeçalho refinado", "O menu ganhou um cabeçalho mais forte e a família de diálogos recebeu acabamento visual mais próximo da identidade do Internet XP."),
+        new Feature("03", "Abertura animada", "Painéis e pop-ups passaram a abrir com uma transição suave para deixar a navegação mais agradável."),
+        new Feature("04", "Mais compacto no Redmi A3", "Margens, textos e grade foram ajustados para caber melhor em telas menores sem perder legibilidade."),
+        new Feature("05", "Extensões integradas", "As ações de ativar, desativar, instalar e remover extensões passaram a usar diálogos próprios do aplicativo.")
     };
 
     private ReleaseNotes() { }

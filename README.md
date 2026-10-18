@@ -1,13 +1,13 @@
-# Internet XP v1.0.25
+# Internet XP v1.0.26
 
 Navegador Android com motor Mozilla GeckoView 158, visual inspirado no Windows XP/Internet Explorer e interface compacta para celulares.
 
-## Novidades da v1.0.25
-- Menu principal redesenhado no estilo XP Moderno, com visual menos seco e mais próximo de um hub de navegador.
-- Atalhos principais em grade no topo para Nova aba, aba privada, Favoritos, Histórico, Downloads e Configurações.
-- Popup do menu com menos espaço lateral e mais altura vertical, sem ocupar a tela toda.
-- Ferramentas secundárias continuam logo abaixo em uma lista compacta e mais organizada.
-- Pop-ups modulares ampliados para acompanhar melhor o restante do layout.
+## Novidades da v1.0.26
+- Outros pop-ups agora seguem melhor o novo menu, com cabeçalhos azulados, cartões brancos e visual mais coerente.
+- Cabeçalho do menu refinado e animação de abertura aplicada ao painel principal e aos diálogos modulares.
+- Menus e pop-ups mais compactos em telas menores como o Redmi A3, com menos margens laterais e ajustes de tipografia.
+- Ações de extensões agora usam diálogos no estilo do app, em vez de caixas secas do sistema.
+- Tela de Novidades, README, CHANGELOG, validações e workflow sincronizados com a versão 1.0.26.
 
 ## Novidades anteriores da v1.0.25 (versionCode 26)
 - Gerenciador de downloads próprio escrito em Java, sem Android DownloadManager.
@@ -25,7 +25,7 @@ Navegador Android com motor Mozilla GeckoView 158, visual inspirado no Windows X
 - Não é possível impedir que o Android ofereça outros navegadores ou force links verificados de determinados aplicativos; escolha o Internet XP no seletor ou em Apps padrão.
 
 ## Compilação e distribuição
-- `versionName 1.0.25`, `versionCode 26`, `minSdk 26`, `compileSdk 37`.
+- `versionName 1.0.25`, `versionCode 27`, `minSdk 26`, `compileSdk 37`.
 - Três APKs Release assinados: `armeabi-v7a`, `arm64-v8a`, `x86_64` diretamente no GitHub Releases; sem Artifact ZIP.
 - Quatro Repository Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP entregue é código-fonte, não APK instalável.

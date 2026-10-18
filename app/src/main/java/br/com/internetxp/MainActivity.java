@@ -31,6 +31,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
@@ -202,6 +203,11 @@ public final class MainActivity extends Activity {
     private boolean isCompactPhone() {
         int width = screenWidthDp();
         return width > 0 && width <= 360;
+    }
+
+    private boolean isTinyPhone() {
+        int width = screenWidthDp();
+        return width > 0 && width <= 320;
     }
 
     private boolean isShortPhone() {
@@ -595,7 +601,7 @@ public final class MainActivity extends Activity {
                 new int[]{0xff3a8df3, XP_BLUE, 0xff0b58aa});
         headerBg.setCornerRadii(new float[]{dp(18), dp(18), dp(18), dp(18), 0, 0, 0, 0});
         header.setBackground(headerBg);
-        TextView titleView = text(title, 19, Color.WHITE);
+        TextView titleView = text("◉  " + title, 19, Color.WHITE);
         titleView.setTypeface(Typeface.DEFAULT_BOLD);
         header.addView(titleView);
         TextView subtitleView = text(subtitle, 11, 0xffe6effa);
@@ -607,7 +613,7 @@ public final class MainActivity extends Activity {
         scroll.setFillViewport(true);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(12), dp(12), dp(12), dp(10));
+        content.setPadding(dp(isCompactPhone() ? 10 : 12), dp(12), dp(isCompactPhone() ? 10 : 12), dp(10));
         scroll.addView(content);
 
         TextView quick = text("Acesso rápido", 12, XP_BLUE);
@@ -620,7 +626,7 @@ public final class MainActivity extends Activity {
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         content.addView(grid);
-        int cols = 3;
+        int cols = isTinyPhone() ? 2 : 3;
         for (int i = 0; i < primary.size(); i += cols) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -638,7 +644,7 @@ public final class MainActivity extends Activity {
                 row.addView(createHubTile(action, holder), new LinearLayout.LayoutParams(0, -2, 1));
                 if (c < cols - 1) {
                     View gap = new View(this);
-                    row.addView(gap, new LinearLayout.LayoutParams(dp(8), 1));
+                    row.addView(gap, new LinearLayout.LayoutParams(dp(isCompactPhone() ? 6 : 8), 1));
                 }
             }
         }
@@ -659,7 +665,7 @@ public final class MainActivity extends Activity {
             content.addView(row, params);
         }
 
-        int contentHeight = Math.min(520, Math.max(360, (int) (screenHeightDp() * .56f)));
+        int contentHeight = Math.min(isCompactPhone() ? 560 : 600, Math.max(isCompactPhone() ? 390 : 420, (int) (screenHeightDp() * (isCompactPhone() ? .62f : .58f))));
         wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(contentHeight)));
 
         TextView close = text("Fechar", 13, XP_BLUE);
@@ -674,35 +680,36 @@ public final class MainActivity extends Activity {
         close.setOnClickListener(v -> dialog.dismiss());
         dialog.show();
         styleBottomMenuDialog(dialog);
+        animateDialogOpen(wrapper, true);
     }
 
     private LinearLayout createHubTile(MenuAction action, AlertDialog[] holder) {
         LinearLayout tile = new LinearLayout(this);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER_HORIZONTAL);
-        tile.setPadding(dp(8), dp(10), dp(8), dp(10));
+        tile.setPadding(dp(isCompactPhone() ? 6 : 8), dp(isCompactPhone() ? 8 : 10), dp(isCompactPhone() ? 6 : 8), dp(isCompactPhone() ? 8 : 10));
         tile.setBackground(rounded(Color.WHITE, BORDER, 14));
         tile.setClickable(true);
         tile.setFocusable(true);
 
-        TextView icon = text(action.icon, 20, Color.WHITE);
+        TextView icon = text(action.icon, isCompactPhone() ? 18 : 20, Color.WHITE);
         icon.setTypeface(Typeface.DEFAULT_BOLD);
         icon.setGravity(Gravity.CENTER);
         GradientDrawable iconBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xff3993ff, XP_BLUE});
         iconBg.setCornerRadius(dp(12));
         icon.setBackground(iconBg);
-        tile.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        tile.addView(icon, new LinearLayout.LayoutParams(dp(isCompactPhone() ? 34 : 38), dp(isCompactPhone() ? 34 : 38)));
 
-        TextView title = text(action.title, 11.5f, TEXT);
+        TextView title = text(action.title, isCompactPhone() ? 10.5f : 11.5f, TEXT);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setGravity(Gravity.CENTER_HORIZONTAL);
         title.setPadding(0, dp(8), 0, 0);
         tile.addView(title);
 
-        TextView desc = text(action.description, 9.5f, SUBTLE);
+        TextView desc = text(action.description, isCompactPhone() ? 8.8f : 9.5f, SUBTLE);
         desc.setGravity(Gravity.CENTER_HORIZONTAL);
         desc.setPadding(dp(2), dp(2), dp(2), 0);
-        desc.setMaxLines(2);
+        desc.setMaxLines(isCompactPhone() ? 1 : 2);
         tile.addView(desc);
 
         tile.setOnClickListener(v -> {
@@ -716,7 +723,7 @@ public final class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(10), dp(9), dp(10), dp(9));
+        row.setPadding(dp(isCompactPhone() ? 9 : 10), dp(isCompactPhone() ? 8 : 9), dp(isCompactPhone() ? 9 : 10), dp(isCompactPhone() ? 8 : 9));
         row.setBackground(rounded(Color.WHITE, BORDER, 12));
         row.setClickable(true);
         row.setFocusable(true);
@@ -732,10 +739,10 @@ public final class MainActivity extends Activity {
         LinearLayout labels = new LinearLayout(this);
         labels.setOrientation(LinearLayout.VERTICAL);
         labels.setPadding(dp(10), 0, dp(8), 0);
-        TextView rowTitle = text(action.title, 12.5f, TEXT);
+        TextView rowTitle = text(action.title, isCompactPhone() ? 11.5f : 12.5f, TEXT);
         rowTitle.setTypeface(Typeface.DEFAULT_BOLD);
         labels.addView(rowTitle);
-        TextView rowDesc = text(action.description, 10.5f, SUBTLE);
+        TextView rowDesc = text(action.description, isCompactPhone() ? 9.8f : 10.5f, SUBTLE);
         rowDesc.setPadding(0, dp(1), 0, 0);
         rowDesc.setMaxLines(2);
         labels.addView(rowDesc);
@@ -754,10 +761,24 @@ public final class MainActivity extends Activity {
 
     private void styleBottomMenuDialog(AlertDialog dialog) {
         if (dialog.getWindow() == null) return;
-        int width = dp(Math.min(Math.max(320, screenWidthDp() - 18), 430));
+        int width = dp(Math.min(Math.max(isCompactPhone() ? 334 : 320, screenWidthDp() - (isCompactPhone() ? 10 : 18)), 450));
         dialog.getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
         dialog.getWindow().setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        dialog.getWindow().setDimAmount(0.35f);
+        dialog.getWindow().setWindowAnimations(android.R.style.Animation_Dialog);
+    }
+
+    private void animateDialogOpen(View view, boolean fromBottom) {
+        if (view == null) return;
+        view.setAlpha(0f);
+        view.setTranslationY(dp(fromBottom ? 18 : 10));
+        view.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(180)
+                .setInterpolator(new DecelerateInterpolator())
+                .start();
     }
 
     private void showModuleMenuDialog(String title, String subtitle, List<MenuAction> actions) {
@@ -767,12 +788,14 @@ public final class MainActivity extends Activity {
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(14), dp(12), dp(14), dp(10));
-        header.setBackground(rounded(PANEL_BG, BORDER, 0));
-        TextView titleView = text(title, 18, XP_BLUE);
+        header.setPadding(dp(14), dp(13), dp(14), dp(11));
+        GradientDrawable moduleHeader = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xff4b98f6, XP_BLUE});
+        moduleHeader.setCornerRadii(new float[]{dp(14), dp(14), dp(14), dp(14), 0, 0, 0, 0});
+        header.setBackground(moduleHeader);
+        TextView titleView = text(title, 18, Color.WHITE);
         titleView.setTypeface(Typeface.DEFAULT_BOLD);
         header.addView(titleView);
-        TextView subtitleView = text(subtitle, 12, SUBTLE);
+        TextView subtitleView = text(subtitle, 11.5f, 0xffeef5ff);
         subtitleView.setPadding(0, dp(4), 0, 0);
         header.addView(subtitleView);
         wrapper.addView(header);
@@ -780,9 +803,9 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(10), dp(10), dp(10), dp(6));
+        list.setPadding(dp(isCompactPhone() ? 8 : 10), dp(10), dp(isCompactPhone() ? 8 : 10), dp(6));
         scroll.addView(list);
-        int contentHeight = Math.min(isShortPhone() ? 330 : 400, Math.max(260, (int) (screenHeightDp() * .48f)));
+        int contentHeight = Math.min(isCompactPhone() ? 460 : (isShortPhone() ? 360 : 420), Math.max(isCompactPhone() ? 280 : 260, (int) (screenHeightDp() * (isCompactPhone() ? .50f : .48f))));
         wrapper.addView(scroll, new LinearLayout.LayoutParams(-1, dp(contentHeight)));
 
         final AlertDialog[] holder = new AlertDialog[1];
@@ -834,12 +857,17 @@ public final class MainActivity extends Activity {
         holder[0] = dialog;
         dialog.show();
         compactDialog(dialog);
+        animateDialogOpen(column, false);
+        animateDialogOpen(wrapper, false);
     }
 
     private void compactDialog(AlertDialog dialog) {
         if (dialog.getWindow() == null) return;
-        int width = dp(Math.min(Math.max(304, screenWidthDp() - 28), 420));
+        int width = dp(Math.min(Math.max(isCompactPhone() ? 324 : 304, screenWidthDp() - (isCompactPhone() ? 16 : 26)), 430));
         dialog.getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        dialog.getWindow().setDimAmount(0.28f);
+        dialog.getWindow().setWindowAnimations(android.R.style.Animation_Dialog);
     }
 
     private void showBrowserSettings() {
@@ -909,26 +937,42 @@ public final class MainActivity extends Activity {
     private LinearLayout styledDialogContent(String title, String subtitle) {
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(dp(14), dp(12), dp(14), dp(10));
-        body.setBackground(rounded(LIGHT_BG, BORDER, 12));
-        TextView heading = text(title, 17, XP_BLUE);
+        body.setPadding(dp(12), dp(12), dp(12), dp(10));
+        body.setBackground(rounded(LIGHT_BG, BORDER, 14));
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(dp(14), dp(12), dp(14), dp(11));
+        GradientDrawable headerBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff4e9cf7, XP_BLUE, 0xff0d5fae});
+        headerBg.setCornerRadii(new float[]{dp(12), dp(12), dp(12), dp(12), dp(10), dp(10), dp(10), dp(10)});
+        header.setBackground(headerBg);
+        TextView heading = text(title, 17, Color.WHITE);
         heading.setTypeface(Typeface.DEFAULT_BOLD);
-        body.addView(heading);
-        TextView explanation = text(subtitle, 11, SUBTLE);
-        explanation.setPadding(0, dp(4), 0, dp(10));
-        body.addView(explanation);
+        header.addView(heading);
+        TextView explanation = text(subtitle, 11, 0xffedf4ff);
+        explanation.setPadding(0, dp(4), 0, 0);
+        header.addView(explanation);
+        body.addView(header, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView spacer = text("", 1, Color.TRANSPARENT);
+        spacer.setPadding(0, dp(10), 0, 0);
+        body.addView(spacer);
         return body;
     }
 
     private void showAbout() {
-        LinearLayout content = styledDialogContent("Internet XP " + ReleaseNotes.VERSION_NAME, "Navegador com visual clássico e motor Mozilla GeckoView.");
+        LinearLayout content = styledDialogContent("Internet XP " + ReleaseNotes.VERSION_NAME, "Navegador com visual clássico, menu XP moderno e motor Mozilla GeckoView.");
         for (String line : new String[]{"Motor de navegação: GeckoView 158", "Android 8.0 ou superior", "Página inicial com pesquisa e atalhos", "Extensões, downloads, abas e privacidade", "Projeto independente, sem vínculo com Mozilla ou Microsoft"}) {
             TextView detail = text("•  " + line, 12, TEXT);
-            detail.setPadding(dp(4), dp(6), dp(2), dp(6));
-            content.addView(detail);
+            detail.setPadding(dp(6), dp(7), dp(4), dp(7));
+            detail.setBackground(rounded(Color.WHITE, BORDER, 10));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(8);
+            content.addView(detail, params);
         }
         AlertDialog dialog = new AlertDialog.Builder(this).setView(content).setPositiveButton("Fechar", null).create();
-        dialog.show(); compactDialog(dialog);
+        dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
     }
 
     private Tab current() {
@@ -1513,6 +1557,7 @@ public final class MainActivity extends Activity {
         populateHistoryRows(results, "", dialog);
         dialog.show();
         compactDialog(dialog);
+        animateDialogOpen(wrapper, false);
         dialog.getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
@@ -2425,33 +2470,47 @@ public final class MainActivity extends Activity {
     }
 
     private void extensionActions(WebExtension x) {
-        new AlertDialog.Builder(this)
-                .setTitle(x.metaData.name == null ? x.id : x.metaData.name)
-                .setItems(new String[]{x.metaData.enabled ? "Desativar" : "Ativar", "Desinstalar"}, (d, n) -> {
-                    if (n == 1) {
-                        new AlertDialog.Builder(this)
-                                .setTitle("Desinstalar extensão?")
-                                .setPositiveButton("Remover", (d2, n2) -> runtime.getWebExtensionController().uninstall(x)
-                                        .accept(v -> runOnUiThread(this::showExtensions), e -> runOnUiThread(() -> showError(e))))
-                                .setNegativeButton("Cancelar", null)
-                                .show();
-                    } else {
-                        GeckoResult<WebExtension> r = x.metaData.enabled
-                                ? runtime.getWebExtensionController().disable(x, WebExtensionController.EnableSource.USER)
-                                : runtime.getWebExtensionController().enable(x, WebExtensionController.EnableSource.USER);
-                        r.accept(v -> runOnUiThread(this::showExtensions), e -> runOnUiThread(() -> showError(e)));
-                    }
-                }).show();
+        String name = x.metaData.name == null ? x.id : x.metaData.name;
+        ArrayList<MenuAction> actions = new ArrayList<>();
+        actions.add(new MenuAction(x.metaData.enabled ? "⏻" : "✓", x.metaData.enabled ? "Desativar" : "Ativar",
+                x.metaData.enabled ? "Desligue a extensão temporariamente sem removê-la." : "Ative a extensão novamente para uso imediato.", () -> {
+                    GeckoResult<WebExtension> r = x.metaData.enabled
+                            ? runtime.getWebExtensionController().disable(x, WebExtensionController.EnableSource.USER)
+                            : runtime.getWebExtensionController().enable(x, WebExtensionController.EnableSource.USER);
+                    r.accept(v -> runOnUiThread(this::showExtensions), e -> runOnUiThread(() -> showError(e)));
+                }));
+        actions.add(new MenuAction("✕", "Desinstalar", "Remova a extensão instalada do navegador.", () -> confirmUninstallExtension(x)));
+        showModuleMenuDialog(name, x.metaData.enabled ? "Extensão ativa. Escolha uma ação abaixo." : "Extensão desativada. Você pode ativá-la ou remover.", actions);
+    }
+
+    private void confirmUninstallExtension(WebExtension x) {
+        LinearLayout content = styledDialogContent("Desinstalar extensão", "Remover este complemento do Internet XP?");
+        String name = x.metaData.name == null ? x.id : x.metaData.name;
+        TextView detail = text(name, 13, TEXT);
+        detail.setTypeface(Typeface.DEFAULT_BOLD);
+        detail.setPadding(dp(6), dp(8), dp(6), dp(8));
+        detail.setBackground(rounded(Color.WHITE, BORDER, 10));
+        content.addView(detail, new LinearLayout.LayoutParams(-1, -2));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(content)
+                .setPositiveButton("Remover", (d2, n2) -> runtime.getWebExtensionController().uninstall(x)
+                        .accept(v -> runOnUiThread(this::showExtensions), e -> runOnUiThread(() -> showError(e))))
+                .setNegativeButton("Cancelar", null)
+                .create();
+        dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
     }
 
     private void installExtension() {
         AutoCompleteTextView link = new AutoCompleteTextView(this);
         link.setSingleLine();
         link.setHint("https://.../complemento.xpi");
-        new AlertDialog.Builder(this)
-                .setTitle("Instalar extensão Mozilla assinada")
-                .setMessage("Cole o link direto HTTPS para o pacote XPI assinado.")
-                .setView(link)
+        link.setTextSize(14);
+        link.setBackground(rounded(Color.WHITE, BORDER, 10));
+        link.setPadding(dp(10), dp(12), dp(10), dp(12));
+        LinearLayout content = styledDialogContent("Instalar extensão Mozilla assinada", "Cole o link direto HTTPS para o pacote XPI assinado.");
+        content.addView(link, new LinearLayout.LayoutParams(-1, -2));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(content)
                 .setPositiveButton("Instalar", (d, n) -> {
                     String uri = link.getText().toString().trim();
                     if (!uri.startsWith("https://")) {
@@ -2466,15 +2525,21 @@ public final class MainActivity extends Activity {
                                     e -> runOnUiThread(() -> showError(e)));
                 })
                 .setNegativeButton("Cancelar", null)
-                .show();
+                .create();
+        dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
     }
 
     private void showError(Throwable e) {
-        new AlertDialog.Builder(this)
-                .setTitle("Falha")
-                .setMessage(String.valueOf(e.getMessage()))
+        LinearLayout content = styledDialogContent("Falha", "Ocorreu um erro durante a operação solicitada.");
+        TextView detail = text(String.valueOf(e.getMessage()), 12, TEXT);
+        detail.setPadding(dp(8), dp(10), dp(8), dp(10));
+        detail.setBackground(rounded(Color.WHITE, BORDER, 10));
+        content.addView(detail, new LinearLayout.LayoutParams(-1, -2));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(content)
                 .setPositiveButton("OK", null)
-                .show();
+                .create();
+        dialog.show(); compactDialog(dialog); animateDialogOpen(content, false);
     }
 
     private void handleIncomingLink(Intent intent) {

@@ -1,3 +1,9 @@
+## 1.0.26: pop-ups, animação e compactação
+- Verificar se Favoritos, Extensões, Sobre, Erros e diálogos de ações seguem o novo visual azul com cartões.
+- Confirmar animação de abertura no menu principal e nos diálogos modulares.
+- Validar redução de margens laterais e melhor compactação em telas como Redmi A3.
+- Conferir se a tela de Novidades 1.0.26 aparece apenas uma vez.
+
 ## 1.0.25: serviço de downloads em primeiro plano
 - Verificar `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` no GitHub Actions.
 - Testar download após ir para a tela inicial do Android, aguardando conclusão sem fechar o processo.

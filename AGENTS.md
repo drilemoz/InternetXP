@@ -83,3 +83,10 @@
 - Cancelamento antes de o worker iniciar deve fechar stream e remover entrada do mapa/serviço.
 - Não reintroduzir DownloadManager do Android, nem prometer retomada por bytes sem validação HTTP Range.
 - Toda versão exige atualização da tela Novidades, ReleaseNotes, README, CHANGELOG, docs, workflow e versionCode.
+
+
+## 1.0.26: pop-ups alinhados ao menu
+- Os pop-ups e diálogos secundários devem seguir o mesmo idioma visual do menu principal, evitando caixas secas do sistema sempre que viável.
+- Refinar cabeçalhos e animações sem transformar os painéis em tela cheia.
+- Em telas compactas como Redmi A3, reduzir margens, tipografia e altura de elementos quando necessário.
+- Toda alteração futura deve continuar atualizando a tela de Novidades e os metadados sincronizados.

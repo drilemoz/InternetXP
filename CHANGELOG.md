@@ -1,11 +1,11 @@
 # CHANGELOG
 
-## 1.0.25 (versionCode 26) - menu XP moderno
-- Redesenhado o menu principal para um painel mais vivo, com cabeçalho azul e grade de atalhos principais.
-- Reduzido o espaço lateral do popup e aumentado o espaço vertical ocupado na tela, sem transformá-lo em tela cheia.
-- Separadas as ações principais das ferramentas secundárias para diminuir a sensação de menu seco e repetitivo.
-- Aumentado um pouco o tamanho dos diálogos modulares para melhorar a coerência visual com o restante do navegador.
-- Atualizadas tela de Novidades, README, AGENTS, workflow e validações para a versão 1.0.25.
+## 1.0.26 (versionCode 27) - pop-ups alinhados ao menu XP
+- Padronizado o visual de pop-ups e caixas de diálogo para combinar com o menu principal XP Moderno.
+- Refinado o cabeçalho azul do menu e adicionada animação suave de abertura em painéis e diálogos.
+- Reduzidas as margens laterais e ajustadas tipografia, grade e alturas para telas menores como o Redmi A3.
+- Ações de extensões migradas para painéis e confirmações no mesmo estilo do aplicativo.
+- Atualizadas tela de Novidades, README, AGENTS, workflow e validações para a versão 1.0.26.
 
 ## 1.0.22 (versionCode 23) - página inicial, favoritos e diálogos XP
 - Adicionada página inicial nativa (`about:blank`) com campo de pesquisa centralizado e grade de atalhos para favoritos.
