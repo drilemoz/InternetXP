@@ -27,3 +27,17 @@
 ## 1.0.17
 - Branding atualizado: launcher icon azul com globo e anel dourado, assets por densidade e adaptive icon.
 - Próxima etapa planejada: privacidade e gerenciamento de cookies/cache/segurança.
+
+
+## REGRA PERMANENTE: TELA DE NOVIDADES (OBRIGATÓRIO EM TODA VERSÃO)
+- Sempre que qualquer arquivo do aplicativo mudar, incrementar `versionCode` e `versionName` sequencialmente.
+- **Em TODA nova versão, atualizar `ReleaseNotes.VERSION_CODE`, `ReleaseNotes.VERSION_NAME`, `ReleaseNotes.HEADLINE`, `ReleaseNotes.SUBTITLE` e as entradas de `ReleaseNotes.FEATURES` para refletir alterações reais da versão**, não reutilizar textos antigos.
+- A Activity `WhatsNewActivity` abre automaticamente na primeira instalação e uma vez após cada atualização, controlada por `SharedPreferences` com a última versão exibida. Não exibir repetidamente na mesma versão; oferecer Menu > Novidades desta versão para consulta manual.
+- Nunca remover a tela, o registro no `AndroidManifest.xml`, o atalho do menu nem a verificação de sincronização de `tools/validate_project.py` sem pedido explícito do usuário.
+- Manter visual mobile XP refinado (cabeçalho azul, globo, cartões, botão de continuação); preservar acessibilidade, baixo consumo de RAM e armazenamento local das preferências.
+- A atualização das Novidades é parte do checklist de release: atualizar junto a README, CHANGELOG, docs/VALIDATION, notas GitHub Release e metadados Gradle.
+
+## 1.0.18
+- Execução 18 falhou em `lintDebug` por uso de `ContentPermission.notifyShown()` experimental; solução é opt-in localizado, sem desativar Lint.
+- Tela de Novidades e teste de conteúdo/versionamento adicionados; atualização automática por versionCode.
+- O recurso de privacidade planejado fica para a próxima versão após validar o build 1.0.18.

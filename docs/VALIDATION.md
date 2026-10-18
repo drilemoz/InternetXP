@@ -143,3 +143,12 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - Ícones tradicionais PNG gerados para cinco densidades.
 - Ícones adaptativos em `mipmap-anydpi-v26` usam foreground gerado e cor de fundo.
 - A renderização pelo launcher Android e compilação Gradle completa ainda exigem execução no CI/aparelho.
+
+
+## 1.0.18: logs do workflow 18 e tela de Novidades
+- [x] Logs fornecidos: `:app:compileDebugJavaWithJavac` passou, `:app:lintDebug` falhou com um erro `UnsafeOptInUsageError` em `permission.notifyShown()` (MainActivity.java:1598); 19 warnings secundários.
+- [x] Aplicada a solução recomendada pelo GeckoView: `@OptIn(markerClass = ExperimentalGeckoViewApi.class)` somente no método que usa `notifyShown()`.
+- [x] Tela de Novidades personalizada, abertura 1 vez por `versionCode` novo, acesso manual no menu e estado salvo em preferências locais.
+- [x] Ícones adaptativos receberam camada monocromática; testes novos verificam os destaques e política de versão.
+- [ ] Rodar `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleRelease` reais no GitHub Actions; esta validação não substitui a compilação Android.
+- [ ] Testar primeira instalação/atualização, fechamento e reabertura, voltar e ícone instalado no Android.

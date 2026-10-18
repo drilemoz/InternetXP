@@ -44,6 +44,8 @@ import android.widget.CheckBox;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.mozilla.geckoview.AllowOrDeny;
+import androidx.annotation.OptIn;
+import org.mozilla.geckoview.ExperimentalGeckoViewApi;
 import org.mozilla.geckoview.GeckoResult;
 import org.mozilla.geckoview.GeckoRuntime;
 import org.mozilla.geckoview.GeckoSession;
@@ -192,6 +194,10 @@ public final class MainActivity extends Activity {
             if (runtime == null) runtime = GeckoRuntime.create(getApplicationContext());
             extensionPrompts();
             if (!restoreTabs()) addTab(HOME);
+            // Novidades são exibidas apenas uma vez por versionCode e reaparecem ao atualizar.
+            if (state == null && WhatsNewActivity.shouldShow(storage)) {
+                startActivity(new Intent(this, WhatsNewActivity.class));
+            }
         } catch (RuntimeException e) {
             showError(e);
         }
@@ -437,8 +443,10 @@ public final class MainActivity extends Activity {
         item(p, "Downloads", this::showDownloads);
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
+        item(p, "Novidades desta versão", () ->
+                startActivity(new Intent(this, WhatsNewActivity.class)));
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.17")
+                .setTitle("Internet XP 1.0.18")
                 .setMessage("Compatibilidade com sites: envio de arquivos, tela cheia, permissões de localização e mídia, links externos e novas abas. Usa GeckoView. Projeto independente.")
                 .setPositiveButton("OK", null).show());
         p.show();
@@ -1568,6 +1576,8 @@ public final class MainActivity extends Activity {
         else if (denied != null) denied.run();
     }
 
+    // notifyShown() é experimental no GeckoView 158; opt-in explícito e localizado.
+    @OptIn(markerClass = ExperimentalGeckoViewApi.class)
     private GeckoResult<Integer> askContentPermission(
             GeckoSession.PermissionDelegate.ContentPermission permission) {
         final int type = permission.permission;

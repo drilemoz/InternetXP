@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.0.18 (versionCode 19) - correção de Lint e tela de Novidades
+- Logs da execução 18: compilação Java passou, mas o `:app:lintDebug` falhou com `UnsafeOptInUsageError` em `permission.notifyShown()` na linha 1598.
+- Aplicado opt-in explícito com `@OptIn(markerClass = ExperimentalGeckoViewApi.class)` no método de diálogo de localização. A chamada de `notifyShown()` é preservada.
+- Implementada Activity personalizada **Novidades** com cabeçalho azul clássico, globo, destaques em cartões e botão de continuar.
+- Exibição automática após primeira instalação ou incremento do `versionCode`; vista apenas uma vez por versão, mas revisável pelo menu.
+- Criada fonte centralizada `ReleaseNotes.java` e teste unitário; documentação `AGENTS.md` exige atualizar notas em TODA alteração que incremente a versão.
+- Adicionado ícone monocromático aos ícones adaptativos do launcher.
+- Mantidos GeckoView 158, três APKs Release assinados por ABI e armazenamento privado dos Secrets.
+- Compilação Android real, Lint e testes em aparelho ainda precisam ser executados no GitHub Actions.
+
+
 ## 1.0.17 (versionCode 18) - identidade visual do aplicativo
 - Novo ícone exclusivo: globo azul em acabamento clássico XP com anel dourado.
 - Ícones PNG para densidades mdpi, hdpi, xhdpi, xxhdpi e xxxhdpi.

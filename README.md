@@ -1,4 +1,11 @@
-# Internet XP v1.0.17
+# Internet XP v1.0.18
+
+## Novidades nesta versão
+- Corrigido o erro de Android Lint `UnsafeOptInUsageError` da execução 18: `ContentPermission.notifyShown()` do GeckoView 158 utiliza opt-in explícito na rotina que apresenta o diálogo de localização, mantendo a comunicação com o motor de navegação.
+- Nova tela **Novidades**: abertura automática uma vez por `versionCode` novo (inclusive a primeira instalação), visual XP próprio com globo oficial, cabeçalho azul e cartões legíveis.
+- Botão **Começar a navegar** para fechar a tela; opção **Menu > Novidades desta versão** para consultar novamente.
+- Ícone monocromático para temas de ícones do launcher Android.
+- `ReleaseNotes.java` é a fonte dos destaques e deve ser atualizada em toda versão futura. `tools/validate_project.py` exige versão sincronizada e a presença da tela.
 
 Navegador Android com GeckoView 158 e interface mobile inspirada no Windows XP/Internet Explorer.
 
@@ -20,7 +27,7 @@ Globo azul com anel dourado, integrado ao Android como ícone tradicional e adap
 
 ## Build e distribuição
 Três APKs Release assinados por ABI: `armeabi-v7a`, `arm64-v8a`, `x86_64`.
-Versão 1.0.17 / `versionCode` 18. Workflow publica APKs na GitHub Release (não Artifacts ZIP).
+Versão 1.0.18 / `versionCode` 19. Workflow publica APKs na GitHub Release (não Artifacts ZIP).
 Secrets de assinatura necessários: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
 ## Descrição curta para o GitHub

@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.17
+  group: internet-xp-v1.0.18
   cancel-in-progress: false
 jobs:
   apk:
@@ -40,6 +40,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
+      - name: Validar versionamento, Novidades e recursos Android
+        run: python3 tools/validate_project.py
       - name: Testar validador de tamanho e arquitetura
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Testes, lint e compilação Debug (não publicada)
@@ -109,11 +111,11 @@ jobs:
               printf 'APKs existentes: %s\n' "${all_apks[@]}"
               exit 1
             fi
-            out="Internet XP.v1.0.17-${abi}.apk"
+            out="Internet XP.v1.0.18-${abi}.apk"
             cp "$src" "$out"
             "$aapt_bin" dump badging "$out" > "$RUNNER_TEMP/${abi}-badging.txt"
             grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-badging.txt"
-            grep -Fq "versionCode='18' versionName='1.0.17'" "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "versionCode='19' versionName='1.0.18'" "$RUNNER_TEMP/${abi}-badging.txt"
             python3 tools/report_apk.py "$out" "$abi"
             sha256sum "$out" > "$out.sha256"
             printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
@@ -127,12 +129,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
-          if gh release view v1.0.17 >/dev/null 2>&1; then
-            gh release upload v1.0.17 "${assets[@]}" --clobber
+          if gh release view v1.0.18 >/dev/null 2>&1; then
+            gh release upload v1.0.18 "${assets[@]}" --clobber
           else
-            gh release create v1.0.17 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.17' --notes 'Novo icone oficial de globo azul com anel dourado, com recursos launcher adaptativo e tradicional. Mantem GeckoView, Downloads 2.0, abas, historico, compatibilidade de sites e tres APKs Release assinados por ABI. Sem Artifact ZIP.'
+            gh release create v1.0.18 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.18' --notes 'Corrige Android Lint: opt-in do GeckoView ExperimentalGeckoViewApi para notifyShown. Adiciona tela de Novidades apos atualizacoes, com historico da versao e acesso no menu; inclui icone monocromatico. Preserva GeckoView, 3 APKs Release assinados por ABI e Secrets existentes.'
           fi
-          gh release view v1.0.17 --json url,assets
+          gh release view v1.0.18 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"
