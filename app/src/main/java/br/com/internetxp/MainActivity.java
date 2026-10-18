@@ -14,6 +14,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -43,9 +45,7 @@ import org.mozilla.geckoview.WebResponse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 
 /** Navegador Android com GeckoView e layout XP compacto para tela de telefone. */
 public final class MainActivity extends Activity {
@@ -83,6 +83,16 @@ public final class MainActivity extends Activity {
     private LinearLayout downloadsPanel;
     private LinearLayout downloadsList;
     private boolean suppressSuggestionReload;
+    private static final int DOWNLOAD_CANCELLED = -2;
+    private static final long DOWNLOAD_REFRESH_MS = 2000L;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+    private final Runnable downloadRefresh = new Runnable() {
+        @Override public void run() {
+            if (isFinishing() || isDestroyed() || downloadsPanel == null || downloadsPanel.getVisibility() != View.VISIBLE) return;
+            renderDownloadsPanel();
+            scheduleDownloadRefresh();
+        }
+    };
 
     private static final class Tab {
         final GeckoSession session;
@@ -177,6 +187,10 @@ public final class MainActivity extends Activity {
 
         urlBox = new AutoCompleteTextView(this);
         urlBox.setSingleLine();
+        // IE-like behavior: tapping the URL selects the entire address.
+        // The very first typed character replaces the selection.
+        urlBox.setSelectAllOnFocus(true);
+        urlBox.setOnClickListener(v -> urlBox.selectAll());
         urlBox.setTextSize(13);
         urlBox.setTextColor(TEXT);
         urlBox.setHint("https://www.exemplo.com");
@@ -195,6 +209,7 @@ public final class MainActivity extends Activity {
         });
         urlBox.setOnFocusChangeListener((v, focused) -> {
             if (focused) {
+                urlBox.selectAll();
                 refreshSuggestionAdapter(urlBox.getText().toString());
                 urlBox.post(urlBox::showDropDown);
             }
@@ -274,7 +289,7 @@ public final class MainActivity extends Activity {
         downloadsTitle.setTypeface(Typeface.DEFAULT_BOLD);
         downloadsHeader.addView(downloadsTitle, new LinearLayout.LayoutParams(0, -2, 1));
         TextView closeDownloads = text("Ocultar", 12, XP_BLUE);
-        closeDownloads.setOnClickListener(v -> downloadsPanel.setVisibility(View.GONE));
+        closeDownloads.setOnClickListener(v -> hideDownloadsPanel());
         downloadsHeader.addView(closeDownloads);
         downloadsPanel.addView(downloadsHeader);
         divider(downloadsPanel, 1);
@@ -374,7 +389,7 @@ public final class MainActivity extends Activity {
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.12")
+                .setTitle("Internet XP 1.0.13")
                 .setMessage("Interface mobile XP compacta, com sugestões de histórico, lista interna de downloads e GeckoView. Projeto independente, sem vínculo com Microsoft ou Mozilla.")
                 .setPositiveButton("OK", null).show());
         p.show();
@@ -599,29 +614,7 @@ public final class MainActivity extends Activity {
     }
 
     private ArrayList<String> buildSuggestions(String query) {
-        String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        LinkedHashSet<String> ordered = new LinkedHashSet<>();
-        ArrayList<String> starts = new ArrayList<>();
-        ArrayList<String> contains = new ArrayList<>();
-        for (String source : history) collectSuggestion(source, q, starts, contains, ordered);
-        for (String source : bookmarks) collectSuggestion(source, q, starts, contains, ordered);
-        ArrayList<String> result = new ArrayList<>();
-        result.addAll(starts);
-        result.addAll(contains);
-        if (result.size() > 24) return new ArrayList<>(result.subList(0, 24));
-        return result;
-    }
-
-    private void collectSuggestion(String source, String q, ArrayList<String> starts, ArrayList<String> contains, LinkedHashSet<String> seen) {
-        if (source == null || source.trim().isEmpty() || seen.contains(source)) return;
-        String lower = source.toLowerCase(Locale.ROOT);
-        if (q.isEmpty() || lower.startsWith(q)) {
-            starts.add(source);
-            seen.add(source);
-        } else if (lower.contains(q)) {
-            contains.add(source);
-            seen.add(source);
-        }
+        return HistorySuggestions.filter(history, bookmarks, query, 24);
     }
 
     private void toggleBookmark() {
@@ -696,10 +689,26 @@ public final class MainActivity extends Activity {
     }
 
     private void showDownloads() {
-        if (downloadsPanel.getVisibility() != View.VISIBLE) {
-            downloadsPanel.setVisibility(View.VISIBLE);
-        }
+        if (downloadsPanel.getVisibility() != View.VISIBLE) downloadsPanel.setVisibility(View.VISIBLE);
         renderDownloadsPanel();
+        scheduleDownloadRefresh();
+    }
+
+    private void hideDownloadsPanel() {
+        downloadsPanel.setVisibility(View.GONE);
+        uiHandler.removeCallbacks(downloadRefresh);
+    }
+
+    private void scheduleDownloadRefresh() {
+        uiHandler.removeCallbacks(downloadRefresh);
+        if (downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE && hasActiveDownloads()) {
+            uiHandler.postDelayed(downloadRefresh, DOWNLOAD_REFRESH_MS);
+        }
+    }
+
+    private boolean hasActiveDownloads() {
+        for (DownloadItem item : downloads) if (isDownloadRunning(item.status)) return true;
+        return false;
     }
 
     private void renderDownloadsPanel() {
@@ -731,18 +740,19 @@ public final class MainActivity extends Activity {
             actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
             actions.setPadding(0, dp(6), 0, 0);
             if (item.status == DownloadManager.STATUS_SUCCESSFUL) {
-                TextView open = text("Abrir", 11, XP_BLUE);
-                open.setTypeface(Typeface.DEFAULT_BOLD);
-                open.setOnClickListener(v -> openDownload(item));
-                actions.addView(open);
+                addDownloadAction(actions, "Abrir", () -> openDownload(item));
+            } else if (isDownloadRunning(item.status)) {
+                addDownloadAction(actions, "Cancelar", () -> confirmCancelDownload(item));
+            } else if (item.status == DownloadManager.STATUS_FAILED || item.status == DOWNLOAD_CANCELLED) {
+                addDownloadAction(actions, "Tentar novamente", () -> retryDownload(item));
             }
-            TextView remove = text(actions.getChildCount() > 0 ? "  •  Remover" : "Remover", 11, XP_BLUE);
-            remove.setOnClickListener(v -> {
-                downloads.remove(item);
-                saveDownloads();
-                renderDownloadsPanel();
-            });
-            actions.addView(remove);
+            if (!isDownloadRunning(item.status)) {
+                addDownloadAction(actions, "Remover da lista", () -> {
+                    downloads.remove(item);
+                    saveDownloads();
+                    renderDownloadsPanel();
+                });
+            }
             card.addView(actions);
 
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
@@ -754,15 +764,76 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void addDownloadAction(LinearLayout row, String label, Runnable callback) {
+        TextView action = text(label, 11, XP_BLUE);
+        action.setPadding(dp(9), dp(7), dp(5), dp(7));
+        action.setOnClickListener(v -> callback.run());
+        row.addView(action);
+    }
+
+    private boolean isDownloadRunning(int status) {
+        return status == DownloadManager.STATUS_PENDING || status == DownloadManager.STATUS_RUNNING
+                || status == DownloadManager.STATUS_PAUSED;
+    }
+
+    private void confirmCancelDownload(DownloadItem item) {
+        new AlertDialog.Builder(this)
+            .setTitle("Cancelar download?")
+            .setMessage("O download será interrompido e o arquivo parcial poderá ser excluído pelo Android.")
+            .setPositiveButton("Cancelar download", (dialog, which) -> {
+                try {
+                    DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                    if (manager != null) manager.remove(item.id);
+                    item.status = DOWNLOAD_CANCELLED;
+                    item.bytes = 0;
+                    item.total = -1;
+                    item.localUri = null;
+                    saveDownloads();
+                    renderDownloadsPanel();
+                } catch (RuntimeException error) { showError(error); }
+            })
+            .setNegativeButton("Manter", null).show();
+    }
+
+    private void retryDownload(DownloadItem item) {
+        if (item.url == null || !(item.url.startsWith("https://") || item.url.startsWith("http://"))) {
+            Toast.makeText(this, "Endereço do arquivo inválido", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+            .setTitle("Tentar novamente?")
+            .setMessage("Será iniciado um novo download desde o começo, não uma retomada do arquivo parcial.")
+            .setPositiveButton("Reiniciar", (dialog, which) -> {
+                try {
+                    DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                    if (manager == null) throw new IllegalStateException("DownloadManager indisponível");
+                    // Remove failed/cancelled request and its partial file before reusing its name.
+                    if (item.id > 0) manager.remove(item.id);
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(item.url));
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, item.fileName);
+                    item.id = manager.enqueue(request);
+                    item.status = DownloadManager.STATUS_PENDING;
+                    item.bytes = 0;
+                    item.total = -1;
+                    item.localUri = null;
+                    saveDownloads();
+                    renderDownloadsPanel();
+                } catch (RuntimeException error) { showError(error); }
+            })
+            .setNegativeButton("Voltar", null).show();
+    }
+
     private String buildDownloadSubtitle(DownloadItem item) {
         String statusText = downloadStatusText(item.status);
         if (item.status == DownloadManager.STATUS_RUNNING && item.total > 0) {
-            long percent = Math.max(0, Math.min(100, (item.bytes * 100L) / item.total));
+            long percent = DownloadDisplay.percent(item.bytes, item.total);
             return statusText + " • " + percent + "% • " + formatBytes(item.bytes) + " / " + formatBytes(item.total);
         }
         if (item.status == DownloadManager.STATUS_SUCCESSFUL && item.total > 0) {
             return statusText + " • " + formatBytes(item.total);
         }
+        if (item.status == DownloadManager.STATUS_PAUSED) return statusText + " • aguardando condições de rede";
         if (item.total > 0) return statusText + " • " + formatBytes(item.total);
         return statusText;
     }
@@ -771,18 +842,15 @@ public final class MainActivity extends Activity {
         switch (status) {
             case DownloadManager.STATUS_PENDING: return "Na fila";
             case DownloadManager.STATUS_RUNNING: return "Baixando";
-            case DownloadManager.STATUS_PAUSED: return "Pausado";
+            case DownloadManager.STATUS_PAUSED: return "Pausado pelo sistema";
             case DownloadManager.STATUS_SUCCESSFUL: return "Concluído";
             case DownloadManager.STATUS_FAILED: return "Falhou";
+            case DOWNLOAD_CANCELLED: return "Cancelado";
             default: return "Desconhecido";
         }
     }
 
-    private String formatBytes(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024L * 1024L) return (bytes / 1024L) + " KB";
-        return String.format(Locale.US, "%.1f MB", bytes / (1024f * 1024f));
-    }
+    private String formatBytes(long bytes) { return DownloadDisplay.bytes(bytes); }
 
     private void refreshDownloadsState() {
         if (downloads.isEmpty()) return;
@@ -791,6 +859,7 @@ public final class MainActivity extends Activity {
         long[] ids = new long[downloads.size()];
         for (int i = 0; i < downloads.size(); i++) ids[i] = downloads.get(i).id;
         Cursor cursor = null;
+        boolean changed = false;
         try {
             cursor = manager.query(new DownloadManager.Query().setFilterById(ids));
             if (cursor == null) return;
@@ -798,20 +867,33 @@ public final class MainActivity extends Activity {
                 long id = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_ID));
                 DownloadItem item = findDownload(id);
                 if (item == null) continue;
-                item.status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
-                item.bytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
-                item.total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                int newStatus = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                long newBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                long newTotal = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                if (newStatus != item.status || newBytes != item.bytes || newTotal != item.total) changed = true;
+                item.status = newStatus;
+                item.bytes = newBytes;
+                item.total = newTotal;
                 int titleColumn = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE);
-                if (titleColumn >= 0) item.fileName = cursor.getString(titleColumn);
+                if (titleColumn >= 0) {
+                    String filename = cursor.getString(titleColumn);
+                    if (filename != null && !filename.equals(item.fileName)) { item.fileName = filename; changed = true; }
+                }
                 int uriColumn = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI);
-                if (uriColumn >= 0) item.localUri = cursor.getString(uriColumn);
+                if (uriColumn >= 0) {
+                    String local = cursor.getString(uriColumn);
+                    if (local != null && !local.equals(item.localUri)) { item.localUri = local; changed = true; }
+                }
                 int mimeColumn = cursor.getColumnIndex(DownloadManager.COLUMN_MEDIA_TYPE);
-                if (mimeColumn >= 0) item.mime = cursor.getString(mimeColumn);
+                if (mimeColumn >= 0) {
+                    String mime = cursor.getString(mimeColumn);
+                    if (mime != null && !mime.equals(item.mime)) { item.mime = mime; changed = true; }
+                }
             }
         } catch (Exception ignored) {
         } finally {
             if (cursor != null) cursor.close();
-            saveDownloads();
+            if (changed) saveDownloads();
         }
     }
 
@@ -824,7 +906,6 @@ public final class MainActivity extends Activity {
         try {
             DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             Uri uri = manager == null ? null : manager.getUriForDownloadedFile(item.id);
-            if (uri == null && item.localUri != null && !item.localUri.isEmpty()) uri = Uri.parse(item.localUri);
             if (uri == null) {
                 Toast.makeText(this, "Arquivo não disponível para abrir", Toast.LENGTH_SHORT).show();
                 return;
@@ -987,7 +1068,7 @@ public final class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) {
-            downloadsPanel.setVisibility(View.GONE);
+            hideDownloadsPanel();
             return;
         }
         Tab t = current();
@@ -1000,7 +1081,23 @@ public final class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        uiHandler.removeCallbacks(downloadRefresh);
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) {
+            renderDownloadsPanel();
+            scheduleDownloadRefresh();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        uiHandler.removeCallbacks(downloadRefresh);
         if (view != null) view.releaseSession();
         for (Tab t : tabs) t.session.close();
         tabs.clear();

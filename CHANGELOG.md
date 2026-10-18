@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 1.0.13 (versionCode 14) - seleção do endereço e primeira otimização
+- Seleção integral da URL ao tocar no campo de endereço, para substituição imediata ao digitar. Implementados `setSelectAllOnFocus` e `selectAll` no toque e foco, sem alterar as ações Ir, seta do histórico nem navegação do GeckoView.
+- Download interno atualizado: atualização periódica enquanto o painel estiver visível e houver downloads ativos; interrupção das consultas quando o painel é ocultado, a Activity é pausada ou destruída.
+- Botão **Cancelar** com confirmação e descarte do arquivo parcial via DownloadManager; **Tentar novamente** para falhas/cancelamentos, iniciando uma nova transferência (não retomada), com status registrado.
+- Progresso e formatação em classe Java isolada; histórico/sugestões em classe Java isolada, com testes unitários.
+- Evita gravações repetidas do registro de downloads se o status e contadores não mudaram; URI para abrir download é obtida do provedor Android, sem fallback inseguro de `file://`.
+- GeckoView e estilo XP preservados. Build continua em 3 APKs Release assinados por ABI, sem Artifacts ZIP. Sem reutilização literal de código não inspecionado do Baixa Fácil.
+- Versões e documentos sincronizados, build Android completo e testes físicos pendentes.
+
+
 ## 1.0.12 (versionCode 13) - barra de endereço compacta, histórico e downloads internos
 - Reduz a altura da barra de endereço e da barra inferior principal, liberando espaço para o site.
 - Aumenta a largura útil da barra de endereço, reduzindo margens laterais desnecessárias.

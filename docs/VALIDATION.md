@@ -109,3 +109,9 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - [x] Removido `x86` dos splits, workflow e testes de ABIs aceitas; adicionado teste específico contra regressão.
 - [ ] Compilar e validar 3 APKs Release no GitHub Actions; confirmar tamanho do x86_64.
 - [ ] Confirmar assets Release e testar instalação/funcionamento GeckoView no aparelho.
+
+## v1.0.13
+- Novas classes puras `HistorySuggestions` e `DownloadDisplay`; testes JVM de histórico/bytes/percentuais.
+- Testar comportamento do campo de endereço no dispositivo com SwiftKey e Gboard, teclado aberto/fechado e colar URL.
+- Testar cancelamento real, falha/reinício, download pequeno e grande, ausência de rede, arquivos concluídos e conclusão com app fechado.
+- Lint/Gradle Android completo e testes físicos pendentes para esta versão.
