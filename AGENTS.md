@@ -19,3 +19,7 @@
 - Na v1.0.15, salvar URLs/títulos e aba ativa, mas restaurar somente a página ativa imediatamente. Nunca prometer restauração completa de formulário/scroll ou do estado JavaScript.
 - Endereços de abas restaurados devem restringir-se a `http`, `https` e `about:blank`; históricos antigos não devem ganhar horários fictícios.
 - Seleção integral do endereço ao toque e Downloads 2.0 devem continuar funcionais.
+
+## 1.0.16
+- Manter delegados de permissões e prompts coerentes com GeckoView 158; não aceitar permissões silenciosas de páginas.
+- Testar seletor de arquivos, tela cheia, câmera, microfone, localização e links externos antes de anunciar compatibilidade total.

@@ -128,3 +128,12 @@ Importante: aprovação local de arquivos, testes Java unitários isolados e int
 - Verificação estática da persistência de até oito abas e abertura diferida; a compilação Android/GeckoView completa continua pendente.
 - Cenários físicos a conferir: abrir 3 abas, fechar uma inativa antes da ativa, reiniciar o app, verificar aba ativa e sugestões; pesquisar por título e apagar item isolado.
 - Validar desempenho/RAM no aparelho e confirmar que não há restauração automática de estado de formulários e JS.
+
+
+## 1.0.16
+- [x] Conferidas as assinaturas dos delegados no JavaDoc GeckoView 158/160 (FilePrompt, PermissionDelegate, ContentDelegate, NavigationDelegate).
+- [x] Integrados upload de arquivos com SAF, permissões explícitas do Android/site e tela cheia.
+- [x] Links externos exigem gesto do usuário e confirmação; bloqueia esquemas `intent:` arbitrários.
+- [x] Adicionado teste JVM `SiteCompatibilityTest` com validação de origem HTTPS, esquemas de link, permissões e MIME.
+- [ ] Build Android/Gradle completo, Lint e teste instrumentado não executados localmente.
+- [ ] Testar: input file simples/múltiplo, negar upload, site HTTPS câmera/microfone/Geo, negar permissões, vídeo tela cheia, Voltar, links externos, pop-ups.

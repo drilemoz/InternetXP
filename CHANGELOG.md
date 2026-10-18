@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 1.0.16 (versionCode 17) - compatibilidade com sites
+- Integra `FilePrompt` com seletor nativo Android (arquivos individuais e seleção múltipla).
+- Trata pedidos de permissões Android de câmera, microfone e localização e confirmação explícita por site HTTPS.
+- Adiciona tela cheia para conteúdo GeckoView e saída por Voltar.
+- Solicita confirmação para links externos iniciados por gesto e suporta abertura de novas janelas do site em abas internas.
+- Preserva gerenciamento de downloads, histórico, session restore, GeckoView, assinatura e split por ABI.
+- Build completo e testes funcionais em hardware permanecem necessários.
+
 ## 1.0.15 (versionCode 16) - abas visuais, restauração leve e histórico pesquisável
 - Seletor visual de abas em cartões com título, URL, indicação da aba ativa, abertura por toque, criação e fechamento individual.
 - Persistência local de URLs, títulos e aba ativa; restaura até 8 abas com abertura diferida das inativas para reduzir pico de memória.

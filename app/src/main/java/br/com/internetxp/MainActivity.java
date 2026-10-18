@@ -1,6 +1,8 @@
 package br.com.internetxp;
 
 import android.app.Activity;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ClipData;
@@ -15,6 +17,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.content.ActivityNotFoundException;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -56,6 +59,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
+import java.util.LinkedHashSet;
 
 /** Navegador Android com GeckoView e layout XP compacto para tela de telefone. */
 public final class MainActivity extends Activity {
@@ -72,6 +76,8 @@ public final class MainActivity extends Activity {
     private static final String PREF_DOWNLOADS = "downloads";
     private static final String PREF_HISTORY_DETAILS = "history_details";
     private static final String PREF_OPEN_TABS = "open_tabs_v1";
+    private static final int REQUEST_UPLOAD_FILES = 701;
+    private static final int REQUEST_SITE_PERMISSIONS = 702;
 
     private static GeckoRuntime runtime;
 
@@ -86,6 +92,12 @@ public final class MainActivity extends Activity {
     private AutoCompleteTextView urlBox;
     private ArrayAdapter<String> historyAdapter;
     private GeckoView view;
+    private LinearLayout browserRoot;
+    private boolean fullScreen;
+    private GeckoResult<GeckoSession.PromptDelegate.PromptResponse> filePickerResult;
+    private GeckoSession.PromptDelegate.FilePrompt filePickerPrompt;
+    private Runnable permissionGranted;
+    private Runnable permissionDenied;
     private TextView status;
     private TextView backIcon;
     private TextView forwardIcon;
@@ -118,6 +130,7 @@ public final class MainActivity extends Activity {
         boolean forward;
         boolean opened;
         boolean loaded;
+        boolean fullScreen;
         Tab(GeckoSession s) { session = s; }
     }
 
@@ -188,6 +201,7 @@ public final class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(LIGHT_BG);
+        browserRoot = root;
         setContentView(root);
 
         // Painel de endereço: mais baixo, mais largo e com seta de histórico ao estilo IE.
@@ -424,8 +438,8 @@ public final class MainActivity extends Activity {
         item(p, "Extensões", this::showExtensions);
         item(p, "Limpar histórico local", this::clearHistory);
         item(p, "Sobre", () -> new AlertDialog.Builder(this)
-                .setTitle("Internet XP 1.0.15")
-                .setMessage("Interface mobile XP compacta, com sugestões de histórico, lista interna de downloads e GeckoView. Projeto independente, sem vínculo com Microsoft ou Mozilla.")
+                .setTitle("Internet XP 1.0.16")
+                .setMessage("Compatibilidade com sites: envio de arquivos, tela cheia, permissões de localização e mídia, links externos e novas abas. Usa GeckoView. Projeto independente.")
                 .setPositiveButton("OK", null).show());
         p.show();
     }
@@ -480,6 +494,10 @@ public final class MainActivity extends Activity {
                 }
                 if (tab == current()) updateChrome();
             }
+            @Override public void onFullScreen(GeckoSession s, boolean entered) {
+                tab.fullScreen = entered;
+                if (tab == current()) applyFullScreen(entered);
+            }
             @Override public void onCrash(GeckoSession s) {
                 if (tab == current()) status.setText("Falha da página. Reabra a aba.");
             }
@@ -488,6 +506,32 @@ public final class MainActivity extends Activity {
             }
         });
         session.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
+            @Override public GeckoResult<AllowOrDeny> onLoadRequest(
+                    GeckoSession s, GeckoSession.NavigationDelegate.LoadRequest request) {
+                if (request.target == GeckoSession.NavigationDelegate.TARGET_WINDOW_NEW
+                        && !request.hasUserGesture) {
+                    return GeckoResult.fromValue(AllowOrDeny.DENY);
+                }
+                if (SiteCompatibility.isExternalLink(request.uri)) {
+                    if (request.hasUserGesture) confirmExternalLink(request.uri);
+                    return GeckoResult.fromValue(AllowOrDeny.DENY);
+                }
+                return null;
+            }
+            @Override public GeckoResult<GeckoSession> onNewSession(GeckoSession s, String uri) {
+                if (tabs.size() >= TabSessionStore.MAX_TABS) {
+                    Toast.makeText(MainActivity.this, "Limite de abas atingido", Toast.LENGTH_SHORT).show();
+                    return null;
+                }
+                // A nova janela é carregada pelo próprio GeckoView. Não chamar loadUri aqui.
+                Tab popup = createTab(HOME, "Nova aba");
+                popup.session.open(runtime);
+                popup.opened = true;
+                popup.loaded = true;
+                tabs.add(popup);
+                selectTab(tabs.size() - 1);
+                return GeckoResult.fromValue(popup.session);
+            }
             @Override public void onLocationChange(GeckoSession s, String uri,
                     List<GeckoSession.PermissionDelegate.ContentPermission> perms, Boolean gesture) {
                 if (uri == null) return;
@@ -507,6 +551,28 @@ public final class MainActivity extends Activity {
             @Override public void onCanGoForward(GeckoSession s, boolean b) {
                 tab.forward = b;
                 if (tab == current()) updateArrows();
+            }
+        });
+        session.setPromptDelegate(new GeckoSession.PromptDelegate() {
+            @Override public GeckoResult<GeckoSession.PromptDelegate.PromptResponse> onFilePrompt(
+                    GeckoSession s, GeckoSession.PromptDelegate.FilePrompt prompt) {
+                return openFilePicker(prompt);
+            }
+        });
+        session.setPermissionDelegate(new GeckoSession.PermissionDelegate() {
+            @Override public void onAndroidPermissionsRequest(GeckoSession s, String[] permissions,
+                    GeckoSession.PermissionDelegate.Callback callback) {
+                requestSitePermissions(permissions, callback::grant, callback::reject);
+            }
+            @Override public GeckoResult<Integer> onContentPermissionRequest(
+                    GeckoSession s, GeckoSession.PermissionDelegate.ContentPermission perm) {
+                return askContentPermission(perm);
+            }
+            @Override public void onMediaPermissionRequest(GeckoSession s, String uri,
+                    GeckoSession.PermissionDelegate.MediaSource[] video,
+                    GeckoSession.PermissionDelegate.MediaSource[] audio,
+                    GeckoSession.PermissionDelegate.MediaCallback callback) {
+                askMediaPermission(uri, video, audio, callback);
             }
         });
         session.setProgressDelegate(new GeckoSession.ProgressDelegate() {
@@ -534,6 +600,7 @@ public final class MainActivity extends Activity {
         if (active == index && view.getSession() == tabs.get(index).session) return;
         GeckoSession old = view.releaseSession();
         if (old != null) old.setActive(false);
+        if (fullScreen) applyFullScreen(false);
         active = index;
         Tab tab = current();
         if (!tab.opened) {
@@ -545,6 +612,7 @@ public final class MainActivity extends Activity {
         if (!urlBox.hasFocus()) setUrlBoxText(tab.url.equals(HOME) ? "" : tab.url);
         updateSecurity(tab.url);
         updateChrome();
+        if (tab.fullScreen) applyFullScreen(true);
         // Abas restauradas inativas não abrem motor nem página até serem selecionadas.
         if (!tab.loaded) {
             tab.loaded = true;
@@ -1405,6 +1473,209 @@ public final class MainActivity extends Activity {
                 .show();
     }
 
+    /** A seleção usa o seletor de documentos do Android, sem permissão geral de armazenamento. */
+    private GeckoResult<GeckoSession.PromptDelegate.PromptResponse> openFilePicker(
+            GeckoSession.PromptDelegate.FilePrompt prompt) {
+        if (filePickerResult != null) return GeckoResult.fromValue(prompt.dismiss());
+        if (prompt.type == GeckoSession.PromptDelegate.FilePrompt.Type.FOLDER) {
+            Toast.makeText(this, "Envio de pastas ainda não disponível", Toast.LENGTH_SHORT).show();
+            return GeckoResult.fromValue(prompt.dismiss());
+        }
+        GeckoResult<GeckoSession.PromptDelegate.PromptResponse> result = new GeckoResult<>();
+        filePickerPrompt = prompt;
+        filePickerResult = result;
+        Intent choose = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        choose.addCategory(Intent.CATEGORY_OPENABLE);
+        choose.setType(SiteCompatibility.primaryMimeType(prompt.mimeTypes));
+        String[] types = SiteCompatibility.mimeTypes(prompt.mimeTypes);
+        if (types.length > 1) choose.putExtra(Intent.EXTRA_MIME_TYPES, types);
+        choose.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,
+                prompt.type == GeckoSession.PromptDelegate.FilePrompt.Type.MULTIPLE);
+        choose.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            startActivityForResult(choose, REQUEST_UPLOAD_FILES);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            filePickerPrompt = null;
+            filePickerResult = null;
+            result.complete(prompt.dismiss());
+            Toast.makeText(this, "Seletor de arquivos indisponível", Toast.LENGTH_SHORT).show();
+        }
+        return result;
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_UPLOAD_FILES || filePickerResult == null) return;
+        GeckoResult<GeckoSession.PromptDelegate.PromptResponse> result = filePickerResult;
+        GeckoSession.PromptDelegate.FilePrompt prompt = filePickerPrompt;
+        filePickerResult = null;
+        filePickerPrompt = null;
+        if (prompt == null) return;
+        if (resultCode != RESULT_OK || data == null) {
+            result.complete(prompt.dismiss());
+            return;
+        }
+        LinkedHashSet<Uri> selected = new LinkedHashSet<>();
+        if (data.getClipData() != null) {
+            for (int i = 0; i < data.getClipData().getItemCount() && selected.size() < 30; i++) {
+                Uri uri = data.getClipData().getItemAt(i).getUri();
+                if (uri != null && "content".equals(uri.getScheme())) selected.add(uri);
+            }
+        }
+        if (data.getData() != null && "content".equals(data.getData().getScheme())) {
+            selected.add(data.getData());
+        }
+        if (selected.isEmpty()) result.complete(prompt.dismiss());
+        else if (prompt.type == GeckoSession.PromptDelegate.FilePrompt.Type.MULTIPLE) {
+            result.complete(prompt.confirm(getApplicationContext(), selected.toArray(new Uri[0])));
+        } else {
+            result.complete(prompt.confirm(getApplicationContext(), selected.iterator().next()));
+        }
+    }
+
+    private void requestSitePermissions(String[] permissions, Runnable granted, Runnable denied) {
+        if (permissions == null || permissions.length == 0) { granted.run(); return; }
+        if (permissionGranted != null) { denied.run(); return; }
+        ArrayList<String> missing = new ArrayList<>();
+        for (String permission : permissions) {
+            // Não solicitar permissões arbitrárias declaradas por páginas/extensões.
+            if (!SiteCompatibility.isKnownAndroidPermission(permission)) { denied.run(); return; }
+            if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) missing.add(permission);
+        }
+        if (missing.isEmpty()) { granted.run(); return; }
+        permissionGranted = granted;
+        permissionDenied = denied;
+        try {
+            requestPermissions(missing.toArray(new String[0]), REQUEST_SITE_PERMISSIONS);
+        } catch (Exception e) {
+            permissionGranted = null;
+            permissionDenied = null;
+            denied.run();
+        }
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_SITE_PERMISSIONS) return;
+        Runnable granted = permissionGranted;
+        Runnable denied = permissionDenied;
+        permissionGranted = null;
+        permissionDenied = null;
+        if (granted == null) return;
+        boolean allowed = permissions.length > 0 && grantResults.length == permissions.length;
+        for (int grant : grantResults) allowed &= grant == PackageManager.PERMISSION_GRANTED;
+        if (allowed) granted.run();
+        else if (denied != null) denied.run();
+    }
+
+    private GeckoResult<Integer> askContentPermission(
+            GeckoSession.PermissionDelegate.ContentPermission permission) {
+        final int type = permission.permission;
+        if (type != GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION) {
+            // Outras permissões continuam com a política-padrão do GeckoView.
+            return null;
+        }
+        if (!SiteCompatibility.isSecureOrigin(permission.uri)) {
+            return GeckoResult.fromValue(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY);
+        }
+        if (permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
+                || permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY) {
+            return GeckoResult.fromValue(permission.value);
+        }
+        GeckoResult<Integer> result = new GeckoResult<>();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Permissão de localização")
+                .setMessage("Permitir que " + SiteCompatibility.originLabel(permission.uri)
+                        + " acesse sua localização?")
+                .setPositiveButton("Permitir", (d, n) ->
+                        result.complete(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW))
+                .setNegativeButton("Negar", (d, n) ->
+                        result.complete(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY))
+                .setOnCancelListener(d -> result.complete(
+                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY))
+                .create();
+        dialog.show();
+        permission.notifyShown();
+        return result;
+    }
+
+    private void askMediaPermission(String uri,
+            GeckoSession.PermissionDelegate.MediaSource[] video,
+            GeckoSession.PermissionDelegate.MediaSource[] audio,
+            GeckoSession.PermissionDelegate.MediaCallback callback) {
+        if (!SiteCompatibility.isSecureOrigin(uri)) { callback.reject(); return; }
+        GeckoSession.PermissionDelegate.MediaSource camera = null;
+        GeckoSession.PermissionDelegate.MediaSource microphone = null;
+        if (video != null && video.length > 0) {
+            for (GeckoSession.PermissionDelegate.MediaSource source : video) {
+                if (source.source == GeckoSession.PermissionDelegate.MediaSource.SOURCE_CAMERA) {
+                    camera = source;
+                    break;
+                }
+            }
+            if (camera == null) { callback.reject(); return; }
+        }
+        if (audio != null && audio.length > 0) {
+            for (GeckoSession.PermissionDelegate.MediaSource source : audio) {
+                if (source.source == GeckoSession.PermissionDelegate.MediaSource.SOURCE_MICROPHONE) {
+                    microphone = source;
+                    break;
+                }
+            }
+            if (microphone == null) { callback.reject(); return; }
+        }
+        if (camera == null && microphone == null) { callback.reject(); return; }
+        final GeckoSession.PermissionDelegate.MediaSource selectedCamera = camera;
+        final GeckoSession.PermissionDelegate.MediaSource selectedMicrophone = microphone;
+        ArrayList<String> needed = new ArrayList<>();
+        if (camera != null) needed.add(Manifest.permission.CAMERA);
+        if (microphone != null) needed.add(Manifest.permission.RECORD_AUDIO);
+        requestSitePermissions(needed.toArray(new String[0]), () -> {
+            String devices = selectedCamera != null && selectedMicrophone != null ? "câmera e microfone"
+                    : selectedCamera != null ? "câmera" : "microfone";
+            new AlertDialog.Builder(this)
+                    .setTitle("Permissão de " + devices)
+                    .setMessage("Permitir que " + SiteCompatibility.originLabel(uri)
+                            + " utilize " + devices + " nesta página?")
+                    .setPositiveButton("Permitir", (d, n) -> callback.grant(selectedCamera, selectedMicrophone))
+                    .setNegativeButton("Negar", (d, n) -> callback.reject())
+                    .setOnCancelListener(d -> callback.reject())
+                    .show();
+        }, callback::reject);
+    }
+
+    private void confirmExternalLink(String uri) {
+        String label = SiteCompatibility.originLabel(uri);
+        new AlertDialog.Builder(this)
+                .setTitle("Abrir aplicativo externo?")
+                .setMessage("O site deseja abrir este link fora do Internet XP:\n" + label)
+                .setPositiveButton("Abrir", (d, n) -> {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                        intent.addCategory(Intent.CATEGORY_BROWSABLE);
+                        startActivity(intent);
+                    } catch (ActivityNotFoundException | SecurityException e) {
+                        Toast.makeText(this, "Não há aplicativo compatível", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void applyFullScreen(boolean enabled) {
+        fullScreen = enabled;
+        if (browserRoot == null) return;
+        for (int i = 0; i < browserRoot.getChildCount(); i++) {
+            View child = browserRoot.getChildAt(i);
+            if (child != view) child.setVisibility(enabled ? View.GONE : View.VISIBLE);
+        }
+        if (!enabled && downloadsPanel != null) downloadsPanel.setVisibility(View.GONE);
+        if (enabled) uiHandler.removeCallbacks(downloadRefresh);
+        int flags = enabled ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY : 0;
+        getWindow().getDecorView().setSystemUiVisibility(flags);
+    }
+
     private void extensionPrompts() {
         runtime.getWebExtensionController().setPromptDelegate(new WebExtensionController.PromptDelegate() {
             @Override
@@ -1514,6 +1785,13 @@ public final class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (fullScreen) {
+            Tab t = current();
+            if (t != null) t.session.exitFullScreen();
+            if (t != null) t.fullScreen = false;
+            applyFullScreen(false);
+            return;
+        }
         if (downloadsPanel != null && downloadsPanel.getVisibility() == View.VISIBLE) {
             hideDownloadsPanel();
             return;
@@ -1550,6 +1828,14 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (filePickerResult != null && filePickerPrompt != null) {
+            filePickerResult.complete(filePickerPrompt.dismiss());
+            filePickerResult = null;
+            filePickerPrompt = null;
+        }
+        if (permissionDenied != null) permissionDenied.run();
+        permissionGranted = null;
+        permissionDenied = null;
         uiHandler.removeCallbacks(downloadRefresh);
         if (view != null) view.releaseSession();
         for (Tab t : tabs) if (t.opened) t.session.close();
