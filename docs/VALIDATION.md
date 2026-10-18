@@ -1,3 +1,17 @@
+# Validação v1.0.6
+
+- [x] Logs workflow 6: `:app:compileDebugJavaWithJavac` e `:app:testDebugUnitTest` passaram. `:app:lintDebug` falhou com 2 `WrongConstant` e 9 warnings.
+- [x] Relatório Lint completo: `MainActivity.java:73` e `MainActivity.java:118` usavam o literal `1` em `setOrientation`.
+- [x] Ambos substituídos por `LinearLayout.VERTICAL` mantendo a orientação vertical e a interface clássica.
+- [x] `versionName=1.0.6` e `versionCode=7` sincronizados com APK, workflow, menu Sobre, README e AGENTS.
+- [x] Lint continua habilitado com `abortOnError true` e relatório detalhado caso falhe novamente.
+- [ ] Rodar `:app:testDebugUnitTest :app:lintDebug :app:assembleDebug` no GitHub Actions com os arquivos v1.0.6.
+- [ ] Verificar `aapt dump badging`, assinatura e publicação de `Internet XP.v1.0.6.apk` em GitHub Releases.
+- [ ] Testar em aparelho real, incluindo renderização GeckoView, interface XP e extensões.
+- [ ] Configurar assinatura estável pelos quatro Secrets antes da distribuição destinada a receber atualizações.
+
+---
+
 # Validação v1.0.5
 
 - [x] Logs do workflow 5 analisados: Java compilado e testes executados. `:app:lintDebug` falhou com 3 erros e 9 avisos; único erro detalhado é `BrowserAddress.java:16` com sobrecarga de API 33, incompatível com minSdk 26.

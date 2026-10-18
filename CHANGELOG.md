@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.0.6 (versionCode 7) - correção do workflow 6
+- Logs da sexta execução analisados: a compilação Java e os testes unitários completaram, mas `:app:lintDebug` falhou com 2 erros `WrongConstant` e 9 avisos.
+- Ambos os erros estão em `MainActivity.java`, linhas 73 e 118, devido a `LinearLayout.setOrientation(1)`. Substitui por `LinearLayout.VERTICAL`, mesma orientação da versão anterior, mas com a constante reconhecida pelo Android Lint.
+- Mantém o estilo XP, GeckoView 158, `compileSdk 37`, `targetSdk 35`, `minSdk 26`, AGP 9.1.1, Gradle 9.3.1 e fluxo de assinatura com quatro Secrets opcionais.
+- Sincroniza `versionName` 1.0.6, `versionCode` 7, menu Sobre, workflow, regras e documentação.
+- Continua sem `actions/upload-artifact` ou Artifact ZIP: o alvo é `Internet XP.v1.0.6.apk` diretamente no GitHub Releases.
+- Avisos Lint (OldTargetApi, ChromeOsAbiSupport, DataExtractionRules, MissingApplicationIcon e SetTextI18n) permanecem registrados para avaliação posterior; não foram ignorados os erros.
+- Build Android completo e publicação no GitHub Actions pendentes de validação.
+
 ## 1.0.5 (versionCode 6) - correção do workflow 5
 - Logs da quinta execução: `:app:compileDebugJavaWithJavac` e `:app:testDebugUnitTest` concluíram; `:app:lintDebug` falhou com 3 erros e 9 avisos. Apenas o primeiro erro aparece detalhado no ZIP enviado.
 - Corrige a chamada `URLEncoder.encode(String, Charset)`, exclusiva da API 33, para `URLEncoder.encode(String, "UTF-8")`, presente no Android 8.0 (API 26), com tratamento de `UnsupportedEncodingException`. Preserva Unicode e encoding de consultas.

@@ -70,7 +70,7 @@ public final class MainActivity extends Activity {
   } catch (RuntimeException e) { showError(e); }
  }
  private void createLayout() {
-  LinearLayout root = new LinearLayout(this); root.setOrientation(1); root.setBackgroundColor(GREY); setContentView(root);
+  LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(GREY); setContentView(root);
   LinearLayout title = new LinearLayout(this); title.setGravity(Gravity.CENTER_VERTICAL); title.setPadding(dp(12),dp(5),dp(12),dp(5));
   title.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{0xff168df0,0xff004ca9}));
   TextView logo=text("▣",25,Color.WHITE); title.addView(logo,new LinearLayout.LayoutParams(dp(38),dp(42)));
@@ -115,7 +115,7 @@ public final class MainActivity extends Activity {
   root.addView(footer);
  }
  private TextView tool(LinearLayout toolbar,String icon,String caption,Runnable action) {
-  LinearLayout cell=new LinearLayout(this); cell.setOrientation(1); cell.setGravity(Gravity.CENTER); cell.setPadding(dp(2),0,dp(2),0);
+  LinearLayout cell=new LinearLayout(this); cell.setOrientation(LinearLayout.VERTICAL); cell.setGravity(Gravity.CENTER); cell.setPadding(dp(2),0,dp(2),0);
   TextView symbol=text(icon,31,BLUE); symbol.setTypeface(Typeface.DEFAULT_BOLD); symbol.setGravity(Gravity.CENTER);
   cell.addView(symbol,new LinearLayout.LayoutParams(-1,dp(40)));
   TextView name=text(caption,10,0xff333333); name.setGravity(Gravity.CENTER); cell.addView(name,new LinearLayout.LayoutParams(-1,dp(21)));
@@ -130,7 +130,7 @@ public final class MainActivity extends Activity {
    case "Exibir": item(p,"Atualizar",()->{Tab t=current(); if(t!=null)t.session.reload();}); item(p,"Histórico",this::showHistory); break;
    case "Favoritos": item(p,"Adicionar ou remover favorito",this::toggleBookmark); item(p,"Ver favoritos",this::showBookmarks); break;
    case "Ferramentas": item(p,"Extensões",this::showExtensions); item(p,"Downloads",this::showDownloads); item(p,"Limpar histórico local",this::clearHistory); break;
-   default:item(p,"Sobre Internet XP",()->new AlertDialog.Builder(this).setTitle("Internet XP 1.0.5").setMessage("GeckoView e interface clássica XP. Projeto independente, sem vínculo com Microsoft ou Mozilla.").setPositiveButton("OK",null).show());
+   default:item(p,"Sobre Internet XP",()->new AlertDialog.Builder(this).setTitle("Internet XP 1.0.6").setMessage("GeckoView e interface clássica XP. Projeto independente, sem vínculo com Microsoft ou Mozilla.").setPositiveButton("OK",null).show());
   } p.show();
  }
  private void item(PopupMenu p,String caption,Runnable run) { p.getMenu().add(caption).setOnMenuItemClickListener(m->{run.run();return true;}); }
