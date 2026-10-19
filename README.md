@@ -1,6 +1,13 @@
-# Internet XP v1.0.31 (versionCode 31)
+# Internet XP v1.0.32 (versionCode 33)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.32: correção de compilação do workflow 31
+
+- O workflow 31 falhou em `:app:compileDebugJavaWithJavac`, na linha 439 de `MainActivity.java`, porque `android.R.drawable.ic_menu_copy` não é um recurso público existente.
+- Substituído por `R.drawable.ic_copy_address_xp`, ícone vetorial próprio em `res/drawable`, preservando a lógica de cópia e o comportamento contextual de foco da barra.
+- Validador atualizado para impedir o retorno de `android.R.drawable.ic_menu_copy` e garantir que o recurso próprio seja empacotado.
+- Mantidos autocompletar, favicons, módulos de tela, downloads e GeckoView. O APK e o funcionamento no Android ainda precisam passar pelo GitHub Actions.
 
 ## 1.0.31: navegação por telas e barra inteligente
 
@@ -53,7 +60,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.31`, `versionCode=31`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.32`, `versionCode=33`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

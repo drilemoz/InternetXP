@@ -125,4 +125,9 @@
 - Favicons só por HTTPS do domínio como antes; falha é ícone genérico. Não buscar ícones por serviços agregadores externos.
 - Autocomplete remoto opcional e desligável, bloquear em modo privado e durante URLs digitadas, executar fora da thread principal e ignorar resultados antigos.
 - Ações Copiar/Colar da barra devem aparecer somente enquanto a barra estiver em foco.
-- Metadados da próxima versão seguem sequência 1.0.32/versionCode 33.
+- Metadados desta próxima revisão seguem sequência 1.0.32/versionCode 33.
+
+## 1.0.32: correção de recurso drawable inválido
+- O Android não expõe `android.R.drawable.ic_menu_copy`: ícones adicionais precisam existir sob `R.drawable` no próprio app ou ser IDs públicos de API comprovada.
+- Botão Copiar agora aponta para `R.drawable.ic_copy_address_xp`; manter recurso vetorial validado e guarda no validador.
+- Em próximas revisões subir para 1.0.33/versionCode 34 e sincronizar Gradle, Novidades, workflow, README, CHANGELOG, docs/VALIDATION e testes.

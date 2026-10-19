@@ -436,7 +436,7 @@ public final class MainActivity extends Activity {
         urlBox.setAdapter(historyAdapter);
         addressBox.addView(urlBox, new LinearLayout.LayoutParams(0, addressInnerHeight, 1));
 
-        copyAddressButton = addressTool(android.R.drawable.ic_menu_copy, "Copiar endereço",
+        copyAddressButton = addressTool(R.drawable.ic_copy_address_xp, "Copiar endereço",
                 () -> { copyAddressText(); });
         pasteAddressButton = addressTool(android.R.drawable.ic_menu_edit, "Colar texto",
                 () -> { pasteAddressText(); });

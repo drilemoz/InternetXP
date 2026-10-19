@@ -1,3 +1,11 @@
+## 1.0.32: correção da compilação no workflow 31
+- O log da execução 31 falhou por `android.R.drawable.ic_menu_copy` inexistente no SDK Android, em `MainActivity.java:439`.
+- Verificar que a ação Copiar usa `R.drawable.ic_copy_address_xp`, cujo vetor existe em `app/src/main/res/drawable/`.
+- Executar `python3 tools/validate_project.py` e `python3 -m unittest discover -s tools -p 'test_*.py' -v`.
+- Rodar `:app:compileDebugJavaWithJavac :app:testDebugUnitTest :app:lintDebug :app:assembleRelease` no GitHub Actions; registrar erros reais caso ocorram.
+- Em aparelho: focar barra, conferir ícones Copiar/Colar e ações; desfocar e verificar ocultação; testar abas, menus e extensões.
+- Não considerar o erro corrigido como prova de build Android completo ou funcionamento do APK até o workflow terminar.
+
 ## 1.0.31: fluxo de navegação e autocompletar
 - Tocar na barra: Copiar e Colar aparecem; sair dela: ambos desaparecem. Testar seleção integral, digitação, Enter e aba privada.
 - Digitar termo comum: histórico/favoritos aparecem com ícones; após 350ms podem aparecer sugestões DuckDuckGo, se habilitadas. Desabilitar em Configurações e testar sem rede.
@@ -9,7 +17,7 @@
 - Testar Menu > Extensões, instalação de XPI e ações GeckoView, assegurando que pop-ups reais de extensões continuam funcionando.
 - Executar CI: `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` nas três ABIs. Ainda não executados no ambiente atual.
 
-## 1.0.31: layout horizontal, janelas XP e navegação ampliada
+## 1.0.30: layout horizontal, janelas XP e navegação ampliada
 - Conferir que os três comandos de Adicionar complemento aparecem em **uma única linha** na largura de 320 a 430dp.
 - Instalar Cookie Editor, verificar quatro comandos horizontais no cartão, sem truncamento grave em 320dp.
 - Abrir os diálogos de URL, confirmação XPI, permissão GeckoView, diagnóstico, exportação e exclusão; verificar cabeçalho azul, botões e fechamento/cancelamento.

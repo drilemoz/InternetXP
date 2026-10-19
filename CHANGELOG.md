@@ -1,3 +1,10 @@
+## 1.0.32 (versionCode 33) - correção do ícone Copiar na barra de endereço
+- Workflow 31 falhou em `:app:compileDebugJavaWithJavac` com `cannot find symbol: ic_menu_copy` na linha 439 do MainActivity.
+- Removida a referência inválida `android.R.drawable.ic_menu_copy` e adicionado o vetor próprio `R.drawable.ic_copy_address_xp`, mantendo a ação de copiar e a visibilidade por foco.
+- Validador reforçado para verificar o recurso do projeto e evitar reaparecimento do ícone Android inexistente.
+- Atualizados Novidades, metadados, README, documentação e arquivos de Release por ABI.
+- Pendente: compilação Gradle e testes do APK no Android.
+
 ## 1.0.31 (versionCode 32) - barra de endereço inteligente e telas próprias
 - Menu, privacidade, Sobre, favoritos, histórico, downloads, configurações e abas agora utilizam telas internas completas com retorno; nenhuma sessão GeckoView é recriada por trocar de módulo.
 - Sugestões online opcionais e desativáveis por DuckDuckGo, bloqueadas em abas privadas e quando o texto parece ser uma URL; resultados locais continuam offline.
@@ -5,7 +12,7 @@
 - Fluxo de download próprio, WebExtensions, permissões e confirmações conservados.
 - Testes Gradle e UI reais pendentes; validação sintática e estrutura realizadas localmente.
 
-## 1.0.31 (versionCode 31) - módulos horizontais e diálogos XP reutilizáveis
+## 1.0.30 (versionCode 31) - módulos horizontais e diálogos XP reutilizáveis
 - Três atalhos de instalação de extensões dispostos em linha única com dimensões iguais, textos curtos e descrições acessíveis.
 - Cada complemento instalado apresenta uma fileira com os quatro comandos, sem retirar operações ou seus avisos de segurança.
 - Central criado `XpDialogs.Builder`: estilização uniforme dos diálogos convencionais de extensões e tela principal, com título customizado, mensagens legíveis e botões com identidade XP.
