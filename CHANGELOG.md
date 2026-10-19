@@ -1,4 +1,10 @@
 
+## 1.0.35 (versionCode 36)
+- Favoritos agora usam gerenciador dedicado com busca, inclusão por campo embutido, reordenação e exclusão com confirmação.
+- Abas são localizadas por identidade no instante do toque; contador da tela atualiza após remoção e cartões compactos continuam distinguindo privacidade.
+- Reabrir última aba fechada suporta apenas URL de aba normal em memória e respeita limite de oito abas; não persiste conteúdo de abas privadas.
+- Novidades, Gradle, workflow de três ABIs, README e testes sincronizados. Build Gradle/Android físico pendente.
+
 ## 1.0.34 (versionCode 35)
 - Controles inferiores com vetores próprios e escala uniforme, mantendo barra ampliada e ordem Abas antes de Início.
 - Rodapé de carregamento real com comprimento fluido até o atalho Extensões, sem margem rígida de 90 dp.

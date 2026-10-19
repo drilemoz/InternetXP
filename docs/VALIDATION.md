@@ -1,3 +1,13 @@
+## 1.0.35: validação de abas e favoritos
+
+- Abrir **Menu > Abas**: conferir título, favicon, domínio resumido, indicador atual/privado e contador. Fechar primeira, última e ativa; selecionar outra aba após cada fechamento, sem abrir sessão errada.
+- Fechar uma aba normal e usar **Reabrir fechada**: verificar recarregamento da URL, nunca prometer restauração de scroll/formulário. Fechar uma privada e confirmar que ela não substitui a URL recuperável anterior.
+- Com oito abas abertas, confirmar limite; fechar a última aba e verificar que página inicial é criada quando necessário. Reiniciar aplicativo e confirmar que abas privadas não são restauradas.
+- Abrir **Favoritos**: buscar case-insensitive, mover para cima e para baixo, tentar mover extremos, remover com confirmação e verificar atualização dos atalhos na página inicial.
+- Adicionar favorito pelo formulário e testar entrada inválida, endereço repetido, falta de rede e aba privada. Abrir favorito e confirmar que retorna à página web sem empilhar telas internas.
+- Confirmar GeckoView 158, importação XPI, downloads e histórico intactos. Rodar `python3 tools/validate_project.py`, testes Python, `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` no GitHub Actions.
+- Pendente: build e testes em aparelho; verificações locais não provam compatibilidade de execução do APK.
+
 ## 1.0.34: plano de validação
 - Rodar `python3 tools/validate_project.py` e `python3 -m unittest discover -s tools -p test_*.py -v`.
 - Compilar `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` em CI e verificar APKs para arm64-v8a, armeabi-v7a e x86_64.

@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: internet-xp-v1.0.34
+  group: internet-xp-v1.0.35
   cancel-in-progress: false
 jobs:
   apk:
@@ -111,11 +111,11 @@ jobs:
               printf 'APKs existentes: %s\n' "${all_apks[@]}"
               exit 1
             fi
-            out="Internet XP.v1.0.34-${abi}.apk"
+            out="Internet XP.v1.0.35-${abi}.apk"
             cp "$src" "$out"
             "$aapt_bin" dump badging "$out" > "$RUNNER_TEMP/${abi}-badging.txt"
             grep -Fq "sdkVersion:'26'" "$RUNNER_TEMP/${abi}-badging.txt"
-            grep -Fq "versionCode='35' versionName='1.0.34'" "$RUNNER_TEMP/${abi}-badging.txt"
+            grep -Fq "versionCode='36' versionName='1.0.35'" "$RUNNER_TEMP/${abi}-badging.txt"
             python3 tools/report_apk.py "$out" "$abi"
             sha256sum "$out" > "$out.sha256"
             printf '%s\n' "$out" "$out.sha256" >> "$RUNNER_TEMP/release-assets.txt"
@@ -129,12 +129,12 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t assets < "$RUNNER_TEMP/release-assets.txt"
-          if gh release view v1.0.34 >/dev/null 2>&1; then
-            gh release upload v1.0.34 "${assets[@]}" --clobber
+          if gh release view v1.0.35 >/dev/null 2>&1; then
+            gh release upload v1.0.35 "${assets[@]}" --clobber
           else
-            gh release create v1.0.34 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.34' --notes 'Versão 1.0.34: ícones inferiores padronizados, progresso alinhado a Extensões, exportação de capturas PNG via SAF e maior estabilidade das sugestões e teclado. Pacotes APK Release por ABI.'
+            gh release create v1.0.35 "${assets[@]}" --target "$GITHUB_SHA" --title 'Internet XP v1.0.35' --notes 'Versão 1.0.35: tela de abas com identidade estável, reabertura temporária de aba normal e gerenciamento de favoritos com busca, ordenação e exclusão. Pacotes APK Release por ABI.'
           fi
-          gh release view v1.0.34 --json url,assets
+          gh release view v1.0.35 --json url,assets
       - name: Destruir chave temporária
         if: always()
         run: rm -f "$RUNNER_TEMP/assinatura.p12"

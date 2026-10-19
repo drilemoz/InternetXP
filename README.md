@@ -1,6 +1,14 @@
-# Internet XP v1.0.34 (versionCode 35)
+# Internet XP v1.0.35 (versionCode 36)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.35: gerenciamento de abas e favoritos (código-fonte)
+
+- Tela de **Abas abertas** com contador atualizado após fechamentos, cartões mais compactos, seleção/fechamento por referência estável da sessão e distinção visual normal/privada.
+- Botão **Reabrir fechada** recupera somente a URL da última aba normal fechada em memória (sem restaurar formulários, JavaScript, rolagem ou abas privadas); respeita limite de oito abas.
+- Tela **Favoritos** com busca local, inclusão por campo embutido, reordenação explícita para cima/baixo e remoção com confirmação. Lista e página inicial permanecem sincronizadas e sem URLs duplicadas na inclusão.
+- Favicons opcionais com cache HTTPS já existente; a navegação entre módulos mantém as sessões GeckoView.
+- Necessário compilar no GitHub Actions e testar UI, principalmente fechamento da aba ativa, busca/reordenação e Voltar em telas compactas.
 
 ## 1.0.34: ergonomia e exportação de capturas (código-fonte)
 
@@ -80,7 +88,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.34`, `versionCode=35`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.35`, `versionCode=36`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

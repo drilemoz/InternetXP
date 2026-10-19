@@ -114,6 +114,8 @@ public final class MainActivity extends Activity {
     private AlertDialog extensionPopupDialog;
 
     private final ArrayList<Tab> tabs = new ArrayList<>();
+    // Apenas URL de aba NORMAL, em memória e sem persistência. Nunca registrar aba privada.
+    private String recentlyClosedNormalTab;
     private final ArrayList<String> bookmarks = new ArrayList<>();
     private final ArrayList<String> history = new ArrayList<>();
     private final ArrayList<HistoryRecords.Entry> historyDetails = new ArrayList<>();
@@ -920,6 +922,7 @@ public final class MainActivity extends Activity {
 
     private void popModuleScreen() {
         if (moduleScreens.isEmpty()) return;
+        hideKeyboard();
         View page = moduleScreens.pop();
         if (downloadsPanel != null && downloadsPanel.getParent() == page) {
             ((ViewGroup) page).removeView(downloadsPanel);
@@ -1056,7 +1059,7 @@ public final class MainActivity extends Activity {
         }
         String address = BrowserAddress.resolve(rawAddress);
         if (!address.startsWith("https://") && !address.startsWith("http://")) return;
-        bookmarks.remove(address);
+        while (bookmarks.remove(address)) { } // Deduplicação de listas antigas.
         bookmarks.add(0, address);
         saveStringList(PREF_BOOKMARKS, bookmarks);
         refreshSuggestionAdapter("");
@@ -1095,7 +1098,7 @@ public final class MainActivity extends Activity {
                 Toast.makeText(this, "Endereço inválido", Toast.LENGTH_LONG).show();
                 return;
             }
-            bookmarks.remove(address);
+            while (bookmarks.remove(address)) { }
             bookmarks.add(0, address);
             saveStringList(PREF_BOOKMARKS, bookmarks);
             refreshSuggestionAdapter("");
@@ -1494,6 +1497,9 @@ public final class MainActivity extends Activity {
     private void closeTab(int index) {
         if (index < 0 || index >= tabs.size()) return;
         Tab closing = tabs.get(index);
+        if (!closing.privateMode && TabSessionStore.restorable(closing.url)) {
+            recentlyClosedNormalTab = closing.url;
+        }
         boolean isActive = index == active;
         if (isActive) {
             GeckoSession released = view.releaseSession();
@@ -1529,84 +1535,120 @@ public final class MainActivity extends Activity {
                 (tabs.size() == 1 ? "1 aba" : tabs.size() + " abas"));
     }
 
+    private void reopenLastClosedTab() {
+        String address = recentlyClosedNormalTab;
+        if (address == null || !TabSessionStore.restorable(address)) return;
+        if (tabs.size() >= TabSessionStore.MAX_TABS) {
+            Toast.makeText(this, "Limite de 8 abas", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        recentlyClosedNormalTab = null;
+        addTab(address); // Nova GeckoSession: não promete restaurar scroll, formulário ou JavaScript.
+        closeModuleScreens();
+    }
+
     private void showTabs() {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(dp(12), dp(12), dp(12), dp(12));
+        page.setPadding(dp(12), dp(12), dp(12), dp(10));
         LinearLayout actions = new LinearLayout(this);
         actions.setGravity(Gravity.CENTER);
-        TextView add = text("＋  Nova aba", 15, Color.WHITE);
+        TextView add = text("＋  Nova aba", 14, Color.WHITE);
         add.setTypeface(Typeface.DEFAULT_BOLD);
         add.setGravity(Gravity.CENTER);
         add.setBackground(rounded(XP_BLUE, 0, 12));
+        add.setContentDescription("Criar aba normal");
         add.setOnClickListener(v -> { addTab(configuredHome()); closeModuleScreens(); });
-        actions.addView(add, new LinearLayout.LayoutParams(0, dp(50), 1));
-        TextView privateButton = text("♟  Privada", 15, PRIVATE_PURPLE);
+        actions.addView(add, new LinearLayout.LayoutParams(0, dp(48), 1));
+        TextView privateButton = text("♟  Privada", 14, PRIVATE_PURPLE);
         privateButton.setTypeface(Typeface.DEFAULT_BOLD);
         privateButton.setGravity(Gravity.CENTER);
         privateButton.setBackground(rounded(0xfff1eafb, BORDER, 12));
+        privateButton.setContentDescription("Criar aba privada");
         privateButton.setOnClickListener(v -> { addPrivateTab(configuredHome()); closeModuleScreens(); });
-        LinearLayout.LayoutParams privateParams = new LinearLayout.LayoutParams(0, dp(50), 1);
+        LinearLayout.LayoutParams privateParams = new LinearLayout.LayoutParams(0, dp(48), 1);
         privateParams.leftMargin = dp(8);
         actions.addView(privateButton, privateParams);
         page.addView(actions);
-        TextView subtitle = text("Toque em uma aba para abrir • × para fechar", 12, SUBTLE);
-        subtitle.setPadding(dp(2), dp(12), dp(2), dp(12));
-        page.addView(subtitle);
+
+        LinearLayout utilities = new LinearLayout(this);
+        utilities.setGravity(Gravity.CENTER_VERTICAL);
+        utilities.setPadding(dp(2), dp(10), dp(2), dp(8));
+        TextView counter = text("", 13, TEXT);
+        counter.setTypeface(Typeface.DEFAULT_BOLD);
+        utilities.addView(counter, new LinearLayout.LayoutParams(0, dp(36), 1));
+        TextView reopen = text("↶ Reabrir fechada", 12, XP_BLUE);
+        reopen.setGravity(Gravity.CENTER);
+        reopen.setPadding(dp(8), 0, dp(8), 0);
+        reopen.setBackground(rounded(Color.WHITE, BORDER, 10));
+        reopen.setOnClickListener(v -> reopenLastClosedTab());
+        reopen.setVisibility(recentlyClosedNormalTab != null ? View.VISIBLE : View.GONE);
+        utilities.addView(reopen, new LinearLayout.LayoutParams(-2, dp(36)));
+        page.addView(utilities);
+
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
         page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        populateTabCards(list, null);
-        showModuleScreen("Abas abertas • " + tabs.size(), "Organize abas normais e privadas", page);
+        populateTabCards(list, counter);
+        showModuleScreen("Abas abertas", "Alterne, feche ou crie abas", page);
     }
 
-    private void populateTabCards(LinearLayout container, AlertDialog dialog) {
+    private void populateTabCards(LinearLayout container, TextView counter) {
         container.removeAllViews();
-        for (int i = 0; i < tabs.size(); i++) {
-            final int index = i;
-            Tab tab = tabs.get(i);
+        int privateCount = 0;
+        for (Tab t : tabs) if (t.privateMode) privateCount++;
+        counter.setText(tabs.size() + (tabs.size() == 1 ? " aba" : " abas")
+                + (privateCount > 0 ? "  •  " + privateCount + " privada(s)" : ""));
+        for (Tab tab : new ArrayList<>(tabs)) {
+            int index = tabs.indexOf(tab);
+            if (index < 0) continue;
+            boolean selected = index == active;
             LinearLayout card = new LinearLayout(this);
             card.setGravity(Gravity.CENTER_VERTICAL);
-            card.setPadding(dp(12), dp(9), dp(4), dp(9));
-            int background = tab.privateMode ? 0xfff4effa : index == active ? 0xffe5f1ff : Color.WHITE;
-            card.setBackground(rounded(background, index == active ? XP_BLUE : BORDER, 12));
-            card.setContentDescription("Abrir " + tab.title);
-            card.setOnClickListener(v -> { selectTab(index); closeModuleScreens(); if (dialog != null) dialog.dismiss(); });
+            card.setPadding(dp(10), dp(10), dp(3), dp(10));
+            int background = tab.privateMode ? 0xfff4effa : selected ? 0xffe5f1ff : Color.WHITE;
+            card.setBackground(rounded(background, selected ? XP_BLUE : BORDER, 12));
+            card.setContentDescription("Abrir aba " + (tab.privateMode ? "privada" : "normal") + ": " + tab.title);
+            card.setOnClickListener(v -> {
+                int freshIndex = tabs.indexOf(tab); // Referência estável, nunca índice armazenado.
+                if (freshIndex >= 0) { selectTab(freshIndex); closeModuleScreens(); }
+            });
             ImageView favicon = new ImageView(this);
             favicon.setImageResource(R.drawable.ic_globe_xp);
-            LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(30), dp(30));
-            imageParams.rightMargin = dp(12);
-            card.addView(favicon, imageParams);
+            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(32), dp(32));
+            iconParams.rightMargin = dp(10);
+            card.addView(favicon, iconParams);
             if (!tab.privateMode && !HOME.equals(tab.url)) faviconRepository.load(tab.url, favicon);
             LinearLayout info = new LinearLayout(this);
             info.setOrientation(LinearLayout.VERTICAL);
             TextView name = text(tab.title == null || tab.title.trim().isEmpty() ? "Nova aba" : tab.title, 14, TEXT);
             name.setTypeface(Typeface.DEFAULT_BOLD);
-            name.setSingleLine(true);
+            name.setMaxLines(1);
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
             info.addView(name);
-            TextView address = text(HOME.equals(tab.url) ? "Página inicial" : PrivacyRules.displayHost(tab.url), 11, SUBTLE);
+            TextView address = text(HOME.equals(tab.url) ? "Página inicial" : PrivacyRules.displayHost(tab.url), 12, SUBTLE);
             address.setSingleLine(true);
             address.setEllipsize(android.text.TextUtils.TruncateAt.END);
             info.addView(address);
-            TextView tag = text((tab.privateMode ? "● Privada" : "● Normal") + (index == active ? " • Atual" : ""), 10,
+            TextView indicator = text((tab.privateMode ? "Privada" : "Normal") + (selected ? " • Atual" : ""), 11,
                     tab.privateMode ? PRIVATE_PURPLE : XP_BLUE);
-            info.addView(tag);
-            card.addView(info, new LinearLayout.LayoutParams(0, dp(62), 1));
-            TextView close = text("×", 27, XP_BLUE);
+            info.addView(indicator);
+            card.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView close = text("×", 25, XP_BLUE);
             close.setGravity(Gravity.CENTER);
             close.setContentDescription("Fechar aba: " + tab.title);
             close.setOnClickListener(v -> {
-                closeTab(index);
-                populateTabCards(container, dialog);
-                if (dialog != null) dialog.setTitle("Abas abertas • " + tabs.size());
+                int freshIndex = tabs.indexOf(tab);
+                if (freshIndex < 0) return;
+                closeTab(freshIndex);
+                populateTabCards(container, counter);
             });
-            card.addView(close, new LinearLayout.LayoutParams(dp(46), dp(50)));
+            card.addView(close, new LinearLayout.LayoutParams(dp(46), dp(48)));
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-            params.bottomMargin = dp(9);
+            params.bottomMargin = dp(8);
             container.addView(card, params);
         }
     }
@@ -1958,7 +2000,9 @@ public final class MainActivity extends Activity {
             Toast.makeText(this, "Não é possível salvar favoritos na aba privada", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!bookmarks.remove(t.url)) bookmarks.add(0, t.url);
+        boolean wasBookmarked = bookmarks.contains(t.url);
+        while (bookmarks.remove(t.url)) { }
+        if (!wasBookmarked) bookmarks.add(0, t.url);
         saveStringList(PREF_BOOKMARKS, bookmarks);
         refreshSuggestionAdapter(urlBox.getText().toString());
         updateHomeScreen();
@@ -1966,17 +2010,147 @@ public final class MainActivity extends Activity {
     }
 
     private void showBookmarks() {
-        ArrayList<MenuAction> actions = new ArrayList<>();
-        actions.add(new MenuAction("＋", "Adicionar favorito", "Crie um novo atalho para sua página inicial.", this::showAddQuickAccess));
-        Tab tab = current();
-        if (tab != null && tab.url.startsWith("http") && !tab.privateMode) {
-            actions.add(new MenuAction("★", "Favoritar página atual", "Adicionar ou remover o site aberto da sua lista.", this::toggleBookmark));
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(12), dp(12), dp(12), dp(10));
+        EditText filter = new EditText(this);
+        filter.setSingleLine(true);
+        filter.setTextSize(14);
+        filter.setHint("Pesquisar favoritos pelo endereço");
+        filter.setPadding(dp(12), 0, dp(12), 0);
+        filter.setBackground(rounded(Color.WHITE, BORDER, 12));
+        page.addView(filter, new LinearLayout.LayoutParams(-1, dp(48)));
+        LinearLayout inlineAdd = new LinearLayout(this);
+        inlineAdd.setGravity(Gravity.CENTER_VERTICAL);
+        inlineAdd.setPadding(0, dp(9), 0, dp(5));
+        EditText address = new EditText(this);
+        address.setSingleLine(true);
+        address.setTextSize(13);
+        address.setHint("https://site.com");
+        address.setBackground(rounded(Color.WHITE, BORDER, 10));
+        address.setPadding(dp(10), 0, dp(10), 0);
+        inlineAdd.addView(address, new LinearLayout.LayoutParams(0, dp(45), 1));
+        TextView save = text("＋ Salvar", 13, Color.WHITE);
+        save.setGravity(Gravity.CENTER);
+        save.setBackground(rounded(XP_BLUE, 0, 10));
+        LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(dp(94), dp(45));
+        saveParams.leftMargin = dp(8);
+        inlineAdd.addView(save, saveParams);
+        page.addView(inlineAdd);
+        TextView count = text("", 12, SUBTLE);
+        count.setPadding(dp(2), dp(8), dp(2), dp(7));
+        page.addView(count);
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(results);
+        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        Runnable refresh = () -> populateBookmarkRows(results, count, filter.getText().toString());
+        save.setOnClickListener(v -> {
+            if (current() != null && current().privateMode) {
+                Toast.makeText(this, "Não é possível adicionar favoritos na aba privada", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String raw = address.getText().toString().trim();
+            if (raw.isEmpty() || HOME.equals(HomePageSettings.normalize(raw))) {
+                address.setError("Informe um site válido");
+                return;
+            }
+            String resolved = BrowserAddress.resolve(raw);
+            if (!(resolved.startsWith("https://") || resolved.startsWith("http://"))) {
+                address.setError("Somente endereços HTTP ou HTTPS");
+                return;
+            }
+            addQuickAccess(resolved);
+            address.setText("");
+            refresh.run();
+        });
+        filter.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { refresh.run(); }
+            @Override public void afterTextChanged(Editable s) { }
+        });
+        refresh.run();
+        showModuleScreen("Favoritos", "Pesquise, abra, organize ou exclua seus atalhos", page);
+    }
+
+    private void populateBookmarkRows(LinearLayout results, TextView count, String query) {
+        results.removeAllViews();
+        List<String> filtered = BookmarkOrganizer.search(bookmarks, query);
+        count.setText(bookmarks.size() + (bookmarks.size() == 1 ? " favorito" : " favoritos")
+                + (query.trim().isEmpty() ? "  •  Use ↑ ↓ para ordenar" : "  •  " + filtered.size() + " encontrados"));
+        if (filtered.isEmpty()) {
+            TextView empty = text(bookmarks.isEmpty() ? "Nenhum favorito salvo. Adicione um endereço acima."
+                    : "Nenhum favorito corresponde à pesquisa.", 13, SUBTLE);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(dp(10), dp(35), dp(10), dp(30));
+            results.addView(empty);
+            return;
         }
-        for (String address : bookmarks) {
-            String host = PrivacyRules.displayHost(address);
-            actions.add(new MenuAction("🌐", host, address, () -> navigate(address)));
+        for (String url : filtered) {
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(9), dp(8), dp(4), dp(8));
+            row.setBackground(rounded(Color.WHITE, BORDER, 11));
+            ImageView icon = new ImageView(this);
+            icon.setImageResource(R.drawable.ic_globe_xp);
+            row.addView(icon, new LinearLayout.LayoutParams(dp(30), dp(30)));
+            faviconRepository.load(url, icon);
+            LinearLayout info = new LinearLayout(this);
+            info.setOrientation(LinearLayout.VERTICAL);
+            info.setPadding(dp(9), 0, dp(4), 0);
+            TextView host = text(PrivacyRules.displayHost(url), 14, TEXT);
+            host.setTypeface(Typeface.DEFAULT_BOLD);
+            host.setSingleLine(true);
+            host.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            info.addView(host);
+            TextView path = text(url, 11, SUBTLE);
+            path.setSingleLine(true);
+            path.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            info.addView(path);
+            info.setOnClickListener(v -> navigate(url));
+            info.setContentDescription("Abrir favorito " + url);
+            row.addView(info, new LinearLayout.LayoutParams(0, dp(51), 1));
+            if (query.trim().isEmpty()) {
+                TextView up = text("↑", 21, XP_BLUE);
+                up.setGravity(Gravity.CENTER);
+                up.setEnabled(bookmarks.indexOf(url) > 0);
+                if (!up.isEnabled()) up.setTextColor(BORDER);
+                up.setContentDescription("Mover favorito para cima");
+                up.setOnClickListener(v -> { if (BookmarkOrganizer.move(bookmarks, url, -1)) persistBookmarkOrder(); populateBookmarkRows(results, count, query); });
+                row.addView(up, new LinearLayout.LayoutParams(dp(34), dp(46)));
+                TextView down = text("↓", 21, XP_BLUE);
+                down.setGravity(Gravity.CENTER);
+                down.setEnabled(bookmarks.indexOf(url) < bookmarks.size() - 1);
+                if (!down.isEnabled()) down.setTextColor(BORDER);
+                down.setContentDescription("Mover favorito para baixo");
+                down.setOnClickListener(v -> { if (BookmarkOrganizer.move(bookmarks, url, 1)) persistBookmarkOrder(); populateBookmarkRows(results, count, query); });
+                row.addView(down, new LinearLayout.LayoutParams(dp(34), dp(46)));
+            }
+            TextView delete = text("×", 24, 0xffb93a43);
+            delete.setGravity(Gravity.CENTER);
+            delete.setContentDescription("Excluir favorito " + url);
+            delete.setOnClickListener(v -> new XpDialogs.Builder(this)
+                    .setTitle("Remover favorito?")
+                    .setMessage("Remover " + PrivacyRules.displayHost(url) + " dos seus atalhos? O site não será apagado do histórico.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Remover", (d, which) -> {
+                        bookmarks.remove(url);
+                        persistBookmarkOrder();
+                        populateBookmarkRows(results, count, query);
+                    }).show());
+            row.addView(delete, new LinearLayout.LayoutParams(dp(38), dp(46)));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(8);
+            results.addView(row, params);
         }
-        showModuleMenuDialog("Favoritos", bookmarks.isEmpty() ? "Nenhum favorito salvo. Use Adicionar para criar seu primeiro atalho." : "Seus sites favoritos, também disponíveis na página inicial.", actions);
+    }
+
+    private void persistBookmarkOrder() {
+        saveStringList(PREF_BOOKMARKS, bookmarks);
+        refreshSuggestionAdapter("");
+        updateHomeScreen();
+        updateFavoriteAddressButton();
     }
 
     private void showHistory() {

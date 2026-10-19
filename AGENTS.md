@@ -146,3 +146,9 @@
 - Capturas de tela ficam inicialmente em diretório próprio; exportação para pasta externa só após gesto explícito e SAF ACTION_CREATE_DOCUMENT. Não usar permissões globais de armazenamento.
 - Resultados assíncronos do autocomplete não devem trazer o popup de volta quando o campo perde foco ou a Activity encerra. Não prometer que crash reportado foi eliminado sem teste físico/logcat.
 - A próxima alteração deverá incrementar para 1.0.35/versionCode 36 e sincronizar ReleaseNotes, Gradle, README, CHANGELOG, workflow e docs.
+
+## 1.0.35: gerenciamento de abas/favoritos
+- Em cartões de abas, resolver `tabs.indexOf(tab)` ao tocar. Não armazenar índice que possa mudar após fechamento.
+- Reabrir aba fechada não deve restaurar informação de abas privadas nem persistir a URL recuperável em disco; URL normal em memória é suficiente.
+- Busca, ordenação e exclusão de favoritos devem preservar preferências, sincronizar página inicial/estrela e não acessar histórico privado.
+- Próxima versão: 1.0.36/versionCode 37 com metadados/Novidades e workflow sincronizados; verificar GitHub Actions antes de afirmar APK pronto.

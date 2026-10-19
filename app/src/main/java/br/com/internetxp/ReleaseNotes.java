@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.34";
-    public static final int VERSION_CODE = 35;
-    public static final String HEADLINE = "Barra XP refinada e capturas exportáveis.";
-    public static final String SUBTITLE = "Ícones proporcionais, progresso alinhado, exportação PNG e sugestões com proteção adicional.";
+    public static final String VERSION_NAME = "1.0.35";
+    public static final int VERSION_CODE = 36;
+    public static final String HEADLINE = "Abas e favoritos mais organizados.";
+    public static final String SUBTITLE = "Gerencie favoritos na mesma tela, recupere abas normais fechadas e navegue com controles compactos.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Navegação inferior uniforme", "Ícones vetoriais de Voltar, Avançar, Abas, Início e Menu na mesma escala visual do botão Baixar."),
-        new Feature("02", "Rodapé mais preciso", "Barra de progresso real agora termina exatamente antes do atalho Extensões em diferentes tamanhos de tela."),
-        new Feature("03", "Salvar capturas onde quiser", "Após capturar um site, além de compartilhar a imagem é possível exportar PNG para uma pasta escolhida pelo Android."),
-        new Feature("04", "Edição e sugestões mais seguras", "Evita reabrir sugestões depois de perder o foco, informa falhas de navegação e só oferece Colar com conteúdo na área de transferência."),
-        new Feature("05", "Segurança ao editar endereços", "Botão Segurança fecha o teclado antes de abrir detalhes da conexão, evitando conflitos visuais.")
+        new Feature("01", "Gerenciador de favoritos", "Pesquise por endereço, abra sites, organize com setas e remova favoritos com confirmação, em tela própria."),
+        new Feature("02", "Abas mais compactas", "Lista com título, origem, indicação da aba atual, favicon opcional e cartão visual uniforme."),
+        new Feature("03", "Ações de abas mais estáveis", "Abertura e fechamento encontram a aba real no momento do toque, sem utilizar índice desatualizado."),
+        new Feature("04", "Reabrir aba normal fechada", "Retorna à URL da última aba normal fechada nesta execução, sem restaurar conteúdo dinâmico ou histórico privado."),
+        new Feature("05", "Privacidade preservada", "Abas privadas nunca entram na lista de reabertura nem passam a ser salvas nas preferências.")
     };
 
     private ReleaseNotes() { }
