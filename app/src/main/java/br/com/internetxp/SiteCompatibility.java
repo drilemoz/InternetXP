@@ -46,7 +46,8 @@ public final class SiteCompatibility {
         return "android.permission.CAMERA".equals(permission)
                 || "android.permission.RECORD_AUDIO".equals(permission)
                 || "android.permission.ACCESS_FINE_LOCATION".equals(permission)
-                || "android.permission.ACCESS_COARSE_LOCATION".equals(permission);
+                || "android.permission.ACCESS_COARSE_LOCATION".equals(permission)
+                || "android.permission.POST_NOTIFICATIONS".equals(permission);
     }
 
     public static String[] mimeTypes(String[] provided) {

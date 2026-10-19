@@ -1,4 +1,19 @@
 
+## 1.0.40 (versionCode 41)
+- Botão flutuante arrastável e lista de mídias selecionadas por pressão longa por aba.
+- Menu contextual real do GeckoView para imagens, vídeo/áudio e links, com salvar/copiar/abrir/compartilhar; toolbar de seleção de texto nativa.
+- Pop-up com metadados HTTP verificados e prévia limitada quando disponível; downloads diretos reutilizam o gerenciador GeckoWebExecutor.
+- Favicons HTTPS do próprio site com mais caminhos e tags link icon, cache em disco com expiração e limitação de entradas.
+- Mantido bloqueio para playlists de streaming e URLs blob/data/DRM; nenhuma alegação de download universal.
+- Novidades, versionCode, workflow e documentação sincronizados. Build Android e teste físico pendentes.
+
+## 1.0.39 (versionCode 40)
+- Central de permissões de sites como tela interna do navegador, com leitura e edição das decisões armazenadas no GeckoView.
+- Política de mídia por origem: câmera/microfone sempre perguntam quando não bloqueados; preferências locais por SHA-256, sem herança em abas privadas.
+- Prompts de localização e notificações mais claros, compatíveis com permissões Android por versão, incluindo POST_NOTIFICATIONS no Android 13+.
+- Limpeza das permissões do GeckoView remove também bloqueios locais de mídia. Tratamento de localhost como origem potencialmente confiável, sem liberar HTTP LAN para recursos sensíveis.
+- Tela de Novidades e metadados do workflow sincronizados; APK precisa de validação GitHub Actions.
+
 ## 1.0.38 (versionCode 39)
 - Corrigido reconhecimento de `127.0.0.1:8000`, `localhost`, nomes locais, IPv4 privado e IPv6 local, com preferência por HTTP apenas para destinos locais sem esquema. URLs explicitamente HTTPS continuam intactas.
 - Manifesto permite tráfego HTTP para servidores locais/LAN; alerta de segurança para conexão sem criptografia.

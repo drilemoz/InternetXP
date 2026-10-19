@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 39" in gradle
-assert "versionName '1.0.38'" in gradle
+assert "versionCode 41" in gradle
+assert "versionName '1.0.40'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -26,9 +26,9 @@ assert 'private void showModuleMenuDialog(' in activity
 assert 'addressBox.setOnClickListener(v -> focusAddressBar(true))' in activity
 assert 'urlBox.setOnTouchListener((v, event) -> {' in activity
 assert 'private void focusAddressBar(boolean showSuggestions)' in activity
-assert "Internet XP.v1.0.38-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.40-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.38' in workflow_text
+assert 'gh release create v1.0.40' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 assert 'name: Compilar APK e publicar na Release' in workflow_text
@@ -45,9 +45,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='39' versionName='1.0.38'" in workflow_text
+assert "versionCode='41' versionName='1.0.40'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.38-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.40-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -97,9 +97,9 @@ for name in ('ic_launcher.xml','ic_launcher_round.xml'):
     ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
 assert (root/'branding/internet_xp_icon_master.png').exists()
 
-assert '1.0.38' in (root/'README.md').read_text()
-assert '1.0.38' in (root/'CHANGELOG.md').read_text()
-assert '1.0.38' in (root/'docs/VALIDATION.md').read_text()
+assert '1.0.40' in (root/'README.md').read_text()
+assert '1.0.40' in (root/'CHANGELOG.md').read_text()
+assert '1.0.40' in (root/'docs/VALIDATION.md').read_text()
 
 # Mandatory per-update release notes: failed checks block CI before Android build.
 import ast
@@ -360,7 +360,7 @@ assert 'private void exportScreenshot(File image)' in activity
 assert 'pendingCaptureExport = null;' in activity
 assert 'private void updatePasteButtonAvailability()' in activity
 assert 'if (!urlBox.hasFocus() || isFinishing() || isDestroyed()) return;' in activity
-assert '1.0.38' in (root/'AGENTS.md').read_text()
+assert '1.0.40' in (root/'AGENTS.md').read_text()
 print('1.0.34: ícones vetoriais, progresso adaptativo, SAF e sugestão estável: OK')
 
 # 1.0.35: favoritos editáveis e abas com identidade estável.
@@ -373,7 +373,7 @@ assert 'showModuleScreen("Favoritos"' in activity
 assert 'showModuleScreen("Abas abertas"' in activity
 assert (root/'app/src/main/java/br/com/internetxp/BookmarkOrganizer.java').exists()
 assert (root/'app/src/test/java/br/com/internetxp/BookmarkOrganizerTest.java').exists()
-assert '1.0.38' in (root/'AGENTS.md').read_text()
+assert '1.0.40' in (root/'AGENTS.md').read_text()
 print('1.0.35: busca/reordenação de favoritos, abas e privacidade: OK')
 
 # 1.0.36: API de certificado GeckoView 158 (falha real do workflow 34).
@@ -402,7 +402,7 @@ assert (root/'app/src/main/java/br/com/internetxp/ExitReasonLabels.java').exists
 assert (root/'app/src/test/java/br/com/internetxp/ExitReasonLabelsTest.java').exists()
 print('1.0.37: exportacao segura, recuperacao de abas e Android 11+: OK')
 
-# 1.0.38: serviços locais / privacidade e medição de navegação.
+# 1.0.40: serviços locais / privacidade e medição de navegação.
 address = (root/'app/src/main/java/br/com/internetxp/BrowserAddress.java').read_text()
 localtests = (root/'app/src/test/java/br/com/internetxp/LocalAddressTest.java').read_text()
 assert 'isDirectAddress' in address and 'isLocalHost' in address
@@ -415,4 +415,29 @@ assert 'SiteLoadMetrics' in activity and 'onPageStop' in activity
 assert (root/'app/src/test/java/br/com/internetxp/SiteLoadMetricsTest.java').exists()
 assert 'showLocalSiteHelp' in activity
 assert (root/'docs/LOCAL_SERVERS.md').exists()
-print('1.0.38: enderecos locais, HTTP, privacidade e medicao de carregamento: OK')
+print('1.0.40: enderecos locais, HTTP, privacidade e medicao de carregamento: OK')
+
+# 1.0.40: controles reais por origem, sem permissões automáticas.
+assert (root/'app/src/main/java/br/com/internetxp/SitePermissionRules.java').exists()
+assert (root/'app/src/test/java/br/com/internetxp/SitePermissionRulesTest.java').exists()
+assert 'private void renderSitePermissions(' in activity
+assert 'private void clearSiteMediaChoices()' in activity
+assert 'GeckoSession.PermissionDelegate.PERMISSION_DESKTOP_NOTIFICATION' in activity
+assert 'SitePermissionRules.isTrustworthyMediaOrigin(uri)' in activity
+assert 'setPermission(permission, selected)' in activity
+assert 'android.permission.POST_NOTIFICATIONS' in manifest_xml
+print('1.0.40: central de permissoes, preferencias locais e notificacoes: OK')
+
+# 1.0.40: mídia sob seleção explícita, sem alegar varredura DOM ou DRM.
+assert 'onContextMenu(GeckoSession s, int screenX, int screenY' in activity
+assert 'setSelectionActionDelegate(new BasicSelectionActionDelegate(this, true))' in activity
+assert 'private void showMediaCenter()' in activity
+assert 'private void showMediaDetails(MediaResource media)' in activity
+assert 'private void downloadSelectedMedia(MediaResource media)' in activity
+assert (root/'app/src/main/java/br/com/internetxp/MediaResource.java').is_file()
+assert (root/'app/src/main/java/br/com/internetxp/MediaInspector.java').is_file()
+assert (root/'app/src/test/java/br/com/internetxp/MediaResourceTest.java').is_file()
+assert 'new FaviconRepository(getApplicationContext())' in activity
+assert 'xp_favicons_v2' in (root/'app/src/main/java/br/com/internetxp/FaviconRepository.java').read_text()
+assert 'MediaResource.isDownloadableUrl' in activity
+print('1.0.40: menu contextual, mídias selecionadas e favicon persistente: OK')

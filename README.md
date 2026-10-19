@@ -1,6 +1,22 @@
-# Internet XP v1.0.38 (versionCode 39)
+# Internet XP v1.0.40 (versionCode 41)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.40: mídias, menus contextuais e favicons (código-fonte)
+- **Botão flutuante na página**: pressione uma imagem, vídeo ou áudio para registrá-lo na lista temporária da aba (até 12 mídias). O botão pode ser movido. Nada é armazenado no histórico quando a aba é privada.
+- **Detalhes em pop-up XP**: formato MIME identificado por URL ou resposta HEAD, tamanho somente quando conhecido, resolução/previsão de imagem leve quando disponível (até 512 KiB), origem, botões **Salvar** e **Fechar**.
+- **Salvar** usa o download próprio existente com `GeckoWebExecutor`, marcado como privado quando necessário. Recursos com `blob:`, `data:`, DRM e playlists HLS/DASH não são convertidos em mídia direta; acesso autenticado e downloads complexos dependem de testes no Android.
+- **Toque longo em links**: abrir na aba, nova aba, copiar ou compartilhar. Em imagens/mídias: copiar endereço e detalhes. **Seleção de texto** usa `BasicSelectionActionDelegate` do GeckoView.
+- **Favicons dos favoritos**: procura, via HTTPS do próprio domínio, `/favicon.ico`, `/favicon.png`, `/apple-touch-icon.png` e `link rel=icon` no HTML. Cache de disco limitado a 64 entradas, com expiração de 30 dias, e cache RAM existente. Não consulta serviços de terceiros nem servidores locais.
+- **Limitações**: esta versão não extrai automaticamente todo o HTML/DOM nem grava streaming protegido; os controles são acionados pela seleção de mídia. Precisa passar pelo build Gradle/GitHub Actions e testes físicos antes de declarar APK funcional.
+
+## 1.0.39: permissões e segurança por site (código-fonte)
+- **Segurança da página > Gerenciar permissões** e **Configurações > Permissões por site** abrem uma tela interna com decisões reais retornadas pelo GeckoView para a origem atual. Para permissões existentes, pode-se escolher Perguntar, Bloquear e Permitir; a API não cria permissões que nunca existiram.
+- **Câmera e microfone**: pode-se escolher Perguntar ou Bloquear por origem (incluindo porta), sem aprovação automática. As preferências locais usam chaves SHA-256; abas privadas não herdam esses bloqueios persistentes.
+- **Localização e notificações** passam por prompt customizado do Internet XP com consentimento explícito. O sistema Android também solicita permissões de câmera, microfone, localização e notificações quando aplicável. Liberar permissão do conteúdo não substitui a autorização do Android.
+- O atalho **Limpar permissões** também elimina os bloqueios locais de câmera e microfone após a limpeza do GeckoView ser concluída com sucesso. Não se afirma suporte a execução real de notificações em segundo plano.
+- Servidores loopback `localhost`/`127.0.0.1`/`[::1]` são tratados como origens potencialmente confiáveis para o prompt de mídia; IPs LAN remotos continuam sem essa exceção. Isso não torna HTTP criptografado.
+- A compilação Gradle, lint, execução real no Android e o comportamento do GeckoView 158 continuam pendentes de validação externa.
 
 ## 1.0.38: servidores locais e desempenho (código-fonte)
 - A barra reconhece `localhost:8000`, `127.0.0.1:8000`, `192.168.1.20:8080`, `[::1]:3000`, `raspberrypi:3000`, `.local` e `.lan`. Ao digitar sem esquema, servidores locais usam `http://` e sites públicos continuam em `https://`.
@@ -110,7 +126,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.38`, `versionCode=39`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.40`, `versionCode=41`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

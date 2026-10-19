@@ -32,6 +32,7 @@ public class SiteCompatibilityTest {
         assertTrue(SiteCompatibility.isKnownAndroidPermission("android.permission.CAMERA"));
         assertTrue(SiteCompatibility.isKnownAndroidPermission("android.permission.RECORD_AUDIO"));
         assertTrue(SiteCompatibility.isKnownAndroidPermission("android.permission.ACCESS_FINE_LOCATION"));
+        assertTrue(SiteCompatibility.isKnownAndroidPermission("android.permission.POST_NOTIFICATIONS"));
         assertFalse(SiteCompatibility.isKnownAndroidPermission("android.permission.READ_CONTACTS"));
     }
 

@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.38";
-    public static final int VERSION_CODE = 39;
-    public static final String HEADLINE = "Acesso a servidores locais e diagnóstico de carregamento.";
-    public static final String SUBTITLE = "Navegue em localhost:8000, IPs da rede e serviços do Termux; medições locais e modos de compatibilidade configuráveis.";
+    public static final String VERSION_NAME = "1.0.40";
+    public static final int VERSION_CODE = 41;
+    public static final String HEADLINE = "Mídias, ações por toque e favicons mais completos.";
+    public static final String SUBTITLE = "Selecione imagens, vídeos e áudios para inspecionar e salvar arquivos diretos; toque longo em links e seleção de texto nativa.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Localhost e rede Wi-Fi", "Reconhece 127.0.0.1:8000, localhost:8000, IPs privados, IPv6 local e hosts da rede."),
-        new Feature("02", "HTTP local", "Usa HTTP por padrão para servidores locais; endereços HTTPS explícitos continuam respeitados."),
-        new Feature("03", "Página inicial local", "Permite configurar serviços do Termux e endereços LAN como página inicial, com validação."),
-        new Feature("04", "Desempenho visível", "Informa tempo de carregamento da aba, em memória, junto aos ajustes ChatGPT/Facebook e mídia em segundo plano."),
-        new Feature("05", "Privacidade do autocompletar", "Não envia endereços locais digitados para o serviço online de sugestões.")
+        new Feature("01", "Botão flutuante de mídias", "Atalho movível na página para listar mídias selecionadas por pressão longa."),
+        new Feature("02", "Prévia e detalhes", "Formato, tamanho HTTP conhecido, resolução de imagem leve e salvamento direto pelo gerenciador existente."),
+        new Feature("03", "Segurar imagens e links", "Abrir, copiar, compartilhar e acessar detalhes no menu contextual do GeckoView."),
+        new Feature("04", "Seleção de texto", "Toolbar nativa do GeckoView para copiar e selecionar, preservando os campos de texto."),
+        new Feature("05", "Favicons persistentes", "Mais caminhos HTTPS no próprio site, ícones declarados e cache local com limite e expiração.")
     };
 
     private ReleaseNotes() { }

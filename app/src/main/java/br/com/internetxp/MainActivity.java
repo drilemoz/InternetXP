@@ -69,6 +69,7 @@ import org.mozilla.geckoview.GeckoRuntime;
 import org.mozilla.geckoview.GeckoSessionSettings;
 import org.mozilla.geckoview.StorageController;
 import org.mozilla.geckoview.GeckoSession;
+import org.mozilla.geckoview.BasicSelectionActionDelegate;
 import org.mozilla.geckoview.GeckoView;
 import org.mozilla.geckoview.WebExtension;
 import org.mozilla.geckoview.WebExtensionController;
@@ -139,6 +140,9 @@ public final class MainActivity extends Activity {
     private ImageView pasteAddressButton;
     private ImageView favoriteAddressButton;
     private ImageView screenshotButton;
+    private ImageView mediaFloatingButton;
+    private final MediaInspector mediaInspector = new MediaInspector();
+    private final Handler mediaHandler = new Handler(Looper.getMainLooper());
     private ProgressBar pageProgressBar;
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private boolean suspendMediaInBackground = true;
@@ -204,6 +208,7 @@ public final class MainActivity extends Activity {
         boolean fullScreen;
         boolean loading;
         final SiteLoadMetrics loadMetrics = new SiteLoadMetrics();
+        final ArrayList<MediaResource> pickedMedia = new ArrayList<>(); // Apenas memória e aba atual.
         int progress;
         final boolean privateMode;
         GeckoSession.ProgressDelegate.SecurityInformation securityInfo;
@@ -295,11 +300,12 @@ public final class MainActivity extends Activity {
         boolean show = isHomeVisible() && !fullScreen;
         homeScreen.setVisibility(show ? View.VISIBLE : View.GONE);
         if (show) homeScreen.showFavorites(bookmarks);
+        updateFloatingMediaButton();
         updateFavoriteAddressButton();
         if (faviconIcon != null) {
             Tab t = current();
             faviconIcon.setImageDrawable(null);
-            faviconIcon.setVisibility(t != null && !HOME.equals(t.url) && FaviconRepository.origin(t.url) != null
+            faviconIcon.setVisibility(t != null && !t.privateMode && !HOME.equals(t.url) && FaviconRepository.origin(t.url) != null
                     ? View.VISIBLE : View.GONE);
             if (faviconIcon.getVisibility() == View.VISIBLE) faviconRepository.load(t.url, faviconIcon);
         }
@@ -344,7 +350,7 @@ public final class MainActivity extends Activity {
         nativeDownloads = AppDownloadEngine.get(getApplicationContext());
         trackingProtectionEnabled = storage.getBoolean(PREF_TRACKING_PROTECTION, true);
         homePageUrl = sanitizeHomePage(storage.getString(PREF_HOME_PAGE, HOME));
-        faviconRepository = new FaviconRepository();
+        faviconRepository = new FaviconRepository(getApplicationContext());
         createLayout();
         refreshSuggestionAdapter("");
         try {
@@ -548,6 +554,39 @@ public final class MainActivity extends Activity {
         });
         homeScreen.setVisibility(View.GONE);
         webArea.addView(homeScreen, new FrameLayout.LayoutParams(-1, -1));
+        mediaFloatingButton = new ImageView(this);
+        mediaFloatingButton.setImageResource(R.drawable.ic_download_xp);
+        mediaFloatingButton.setColorFilter(Color.WHITE);
+        mediaFloatingButton.setBackground(rounded(XP_BLUE, 0, 18));
+        mediaFloatingButton.setPadding(dp(12), dp(12), dp(12), dp(12));
+        mediaFloatingButton.setContentDescription("Mídias selecionadas nesta aba");
+        mediaFloatingButton.setOnClickListener(v -> showMediaCenter());
+        // Mover o botão sem capturar gestos de rolagem do GeckoView fora dele.
+        final float[] drag = new float[4]; // rawX, rawY, xInicial, yInicial
+        mediaFloatingButton.setOnTouchListener((target, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    drag[0] = event.getRawX(); drag[1] = event.getRawY();
+                    drag[2] = target.getX(); drag[3] = target.getY();
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getRawX() - drag[0];
+                    float dy = event.getRawY() - drag[1];
+                    if (Math.abs(dx) > dp(5) || Math.abs(dy) > dp(5)) {
+                        target.setX(Math.max(0, Math.min(webArea.getWidth() - target.getWidth(), drag[2] + dx)));
+                        target.setY(Math.max(0, Math.min(webArea.getHeight() - target.getHeight(), drag[3] + dy)));
+                    }
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    if (Math.hypot(event.getRawX() - drag[0], event.getRawY() - drag[1]) <= dp(7)) target.performClick();
+                    return true;
+                default: return false;
+            }
+        });
+        FrameLayout.LayoutParams mediaButtonParams = new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.END | Gravity.BOTTOM);
+        mediaButtonParams.setMargins(0, 0, dp(14), dp(19));
+        webArea.addView(mediaFloatingButton, mediaButtonParams);
+        mediaFloatingButton.setVisibility(View.GONE);
         root.addView(webArea, new LinearLayout.LayoutParams(-1, 0, 1));
 
         downloadsPanel = new LinearLayout(this);
@@ -966,6 +1005,7 @@ public final class MainActivity extends Activity {
                     invalidateOnlineSuggestions();
                     Toast.makeText(this, onlineSuggestionsEnabled ? "Sugestões online ativadas" : "Sugestões online desativadas", Toast.LENGTH_SHORT).show();
                     popModuleScreen(); showBrowserSettings(); }));
+        actions.add(new MenuAction("🔒", "Permissões por site", "Câmera, microfone, localização, notificações e decisões do GeckoView.", this::showCurrentSitePermissions));
         actions.add(new MenuAction("⚡", "Desempenho e sites", "Mídia em abas inativas, ChatGPT e Facebook; opções com efeito real.", this::showPerformanceSettings));
         actions.add(new MenuAction("⚠", "Diagnósticos", "Falhas de páginas e fechamento; exportar relatório local.", this::showDiagnostics));
         actions.add(new MenuAction("⚙", "Ver página inicial", "Abra a página inicial definida nas configurações.", () -> navigate(configuredHome())));
@@ -1340,7 +1380,27 @@ public final class MainActivity extends Activity {
             @Override public void onExternalResponse(GeckoSession s, WebResponse response) {
                 offerDownload(response, tab.privateMode);
             }
+            @Override public void onContextMenu(GeckoSession s, int screenX, int screenY,
+                    GeckoSession.ContentDelegate.ContextElement element) {
+                if (tab != current() || element == null || isFinishing() || isDestroyed()) return;
+                String kind = element.type == GeckoSession.ContentDelegate.ContextElement.TYPE_IMAGE ? "Imagem" :
+                        element.type == GeckoSession.ContentDelegate.ContextElement.TYPE_VIDEO ? "Vídeo" :
+                        element.type == GeckoSession.ContentDelegate.ContextElement.TYPE_AUDIO ? "Áudio" : null;
+                MediaResource media = kind == null ? null :
+                        MediaResource.from(element.srcUri, kind, element.altText, tab.privateMode);
+                String link = MediaResource.isDownloadableUrl(element.linkUri) ? element.linkUri : null;
+                if (media != null) {
+                    tab.pickedMedia.removeIf(candidate -> candidate.url.equals(media.url));
+                    tab.pickedMedia.add(0, media);
+                    while (tab.pickedMedia.size() > 12) tab.pickedMedia.remove(tab.pickedMedia.size() - 1);
+                    updateFloatingMediaButton();
+                }
+                if (media != null || link != null) showElementActions(tab, media, link);
+            }
         });
+        // Seleção de texto nativa: Copiar, Selecionar tudo, Pesquisar e Compartilhar,
+        // com toolbar flutuante da plataforma (não interceptar clipboard de senhas).
+        session.setSelectionActionDelegate(new BasicSelectionActionDelegate(this, true));
         session.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
             @Override public GeckoResult<AllowOrDeny> onLoadRequest(
                     GeckoSession s, GeckoSession.NavigationDelegate.LoadRequest request) {
@@ -1374,6 +1434,8 @@ public final class MainActivity extends Activity {
                 if (uri == null) return;
                 if (!uri.equals(tab.url)) tab.title = "Nova aba";
                 tab.url = uri;
+                tab.pickedMedia.clear(); // Nunca reaproveitar mídia de um domínio anterior.
+                if (tab == current()) updateFloatingMediaButton();
                 applySitePreferences(tab);
                 tab.securityInfo = null;
                 if (tab == current()) {
@@ -1402,6 +1464,16 @@ public final class MainActivity extends Activity {
         session.setPermissionDelegate(new GeckoSession.PermissionDelegate() {
             @Override public void onAndroidPermissionsRequest(GeckoSession s, String[] permissions,
                     GeckoSession.PermissionDelegate.Callback callback) {
+                // Negar antes de solicitar a permissão do Android quando a origem está bloqueada.
+                String requestingUrl = tab.url;
+                if (permissions != null && !tab.privateMode &&
+                        ((Arrays.asList(permissions).contains(Manifest.permission.CAMERA)
+                                && isSiteMediaBlocked(requestingUrl, "camera", false)) ||
+                        (Arrays.asList(permissions).contains(Manifest.permission.RECORD_AUDIO)
+                                && isSiteMediaBlocked(requestingUrl, "microphone", false)))) {
+                    callback.reject();
+                    return;
+                }
                 requestSitePermissions(permissions, callback::grant, callback::reject);
             }
             @Override public GeckoResult<Integer> onContentPermissionRequest(
@@ -1412,7 +1484,7 @@ public final class MainActivity extends Activity {
                     GeckoSession.PermissionDelegate.MediaSource[] video,
                     GeckoSession.PermissionDelegate.MediaSource[] audio,
                     GeckoSession.PermissionDelegate.MediaCallback callback) {
-                askMediaPermission(uri, video, audio, callback);
+                askMediaPermission(uri, video, audio, callback, tab.privateMode);
             }
         });
         session.setProgressDelegate(new GeckoSession.ProgressDelegate() {
@@ -1444,6 +1516,135 @@ public final class MainActivity extends Activity {
             }
         });
         return tab;
+    }
+
+    /** Botão flutuante pertence ao conteúdo, nunca à página inicial ou a telas internas. */
+    private void updateFloatingMediaButton() {
+        if (mediaFloatingButton == null) return;
+        Tab tab = current();
+        boolean web = tab != null && !HOME.equals(tab.url) && !fullScreen;
+        mediaFloatingButton.setVisibility(web ? View.VISIBLE : View.GONE);
+        if (web) mediaFloatingButton.setAlpha(tab.pickedMedia.isEmpty() ? .78f : 1f);
+    }
+
+    private void showElementActions(Tab tab, MediaResource media, String link) {
+        if (tab != current()) return;
+        ArrayList<String> actions = new ArrayList<>();
+        if (media != null) actions.add("Detalhes e salvar " + media.kind.toLowerCase(Locale.ROOT));
+        if (media != null) actions.add("Copiar endereço da mídia");
+        if (link != null) {
+            actions.add("Abrir link nesta aba");
+            actions.add("Abrir link em nova aba");
+            actions.add("Copiar endereço do link");
+            actions.add("Compartilhar link");
+        }
+        if (actions.isEmpty()) return;
+        new XpDialogs.Builder(this).setTitle("Ações da página")
+                .setItems(actions.toArray(new String[0]), (d, index) -> {
+                    String action = actions.get(index);
+                    if (action.startsWith("Detalhes") && media != null) showMediaDetails(media);
+                    else if (action.equals("Copiar endereço da mídia") && media != null) copyWebAddress(media.url);
+                    else if (action.equals("Abrir link nesta aba") && link != null) navigate(link);
+                    else if (action.equals("Abrir link em nova aba") && link != null) addTab(link, tab.privateMode);
+                    else if (action.equals("Copiar endereço do link") && link != null) copyWebAddress(link);
+                    else if (action.equals("Compartilhar link") && link != null) shareWebAddress(link);
+                }).setNegativeButton("Fechar", null).show();
+    }
+
+    private void copyWebAddress(String address) {
+        ClipboardManager clip = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clip != null) clip.setPrimaryClip(ClipData.newPlainText("Endereço", address));
+        Toast.makeText(this, "Endereço copiado", Toast.LENGTH_SHORT).show();
+    }
+
+    private void shareWebAddress(String address) {
+        Intent share = new Intent(Intent.ACTION_SEND);
+        share.setType("text/plain");
+        share.putExtra(Intent.EXTRA_TEXT, address);
+        try { startActivity(Intent.createChooser(share, "Compartilhar endereço")); }
+        catch (ActivityNotFoundException error) { Toast.makeText(this, "Nenhum aplicativo disponível", Toast.LENGTH_SHORT).show(); }
+    }
+
+    /** Lista apenas imagens/áudios/vídeos que o usuário selecionou por pressão longa. */
+    private void showMediaCenter() {
+        Tab tab = current();
+        if (tab == null || HOME.equals(tab.url)) return;
+        if (tab.pickedMedia.isEmpty()) {
+            new XpDialogs.Builder(this).setTitle("Salvar mídias")
+                    .setMessage("Pressione por alguns instantes uma imagem, um vídeo ou um áudio da página. " +
+                            "O Internet XP mostrará as ações e adicionará a mídia aqui. " +
+                            "Este módulo não varre todas as mídias do site automaticamente e não contorna DRM.")
+                    .setPositiveButton("Entendi", null).show();
+            return;
+        }
+        String[] entries = new String[tab.pickedMedia.size()];
+        for (int i = 0; i < entries.length; i++) {
+            MediaResource media = tab.pickedMedia.get(i);
+            entries[i] = media.kind + " • " + AppDownloadEngine.filename(media.url, null,
+                    MediaResource.guessMime(media.url, media.kind));
+        }
+        new XpDialogs.Builder(this).setTitle("Mídias selecionadas")
+                .setItems(entries, (dialog, which) -> {
+                    if (tab != current() || which >= tab.pickedMedia.size()) return;
+                    showMediaDetails(tab.pickedMedia.get(which));
+                }).setNegativeButton("Fechar", null).show();
+    }
+
+    private void showMediaDetails(MediaResource media) {
+        if (!MediaResource.isDownloadableUrl(media.url)) return;
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(dp(20), dp(12), dp(20), dp(6));
+        ImageView preview = new ImageView(this);
+        preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        preview.setVisibility(View.GONE);
+        body.addView(preview, new LinearLayout.LayoutParams(-1, dp(144)));
+        TextView details = text("Formato: " + MediaResource.guessMime(media.url, media.kind) +
+                        "\nTamanho: consultando…\nResolução: não informada\n" +
+                        "Fonte: " + media.url + "\n" +
+                        (media.isStreamingManifest() ? "Manifesto de streaming: não é um vídeo direto.\n" : "") +
+                        "\nPrévia depende de acesso direto ao arquivo; mídias autenticadas podem não aparecer.", 12, TEXT);
+        details.setTextIsSelectable(true);
+        body.addView(details);
+        XpDialogs.Builder builder = new XpDialogs.Builder(this);
+        builder.setTitle("Mídia • " + media.kind).setView(body)
+                .setNegativeButton("Fechar", null);
+        if (!media.isStreamingManifest()) {
+            builder.setPositiveButton("Salvar", (d, which) -> downloadSelectedMedia(media));
+        }
+        AlertDialog dialog = builder.show();
+        mediaInspector.inspect(media, mediaHandler, result -> {
+            if (isFinishing() || isDestroyed() || !dialog.isShowing()) return;
+            details.setText("Formato: " + result.mime +
+                    "\nTamanho: " + (result.bytes >= 0 ? formatBytes(result.bytes) : "não informado") +
+                    "\nResolução: " + (result.width > 0 ? result.width + " × " + result.height : "não informada") +
+                    "\nFonte: " + media.url +
+                    (media.isStreamingManifest() ? "\nStreaming segmentado: download direto indisponível." : ""));
+            if (result.preview != null) { preview.setImageBitmap(result.preview); preview.setVisibility(View.VISIBLE); }
+            else preview.setVisibility(View.GONE);
+        });
+    }
+
+    private void downloadSelectedMedia(MediaResource media) {
+        if (!MediaResource.isDownloadableUrl(media.url) || media.isStreamingManifest()) {
+            Toast.makeText(this, "Esta mídia não admite download direto", Toast.LENGTH_LONG).show();
+            return;
+        }
+        DownloadItem item = new DownloadItem();
+        item.id = System.currentTimeMillis();
+        item.url = media.url;
+        item.mime = MediaResource.guessMime(media.url, media.kind);
+        item.fileName = AppDownloadEngine.filename(item.url, null, item.mime);
+        item.status = AppDownloadEngine.STATUS_PENDING;
+        item.total = -1;
+        item.createdAt = System.currentTimeMillis();
+        item.privateDownload = media.privateMode;
+        downloads.add(0, item);
+        while (downloads.size() > 40) downloads.remove(downloads.size() - 1);
+        saveDownloads();
+        fetchForDownload(item); // GeckoWebExecutor, sem download HTTP paralelo no processo Java.
+        DiagnosticLog.record(getApplicationContext(), "DOWNLOAD_MIDIA_SELECIONADA");
+        showDownloads();
     }
 
     private void addTab(String url) {
@@ -2927,6 +3128,7 @@ public final class MainActivity extends Activity {
         for (String permission : permissions) {
             // Não solicitar permissões arbitrárias declaradas por páginas/extensões.
             if (!SiteCompatibility.isKnownAndroidPermission(permission)) { denied.run(); return; }
+            if (Manifest.permission.POST_NOTIFICATIONS.equals(permission) && Build.VERSION.SDK_INT < 33) continue;
             if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) missing.add(permission);
         }
         if (missing.isEmpty()) { granted.run(); return; }
@@ -2962,11 +3164,12 @@ public final class MainActivity extends Activity {
         if (urlBox != null && urlBox.hasFocus()) hideKeyboard();
 
         final int type = permission.permission;
-        if (type != GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION) {
-            // Outras permissões continuam com a política-padrão do GeckoView.
+        if (type != GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
+                && type != GeckoSession.PermissionDelegate.PERMISSION_DESKTOP_NOTIFICATION) {
+            // Demais tipos continuam tratados pela política-padrão do GeckoView.
             return null;
         }
-        if (!SiteCompatibility.isSecureOrigin(permission.uri)) {
+        if (!SitePermissionRules.isTrustworthyMediaOrigin(permission.uri)) {
             return GeckoResult.fromValue(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY);
         }
         if (permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW
@@ -2975,11 +3178,22 @@ public final class MainActivity extends Activity {
         }
         GeckoResult<Integer> result = new GeckoResult<>();
         AlertDialog dialog = new XpDialogs.Builder(this)
-                .setTitle("Permissão de localização")
-                .setMessage("Permitir que " + SiteCompatibility.originLabel(permission.uri)
-                        + " acesse sua localização?")
-                .setPositiveButton("Permitir", (d, n) ->
-                        result.complete(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW))
+                .setTitle(type == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
+                        ? "Permissão de localização" : "Permissão de notificações")
+                .setMessage("O site " + SiteCompatibility.originLabel(permission.uri)
+                        + (type == GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
+                            ? " deseja acessar sua localização. Você pode alterar esta decisão em Segurança da página > Permissões."
+                            : " deseja exibir notificações. Você pode alterar esta decisão em Segurança da página > Permissões."))
+                .setPositiveButton("Permitir", (d, n) -> {
+                    // Android 13+: a permissão do site não substitui POST_NOTIFICATIONS.
+                    if (type == GeckoSession.PermissionDelegate.PERMISSION_DESKTOP_NOTIFICATION) {
+                        requestSitePermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                () -> result.complete(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW),
+                                () -> result.complete(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY));
+                    } else {
+                        result.complete(GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW);
+                    }
+                })
                 .setNegativeButton("Negar", (d, n) ->
                         result.complete(GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY))
                 .setOnCancelListener(d -> result.complete(
@@ -2993,10 +3207,15 @@ public final class MainActivity extends Activity {
     private void askMediaPermission(String uri,
             GeckoSession.PermissionDelegate.MediaSource[] video,
             GeckoSession.PermissionDelegate.MediaSource[] audio,
-            GeckoSession.PermissionDelegate.MediaCallback callback) {
+            GeckoSession.PermissionDelegate.MediaCallback callback, boolean privateMode) {
         if (urlBox != null && urlBox.hasFocus()) hideKeyboard();
 
-        if (!SiteCompatibility.isSecureOrigin(uri)) { callback.reject(); return; }
+        if (!SitePermissionRules.isTrustworthyMediaOrigin(uri)) { callback.reject(); return; }
+        if ((video != null && video.length > 0 && isSiteMediaBlocked(uri, "camera", privateMode))
+                || (audio != null && audio.length > 0 && isSiteMediaBlocked(uri, "microphone", privateMode))) {
+            callback.reject();
+            return;
+        }
         GeckoSession.PermissionDelegate.MediaSource camera = null;
         GeckoSession.PermissionDelegate.MediaSource microphone = null;
         if (video != null && video.length > 0) {
@@ -3063,6 +3282,7 @@ public final class MainActivity extends Activity {
             if (child != view) child.setVisibility(enabled ? View.GONE : View.VISIBLE);
         }
         if (!enabled && downloadsPanel != null) downloadsPanel.setVisibility(View.GONE);
+        updateFloatingMediaButton();
         if (enabled) uiHandler.removeCallbacks(downloadRefresh);
         int flags = enabled ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY : 0;
@@ -3155,7 +3375,7 @@ public final class MainActivity extends Activity {
         actions.add(new MenuAction("🗂", "Limpar cache", "Apaga o cache de páginas, imagens e outros arquivos temporários.", () -> confirmClearData(StorageController.ClearFlags.ALL_CACHES, false, "cache de páginas e imagens")));
         actions.add(new MenuAction("✔", "Limpar permissões", "Esquece permissões concedidas anteriormente a sites, como câmera e localização.", () -> confirmClearData(StorageController.ClearFlags.PERMISSIONS, false, "permissões de sites")));
         actions.add(new MenuAction("✖", "Limpeza completa", "Fecha as abas e limpa todos os dados de navegação, incluindo o histórico local.", () -> confirmClearData(StorageController.ClearFlags.ALL, true, "todos os dados de navegação")));
-        actions.add(new MenuAction("🔎", "Permissões do site atual", "Consulte ou redefina permissões armazenadas para o site aberto agora.", this::showCurrentSitePermissions));
+        actions.add(new MenuAction("🔎", "Central de permissões por site", "Consulte ou altere câmera, microfone e permissões reais armazenadas pelo GeckoView.", this::showCurrentSitePermissions));
         actions.add(new MenuAction("◌", "Fechar abas privadas", "Fecha todas as abas privadas ainda abertas nesta sessão.", this::closePrivateTabs));
         showModuleMenuDialog("Privacidade e dados", "Ferramentas para controlar rastreamento, permissões e dados locais do Internet XP.", actions);
     }
@@ -3198,6 +3418,9 @@ public final class MainActivity extends Activity {
         runtime.getStorageController().clearData(flags).accept(
                 result -> runOnUiThread(() -> {
                     if (!isFinishing() && !isDestroyed()) {
+                        if ((flags & StorageController.ClearFlags.PERMISSIONS) != 0 || flags == StorageController.ClearFlags.ALL) {
+                            clearSiteMediaChoices();
+                        }
                         addTab(HOME);
                         status.setText("Dados do navegador limpos");
                     }
@@ -3210,16 +3433,69 @@ public final class MainActivity extends Activity {
                 }));
     }
 
+    private void clearSiteMediaChoices() {
+        if (storage == null) return;
+        SharedPreferences.Editor editor = storage.edit();
+        for (String key : storage.getAll().keySet()) {
+            if (key.startsWith("media_site_v1_")) editor.remove(key);
+        }
+        editor.apply();
+    }
+
+    private boolean isSiteMediaBlocked(String uri, String device, boolean privateMode) {
+        if (privateMode || storage == null) return false; // Não aplicar decisão de aba normal na privada.
+        String key = SitePermissionRules.preferenceKey(uri, device);
+        return key != null && storage.getBoolean(key, false);
+    }
+
+    private void setSiteMediaBlocked(String uri, String device, boolean blocked, boolean privateMode) {
+        if (privateMode || storage == null) return;
+        String key = SitePermissionRules.preferenceKey(uri, device);
+        if (key == null) return;
+        if (blocked) storage.edit().putBoolean(key, true).apply();
+        else storage.edit().remove(key).apply();
+    }
+
     private void showCurrentSitePermissions() {
-        Tab tab = current();
-        if (runtime == null || tab == null || !tab.url.startsWith("http")) {
-            Toast.makeText(this, "Abra um site para consultar as permissões", Toast.LENGTH_SHORT).show();
+        final Tab tab = current();
+        if (runtime == null || tab == null || SitePermissionRules.origin(tab.url) == null) {
+            Toast.makeText(this, "Abra um site HTTP ou HTTPS para ver permissões", Toast.LENGTH_SHORT).show();
             return;
         }
         final String url = tab.url;
-        runtime.getStorageController().getPermissions(url, tab.privateMode).accept(
-                permissions -> runOnUiThread(() -> displaySitePermissions(url, permissions)),
-                error -> runOnUiThread(() -> showError(error)));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(12), dp(14), dp(12), dp(22));
+        scroll.addView(page);
+        TextView description = text("Origem: " + SitePermissionRules.origin(url), 13, TEXT);
+        description.setPadding(dp(10), dp(8), dp(10), dp(12));
+        page.addView(description);
+        TextView note = text("As permissões são controladas pelo GeckoView. Câmera e microfone sempre exigem confirmação quando não bloqueados."
+                + (tab.privateMode ? " Esta aba é privada; bloqueios persistentes de abas normais não são aplicados." : ""), 12, SUBTLE);
+        note.setPadding(dp(10), 0, dp(10), dp(12));
+        page.addView(note);
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        page.addView(rows);
+        final Runnable[] refresh = new Runnable[1];
+        refresh[0] = () -> {
+            if (isFinishing() || isDestroyed() || !tabs.contains(tab)) return;
+            runtime.getStorageController().getPermissions(url, tab.privateMode).accept(
+                    permissions -> runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed() || !tabs.contains(tab)) return;
+                        renderSitePermissions(url, tab.privateMode, rows, permissions, refresh[0]);
+                    }),
+                    error -> runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            rows.removeAllViews();
+                            addSitePermissionsInfo(rows, "Não foi possível consultar as permissões armazenadas.");
+                        }
+                    }));
+        };
+        showModuleScreen("Permissões por site", "Controle de autorizações do domínio atual", scroll);
+        refresh[0].run();
     }
 
     private String permissionLabel(int type) {
@@ -3231,44 +3507,90 @@ public final class MainActivity extends Activity {
             case GeckoSession.PermissionDelegate.PERMISSION_AUTOPLAY_INAUDIBLE: return "Reprodução automática sem áudio";
             case GeckoSession.PermissionDelegate.PERMISSION_TRACKING: return "Exceção de rastreamento";
             case GeckoSession.PermissionDelegate.PERMISSION_STORAGE_ACCESS: return "Cookies de terceiros";
-            default: return "Permissão tipo " + type;
+            default: return "Permissão " + type;
         }
     }
 
-    private void displaySitePermissions(String url,
-            List<GeckoSession.PermissionDelegate.ContentPermission> permissions) {
+    private void addSitePermissionsInfo(LinearLayout parent, String message) {
+        TextView info = text(message, 12, SUBTLE);
+        info.setPadding(dp(12), dp(14), dp(12), dp(14));
+        parent.addView(info);
+    }
+
+    private void addSitePermissionRow(LinearLayout parent, String name, String detail, Runnable action) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setBackground(rounded(Color.WHITE, BORDER, 12));
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        TextView title = text(name, 15, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        row.addView(title);
+        TextView summary = text(detail, 12, SUBTLE);
+        summary.setPadding(0, dp(3), 0, 0);
+        row.addView(summary);
+        if (action != null) row.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(10);
+        parent.addView(row, params);
+    }
+
+    private void renderSitePermissions(String url, boolean privateMode, LinearLayout parent,
+            List<GeckoSession.PermissionDelegate.ContentPermission> permissions, Runnable refresh) {
+        parent.removeAllViews();
+        addSitePermissionRow(parent, "Câmera", isSiteMediaBlocked(url, "camera", privateMode) ?
+                        "Bloqueada neste site • tocar para alterar" : "Perguntar antes de usar • tocar para alterar",
+                () -> updateSiteMediaChoice(url, "camera", "Câmera", privateMode, refresh));
+        addSitePermissionRow(parent, "Microfone", isSiteMediaBlocked(url, "microphone", privateMode) ?
+                        "Bloqueado neste site • tocar para alterar" : "Perguntar antes de usar • tocar para alterar",
+                () -> updateSiteMediaChoice(url, "microphone", "Microfone", privateMode, refresh));
         if (permissions == null || permissions.isEmpty()) {
-            new XpDialogs.Builder(this).setTitle("Permissões do site")
-                    .setMessage("Nenhuma permissão armazenada para " + PrivacyRules.displayHost(url))
+            addSitePermissionsInfo(parent, "Nenhuma outra permissão persistida foi informada pelo GeckoView. Permissões ainda não solicitadas não aparecem nesta lista.");
+            return;
+        }
+        for (GeckoSession.PermissionDelegate.ContentPermission permission : permissions) {
+            if (permission == null) continue;
+            String state = permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW ? "Permitido" :
+                    permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY ? "Bloqueado" : "Perguntar";
+            boolean persistent = permission.permission == GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE
+                    && permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW;
+            addSitePermissionRow(parent, permissionLabel(permission.permission),
+                    state + (persistent ? " • concessão não revogável individualmente" : " • tocar para alterar"), () -> {
+                        if (persistent) {
+                            new XpDialogs.Builder(this).setTitle("Armazenamento persistente")
+                                    .setMessage("O GeckoView não permite revogar individualmente esta concessão. "
+                                            + "Use Privacidade e dados para limpar os dados de navegação.")
+                                    .setPositiveButton("Entendi", null).show();
+                            return;
+                        }
+                        new XpDialogs.Builder(this).setTitle(permissionLabel(permission.permission))
+                                .setItems(new String[]{"Perguntar novamente", "Bloquear", "Permitir"}, (d, selection) -> {
+                                    int selected = selection == 0
+                                            ? GeckoSession.PermissionDelegate.ContentPermission.VALUE_PROMPT
+                                            : selection == 1
+                                                ? GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY
+                                                : GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW;
+                                    // O usuário escolhe explicitamente; não forçar novas permissões inexistentes.
+                                    runtime.getStorageController().setPermission(permission, selected);
+                                    refresh.run();
+                                }).setNegativeButton("Cancelar", null).show();
+                    });
+        }
+    }
+
+    private void updateSiteMediaChoice(String url, String device, String name,
+            boolean privateMode, Runnable refresh) {
+        if (privateMode) {
+            new XpDialogs.Builder(this).setTitle(name + " em aba privada")
+                    .setMessage("Nesta aba a autorização será solicitada quando o site tentar usar o recurso. "
+                            + "As preferências persistentes de abas normais não são aplicadas aqui.")
                     .setPositiveButton("OK", null).show();
             return;
         }
-        String[] titles = new String[permissions.size()];
-        for (int i = 0; i < permissions.size(); i++) {
-            GeckoSession.PermissionDelegate.ContentPermission permission = permissions.get(i);
-            String state = permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW ? "Permitido" :
-                    permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY ? "Bloqueado" : "Perguntar";
-            titles[i] = permissionLabel(permission.permission) + " • " + state;
-        }
-        new XpDialogs.Builder(this).setTitle("Permissões • " + PrivacyRules.displayHost(url))
-                .setItems(titles, (d, index) -> {
-                    GeckoSession.PermissionDelegate.ContentPermission permission = permissions.get(index);
-                    if (permission.permission == GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE &&
-                            permission.value == GeckoSession.PermissionDelegate.ContentPermission.VALUE_ALLOW) {
-                        new XpDialogs.Builder(this).setTitle("Armazenamento persistente")
-                                .setMessage("O GeckoView não permite revogar individualmente esta autorização. Use Privacidade e dados > Limpar todos os dados de navegação.")
-                                .setPositiveButton("OK", null).show();
-                        return;
-                    }
-                    new XpDialogs.Builder(this).setTitle(titles[index])
-                            .setItems(new String[]{"Perguntar novamente", "Bloquear"}, (d2, action) -> {
-                                int value = action == 0 ?
-                                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_PROMPT :
-                                        GeckoSession.PermissionDelegate.ContentPermission.VALUE_DENY;
-                                runtime.getStorageController().setPermission(permission, value);
-                                Toast.makeText(this, "Permissão atualizada", Toast.LENGTH_SHORT).show();
-                            }).setNegativeButton("Cancelar", null).show();
-                }).setNegativeButton("Fechar", null).show();
+        new XpDialogs.Builder(this).setTitle(name + " • " + SiteCompatibility.originLabel(url))
+                .setItems(new String[]{"Perguntar antes de usar", "Bloquear neste site"}, (d, option) -> {
+                    setSiteMediaBlocked(url, device, option == 1, false);
+                    refresh.run();
+                }).setNegativeButton("Cancelar", null).show();
     }
 
     private void extensionPrompts() {
@@ -3539,6 +3861,7 @@ public final class MainActivity extends Activity {
         suggestionHandler.removeCallbacksAndMessages(null);
         suggestionWorker.shutdownNow();
         if (faviconRepository != null) faviconRepository.shutdown();
+        mediaInspector.close();
         super.onDestroy();
     }
 }

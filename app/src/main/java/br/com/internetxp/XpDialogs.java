@@ -3,6 +3,7 @@ package br.com.internetxp;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.ColorDrawable;
@@ -109,6 +110,19 @@ final class XpDialogs {
         window.setDimAmount(0.38f);
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         window.setWindowAnimations(android.R.style.Animation_Dialog);
+        // Evitar que os diálogos de permissão/segurança ultrapassem a área visível
+        // em telas pequenas ou com teclado aberto. O AlertDialog mantém a rolagem do conteúdo.
+        window.getDecorView().post(() -> {
+            if (!dialog.isShowing()) return;
+            Rect visible = new Rect();
+            window.getDecorView().getWindowVisibleDisplayFrame(visible);
+            int screenHeight = context.getResources().getDisplayMetrics().heightPixels;
+            int available = visible.height() > 0 ? Math.min(screenHeight, visible.height()) : screenHeight;
+            int maxHeight = Math.max(dp(context, 180), available - dp(context, 24));
+            if (window.getDecorView().getHeight() > maxHeight) {
+                window.setLayout(dp(context, widthDp), maxHeight);
+            }
+        });
 
         TextView message = dialog.findViewById(android.R.id.message);
         if (message != null) {

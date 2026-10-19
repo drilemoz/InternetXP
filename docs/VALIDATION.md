@@ -1,4 +1,24 @@
-## 1.0.38: acesso local e desempenho
+## 1.0.40: mídias, contextos e favicons
+- CI: `python3 tools/validate_project.py`, `python3 -m unittest discover -s tools -p 'test_*.py' -v`, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleRelease` nas três ABIs.
+- Em página com imagem HTTP(S) direta, segurar, abrir Detalhes e confirmar MIME/tamanho apenas quando resposta remota informar; Salvar deve usar o gerenciador próprio. Copiar endereço e abrir link são ações distintas.
+- Segurar link: abrir nesta/nova aba, copiar e compartilhar; em aba privada, nova aba deve continuar privada.
+- Segurar texto e campos: verificar copiar, selecionar tudo e comandos nativos do GeckoView, sem capturar senha ou conteúdo selecionado em logs.
+- Acionar botão flutuante sem mídia selecionada: mostrar explicação honesta. Com mídias, listar apenas as da aba; ao navegar a lista é limpa e não cruza abas.
+- Testar PNG/JPEG, imagens autenticadas, mídia `blob:`, vídeos HLS/DASH e DRM: não prometer download universal. Revisar comportamento do HEAD em servidores que respondem 405.
+- Página inicial: favicons de sites com `/favicon.ico` e apenas `link rel=icon`, persistência após reinício, limite de cache, bloqueio de serviços terceiros e fallback de letra.
+- Verificar alocação do botão em telas de 320/360/430dp, orientação e modo fullscreen; movimento não deve impedir scroll/touch fora do botão.
+- **Pendente**: compilação Gradle completa, validação visual, downloads autenticados e testes reais GeckoView no aparelho.
+
+## 1.0.39: permissões por site
+- Abrir HTTPS com solicitações de localização/notificações: confirmar que nada é permitido automaticamente e o usuário pode negar/cancelar; conferir diálogo em dispositivo compacto com teclado, limitado à área visível.
+- Abrir Segurança da página > Gerenciar permissões: consultar decisões do GeckoView e alterá-las (Perguntar, Bloquear, Permitir) somente para permissões já conhecidas pelo motor.
+- Testar bloqueio de câmera e microfone por origem e porta, confirmar que a próxima solicitação é negada sem prompt; voltar para Perguntar e conferir solicitação Android e do site; em aba privada não herdar o bloqueio persistente.
+- Limpar permissões e confirmar remoção de bloqueios locais apenas após retorno bem-sucedido da operação de limpeza do GeckoView.
+- Testar localhost/127.0.0.1/[::1], HTTP LAN e HTTPS, verificando que a exceção de confiança de loopback não concede automaticamente permissão nem cifra o tráfego.
+- CI obrigatório: tools/validate_project.py; unittest Python; testDebugUnitTest; lintDebug; assembleRelease. Rodar em aparelho físico (Android 8–15 quando possível) e verificar orientação/diálogos.
+- **Pendente:** build Gradle e testes físicos. Não afirmar que notificações em segundo plano funcionam sem validação.
+
+## 1.0.39: acesso local e desempenho
 - Verificar com `python3 tools/validate_project.py`, testes Python e JVM de `LocalAddressTest` e `SiteLoadMetricsTest`.
 - Em Android real, iniciar servidor no Termux (`python -m http.server 8000 --bind 127.0.0.1`) e abrir `127.0.0.1:8000` e `localhost:8000`; confirmar HTTP, navegação e retorno.
 - Em dois aparelhos no mesmo Wi-Fi, iniciar servidor na interface LAN e abrir `192.168.x.y:8000` no Internet XP. Verificar IP real, rede, firewall e isolamento do roteador.

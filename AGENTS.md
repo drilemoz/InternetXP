@@ -172,3 +172,17 @@
 - Endereços locais não podem ser enviados ao provedor de sugestões; `HomePageSettings` pode aceitar localhost/IPv4/IPv6 válidos.
 - `SiteLoadMetrics` mede início/fim reportados pelo GeckoView, sem logs de URL e sem alegar aceleração por desativar antirrastreamento. Preservar comportamento dos ajustes ChatGPT/Facebook e de mídia.
 - Na próxima modificação subir para 1.0.39/versionCode 40, sincronizando Gradle, ReleaseNotes, README, CHANGELOG, workflow, AGENTS e docs/VALIDATION.
+
+## 1.0.39: central de permissões
+- Permissões de conteúdo que o GeckoView conhece podem ser atualizadas apenas com objetos ContentPermission vindos do motor; nunca forjar valores ou autorizar sem gesto.
+- A política de câmera/microfone opera por origem normalizada e hash em SharedPreferences, oferece Bloquear/Perguntar (não Autorizar sempre) e não atravessa abas privadas.
+- Para notificações, Android 13+ requer POST_NOTIFICATIONS, sem prometer recepção de notificações em background. Localhost/loopback é potencialmente confiável sem se confundir com HTTP criptografado.
+- Ao limpar permissões confirmadamente, limpar preferências de mídia locais; não despejar domínios/URLs em relatórios de diagnóstico.
+- Próxima versão: 1.0.40/versionCode 41, com Novidades, workflow, README, CHANGELOG e validação sincronizados.
+
+## 1.0.40: mídias e ícones
+- Usar `GeckoSession.ContentDelegate.onContextMenu` para mídia/link de pressão longa e `BasicSelectionActionDelegate` para seleção nativa. Não interceptar texto de campos de senha nem exportá-lo em logs.
+- Mídias disponíveis no botão flutuante são somente as explicitamente selecionadas e somente na aba atual, mantidas em memória. Nunca inventar varredura DOM, download DRM, blob ou streaming HLS/DASH.
+- Metadados HTTP por HEAD podem estar indisponíveis; não inventar tamanho/resolução. Prévia tem limite de 512 KiB e não reutiliza credenciais de sites. Downloads usam gerenciador próprio.
+- Favicons HTTPS são consultados no domínio do próprio site, sem provedores terceiros, sem redirects, com cache persistente limitado, exceto abas privadas.
+- Próxima versão 1.0.41/versionCode 42: planejar modo Leitura; continuar versionamento sequencial e validar CI e Android real.
