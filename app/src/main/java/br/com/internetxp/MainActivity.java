@@ -57,6 +57,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.FrameLayout;
 import android.view.WindowManager;
 import java.net.URI;
+import java.security.cert.X509Certificate;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -2968,8 +2969,13 @@ public final class MainActivity extends Activity {
         if (info != null) {
             addSecurityDetail(page, "Certificado", info.isSecure && !info.isException ? "Aceito pelo motor" :
                     info.isException ? "Exceção presente" : "Não confirmado");
-            addSecurityDetail(page, "Emissor do certificado", info.issuerCommonName == null ? "Não informado" : info.issuerCommonName);
-            addSecurityDetail(page, "Organização emissora", info.issuerOrganization == null ? "Não informada" : info.issuerOrganization);
+            // GeckoView 158 expõe o certificado X.509, não os campos issuerCommonName/issuerOrganization
+            // removidos da API. Exibimos os nomes completos do emissor e titular conforme o certificado real.
+            X509Certificate certificate = info.certificate;
+            addSecurityDetail(page, "Emissor do certificado", certificate == null ? "Não disponível" :
+                    certificate.getIssuerX500Principal().getName());
+            addSecurityDetail(page, "Titular do certificado", certificate == null ? "Não disponível" :
+                    certificate.getSubjectX500Principal().getName());
             addSecurityDetail(page, "Conteúdo misto ativo", mixedState(info.mixedModeActive));
             addSecurityDetail(page, "Conteúdo misto passivo", mixedState(info.mixedModePassive));
         }

@@ -1,3 +1,11 @@
+## 1.0.36: correção de campos removidos do GeckoView 158
+
+- Log da execução 34: falha de `:app:compileDebugJavaWithJavac` em `MainActivity.java` ao referenciar os antigos campos `SecurityInformation.issuerCommonName` e `SecurityInformation.issuerOrganization`.
+- Verificar que a tela de segurança obtém os nomes de `SecurityInformation.certificate` via `X509Certificate.getIssuerX500Principal()` e `getSubjectX500Principal()`, exibindo **Não disponível** se `certificate == null`.
+- Executar `python3 tools/validate_project.py` e `python3 -m unittest discover -s tools -p 'test_*.py' -v`; exigir no CI `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` antes da distribuição dos três APKs.
+- Teste Android: abrir um HTTPS válido, tocar cadeado e conferir emissor/titular; testar página sem certificado, página com conteúdo misto, permissões de site e navegação Voltar, sem travamento.
+- **Não confirmado neste ambiente**: build Gradle completo, assinatura de Release e funcionamento visual no dispositivo.
+
 ## 1.0.35: validação de abas e favoritos
 
 - Abrir **Menu > Abas**: conferir título, favicon, domínio resumido, indicador atual/privado e contador. Fechar primeira, última e ativa; selecionar outra aba após cada fechamento, sem abrir sessão errada.

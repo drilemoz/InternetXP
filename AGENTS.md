@@ -152,3 +152,9 @@
 - Reabrir aba fechada não deve restaurar informação de abas privadas nem persistir a URL recuperável em disco; URL normal em memória é suficiente.
 - Busca, ordenação e exclusão de favoritos devem preservar preferências, sincronizar página inicial/estrela e não acessar histórico privado.
 - Próxima versão: 1.0.36/versionCode 37 com metadados/Novidades e workflow sincronizados; verificar GitHub Actions antes de afirmar APK pronto.
+
+## 1.0.36: compatibilidade da API de certificados
+- GeckoView 158 expõe `SecurityInformation.certificate` (`X509Certificate`), não `issuerCommonName` nem `issuerOrganization` (removidos em versões antigas da API).
+- Nunca voltar a acessar campos ausentes; validar a superfície da API pela documentação da versão fixada no Gradle e pelo workflow Android real.
+- Tratar certificado ausente sem inventar emissor, titular ou estado verificado; preservar separação de indicadores `isSecure`, `isException` e conteúdo misto.
+- Na próxima alteração, avançar para 1.0.37/versionCode 38 e sincronizar todos os metadados, docs e Novidades.

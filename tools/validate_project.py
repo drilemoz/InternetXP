@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 36" in gradle
-assert "versionName '1.0.35'" in gradle
+assert "versionCode 37" in gradle
+assert "versionName '1.0.36'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -26,9 +26,9 @@ assert 'private void showModuleMenuDialog(' in activity
 assert 'addressBox.setOnClickListener(v -> focusAddressBar(true))' in activity
 assert 'urlBox.setOnTouchListener((v, event) -> {' in activity
 assert 'private void focusAddressBar(boolean showSuggestions)' in activity
-assert "Internet XP.v1.0.35-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.36-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.35' in workflow_text
+assert 'gh release create v1.0.36' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 assert 'name: Compilar APK e publicar na Release' in workflow_text
@@ -45,9 +45,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='36' versionName='1.0.35'" in workflow_text
+assert "versionCode='37' versionName='1.0.36'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.35-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.36-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -97,9 +97,9 @@ for name in ('ic_launcher.xml','ic_launcher_round.xml'):
     ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
 assert (root/'branding/internet_xp_icon_master.png').exists()
 
-assert '1.0.35' in (root/'README.md').read_text()
-assert '1.0.35' in (root/'CHANGELOG.md').read_text()
-assert '1.0.35' in (root/'docs/VALIDATION.md').read_text()
+assert '1.0.36' in (root/'README.md').read_text()
+assert '1.0.36' in (root/'CHANGELOG.md').read_text()
+assert '1.0.36' in (root/'docs/VALIDATION.md').read_text()
 
 # Mandatory per-update release notes: failed checks block CI before Android build.
 import ast
@@ -341,7 +341,7 @@ assert (root / 'app/src/main/java/br/com/internetxp/SitePerformanceRules.java').
 assert 'showAddFavoriteField' in (root / 'app/src/main/java/br/com/internetxp/HomePageView.java').read_text()
 print('1.0.33: recursos, URL estável, diagnóstico e novos vetores: OK')
 
-# 1.0.35: exportação de captura por SAF, ícones iguais e barra responsiva.
+# 1.0.36: exportação de captura por SAF, ícones iguais e barra responsiva.
 for resource in ('ic_nav_back_xp.xml', 'ic_nav_forward_xp.xml', 'ic_nav_home_xp.xml',
                  'ic_nav_tabs_xp.xml', 'ic_nav_menu_xp.xml'):
     ElementTree.parse(root / 'app/src/main/res/drawable' / resource)
@@ -360,10 +360,10 @@ assert 'private void exportScreenshot(File image)' in activity
 assert 'pendingCaptureExport = null;' in activity
 assert 'private void updatePasteButtonAvailability()' in activity
 assert 'if (!urlBox.hasFocus() || isFinishing() || isDestroyed()) return;' in activity
-assert '1.0.35' in (root/'AGENTS.md').read_text()
-print('1.0.35: ícones vetoriais, progresso adaptativo, SAF e sugestão estável: OK')
+assert '1.0.36' in (root/'AGENTS.md').read_text()
+print('1.0.36: ícones vetoriais, progresso adaptativo, SAF e sugestão estável: OK')
 
-# 1.0.35: favoritos editáveis e abas com identidade estável.
+# 1.0.36: favoritos editáveis e abas com identidade estável.
 assert 'int freshIndex = tabs.indexOf(tab);' in activity
 assert 'private void populateBookmarkRows(' in activity
 assert 'private void persistBookmarkOrder()' in activity
@@ -373,5 +373,14 @@ assert 'showModuleScreen("Favoritos"' in activity
 assert 'showModuleScreen("Abas abertas"' in activity
 assert (root/'app/src/main/java/br/com/internetxp/BookmarkOrganizer.java').exists()
 assert (root/'app/src/test/java/br/com/internetxp/BookmarkOrganizerTest.java').exists()
-assert '1.0.35' in (root/'AGENTS.md').read_text()
-print('1.0.35: busca/reordenação de favoritos, abas e privacidade: OK')
+assert '1.0.36' in (root/'AGENTS.md').read_text()
+print('1.0.36: busca/reordenação de favoritos, abas e privacidade: OK')
+
+# 1.0.36: API de certificado GeckoView 158 (falha real do workflow 34).
+import re as _re
+assert _re.search(r"\bX509Certificate\s+certificate\s*=\s*info\.certificate\s*;", activity)
+assert 'certificate.getIssuerX500Principal().getName()' in activity
+assert 'certificate.getSubjectX500Principal().getName()' in activity
+assert 'certificate == null ? "Não disponível"' in activity
+assert not _re.search(r'info\.(?:issuerCommonName|issuerOrganization)\b', activity), 'Campos removidos da API GeckoView 158'
+print('1.0.36: certificado X.509 e API GeckoView 158: OK')

@@ -1,6 +1,13 @@
-# Internet XP v1.0.35 (versionCode 36)
+# Internet XP v1.0.36 (versionCode 37)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.36: correção de compilação do workflow 34 (código-fonte)
+
+- O workflow **34**, executado com código 1.0.35, falhou em `:app:compileDebugJavaWithJavac` com quatro referências inválidas a `SecurityInformation.issuerCommonName` e `issuerOrganization` em `MainActivity.java`.
+- GeckoView 158 disponibiliza `SecurityInformation.certificate` (`X509Certificate`). A tela **Segurança da página** agora extrai emissor e titular com `getIssuerX500Principal().getName()` e `getSubjectX500Principal().getName()`; caso não exista certificado, mostra **Não disponível**.
+- A alteração mantém os indicadores de segurança existentes, sem deduzir validade ou proteção apenas a partir do prefixo HTTPS; abas, favoritos, extensões e downloads permanecem sem alterações funcionais.
+- Acrescentadas verificações de regressão da API no validador e nos testes Python. Compilação Gradle e teste no Android ainda dependem de execução real.
 
 ## 1.0.35: gerenciamento de abas e favoritos (código-fonte)
 
@@ -88,7 +95,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.35`, `versionCode=36`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.36`, `versionCode=37`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

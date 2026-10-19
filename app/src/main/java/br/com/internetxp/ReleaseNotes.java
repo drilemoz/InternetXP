@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.35";
-    public static final int VERSION_CODE = 36;
-    public static final String HEADLINE = "Abas e favoritos mais organizados.";
-    public static final String SUBTITLE = "Gerencie favoritos na mesma tela, recupere abas normais fechadas e navegue com controles compactos.";
+    public static final String VERSION_NAME = "1.0.36";
+    public static final int VERSION_CODE = 37;
+    public static final String HEADLINE = "Detalhes de segurança compatíveis com GeckoView 158.";
+    public static final String SUBTITLE = "Correção de compilação da tela Segurança da página, mantendo as melhorias recentes em abas e favoritos.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Gerenciador de favoritos", "Pesquise por endereço, abra sites, organize com setas e remova favoritos com confirmação, em tela própria."),
-        new Feature("02", "Abas mais compactas", "Lista com título, origem, indicação da aba atual, favicon opcional e cartão visual uniforme."),
-        new Feature("03", "Ações de abas mais estáveis", "Abertura e fechamento encontram a aba real no momento do toque, sem utilizar índice desatualizado."),
-        new Feature("04", "Reabrir aba normal fechada", "Retorna à URL da última aba normal fechada nesta execução, sem restaurar conteúdo dinâmico ou histórico privado."),
-        new Feature("05", "Privacidade preservada", "Abas privadas nunca entram na lista de reabertura nem passam a ser salvas nas preferências.")
+        new Feature("01", "Compilação da segurança corrigida", "Informações do certificado usam a API X.509 disponível no GeckoView 158."),
+        new Feature("02", "Emissor e titular reais", "Detalhes exibem os nomes completos do emissor e titular quando o certificado está disponível."),
+        new Feature("03", "Ausência de certificado tratada", "Sites sem certificado disponível mostram aviso explícito, sem inventar dados de segurança."),
+        new Feature("04", "Abas e favoritos preservados", "Mantidos gerenciador de favoritos, reabertura limitada de abas e indicadores do navegador."),
+        new Feature("05", "Regressão de API verificada", "Validações detectam os campos GeckoView antigos antes do build e sincronizam esta versão.")
     };
 
     private ReleaseNotes() { }

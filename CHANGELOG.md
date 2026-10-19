@@ -1,4 +1,10 @@
 
+## 1.0.36 (versionCode 37)
+- Corrigida a falha de compilação no workflow 34: campos `issuerCommonName`/`issuerOrganization` inexistentes no GeckoView 158.
+- Detalhes de segurança usam o certificado X.509 fornecido por `SecurityInformation.certificate` para consultar emissor e titular, com fallback explícito quando ausente.
+- Inclusos testes preventivos de compatibilidade da API; preservados recursos de abas e favoritos da versão anterior.
+- Gradle, Novidades, README, AGENTS, documentação e workflow de publicação por ABI sincronizados; build Android real pendente.
+
 ## 1.0.35 (versionCode 36)
 - Favoritos agora usam gerenciador dedicado com busca, inclusão por campo embutido, reordenação e exclusão com confirmação.
 - Abas são localizadas por identidade no instante do toque; contador da tela atualiza após remoção e cartões compactos continuam distinguindo privacidade.
