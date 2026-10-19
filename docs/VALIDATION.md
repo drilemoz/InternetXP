@@ -1,3 +1,18 @@
+## 1.0.34: plano de validação
+- Rodar `python3 tools/validate_project.py` e `python3 -m unittest discover -s tools -p test_*.py -v`.
+- Compilar `:app:testDebugUnitTest :app:lintDebug :app:assembleRelease` em CI e verificar APKs para arm64-v8a, armeabi-v7a e x86_64.
+- Testar barra inferior em 320/360/430 dp, ícones com dimensões visuais similares e contador de abas separado.
+- Abrir site com carregamento: percentual e barra real devem terminar exatamente junto ao botão Extensões, inclusive com fontes grandes.
+- Tocar Capturar > Salvar cópia: selecionar pasta via ACTION_CREATE_DOCUMENT, conferir PNG, cancelar seletor sem perder imagem privada. Compartilhar e confirmar URI content://.
+- Durante navegação entre abas, voltar teclado e sugestões não podem ressurgir quando o campo já perdeu foco. Verificar sites reais, erro anterior de globo.com e permissões.
+- Verificar status do cadeado do GeckoView e funcionamento de extensões após alterações. Sem logcat do problema de fechamento não confirmar causa raiz.
+- Build e testes visuais reais ainda dependem de GitHub Actions/Android.
+
+## 1.0.33: verificação planejada
+- Verificar compilação, lint e testes reais via GitHub Actions.
+- Teste UI: autocomplete globo.com sem fechamento; navegar retorno entre telas; permissões com teclado; carregamento 0–100 por aba; alternar normal/privada; botão Estrela; arquivo PNG por FileProvider; logs de crash; ativação opcional ChatGPT/Facebook e diferenças de proteção.
+- Não afirmar que falha por seleção foi resolvida em aparelhos sem logcat/reprodução.
+
 ## 1.0.32: correção da compilação no workflow 31
 - O log da execução 31 falhou por `android.R.drawable.ic_menu_copy` inexistente no SDK Android, em `MainActivity.java:439`.
 - Verificar que a ação Copiar usa `R.drawable.ic_copy_address_xp`, cujo vetor existe em `app/src/main/res/drawable/`.

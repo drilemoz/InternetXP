@@ -7,8 +7,8 @@ root = Path(__file__).resolve().parents[1]
 gradle = (root / 'app/build.gradle').read_text()
 workflow_text = (root / '.github/workflows/build-release-apk.yml').read_text()
 activity = (root / 'app/src/main/java/br/com/internetxp/MainActivity.java').read_text()
-assert "versionCode 33" in gradle
-assert "versionName '1.0.32'" in gradle
+assert "versionCode 35" in gradle
+assert "versionName '1.0.34'" in gradle
 expected_abis = ("armeabi-v7a", "arm64-v8a", "x86_64")
 match = re.search(r"include\s+([^\n]+)", gradle)
 assert match, "ABI split ausente"
@@ -26,9 +26,9 @@ assert 'private void showModuleMenuDialog(' in activity
 assert 'addressBox.setOnClickListener(v -> focusAddressBar(true))' in activity
 assert 'urlBox.setOnTouchListener((v, event) -> {' in activity
 assert 'private void focusAddressBar(boolean showSuggestions)' in activity
-assert "Internet XP.v1.0.32-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.34-${abi}.apk" in workflow_text
 assert 'upload-artifact' not in workflow_text
-assert 'gh release create v1.0.32' in workflow_text
+assert 'gh release create v1.0.34' in workflow_text
 for file in (root / 'app/src/main').rglob('*.xml'):
     ElementTree.parse(file)
 assert 'name: Compilar APK e publicar na Release' in workflow_text
@@ -45,9 +45,9 @@ assert 'DownloadDisplay.percent(' in activity
 assert (root / 'app/src/main/java/br/com/internetxp/HistorySuggestions.java').exists()
 assert (root / 'app/src/main/java/br/com/internetxp/DownloadDisplay.java').exists()
 
-assert "versionCode='33' versionName='1.0.32'" in workflow_text
+assert "versionCode='35' versionName='1.0.34'" in workflow_text
 assert "v1.0.12" not in workflow_text
-assert "Internet XP.v1.0.32-${abi}.apk" in workflow_text
+assert "Internet XP.v1.0.34-${abi}.apk" in workflow_text
 
 assert 'ProgressBar progress' in activity
 assert 'private void shareDownload(' in activity
@@ -97,9 +97,9 @@ for name in ('ic_launcher.xml','ic_launcher_round.xml'):
     ElementTree.parse(root/'app/src/main/res/mipmap-anydpi-v26'/name)
 assert (root/'branding/internet_xp_icon_master.png').exists()
 
-assert '1.0.32' in (root/'README.md').read_text()
-assert '1.0.32' in (root/'CHANGELOG.md').read_text()
-assert '1.0.32' in (root/'docs/VALIDATION.md').read_text()
+assert '1.0.34' in (root/'README.md').read_text()
+assert '1.0.34' in (root/'CHANGELOG.md').read_text()
+assert '1.0.34' in (root/'docs/VALIDATION.md').read_text()
 
 # Mandatory per-update release notes: failed checks block CI before Android build.
 import ast
@@ -266,7 +266,7 @@ assert 'void importPackage(Uri source)' in manager
 assert 'void installStaged(File file)' in manager
 assert 'private void changeState(WebExtension x)' in manager
 assert 'private void exportMenu(WebExtension ext)' in manager
-assert '1.0.32' in (root/'AGENTS.md').read_text()
+assert '1.0.33' in (root/'AGENTS.md').read_text()
 print('Central real de WebExtensions, SAF e versionamento: OK')
 
 compat = (root/'app/src/main/java/br/com/internetxp/ExtensionCompatibility.java').read_text()
@@ -302,7 +302,7 @@ assert 'return isCompactPhone() ? 68 : 74' in activity
 assert 'compactPhone ? 26 : 29' in activity
 assert 'compactPhone ? 9.5f : 10.5f' in activity
 assert 'metaData.enabled' in manager and '.getWebExtensionController().install(' in manager
-assert '1.0.32' in (root/'AGENTS.md').read_text()
+assert '1.0.33' in (root/'AGENTS.md').read_text()
 print('1.0.30: faixa horizontal, tema compartilhado e barra ampliada: OK')
 
 # 1.0.31: privacidade, barra inteligente e ícones no histórico.
@@ -317,10 +317,48 @@ assert 'new XpDialogs.Builder(this).setView(wrapper).create()' not in activity
 assert (root/'app/src/main/java/br/com/internetxp/OnlineSuggestions.java').exists()
 print('1.0.31: barra inteligente, privacidade e telas completas: OK')
 
-# 1.0.32: regressão CI 31 (android.R.drawable.ic_menu_copy não existe).
+# 1.0.33: regressão CI 31 (android.R.drawable.ic_menu_copy não existe).
 copy_icon = root / 'app/src/main/res/drawable/ic_copy_address_xp.xml'
 assert copy_icon.is_file(), 'Ícone Copiar deve existir no projeto'
 ElementTree.parse(copy_icon)
 assert 'addressTool(R.drawable.ic_copy_address_xp, "Copiar endereço"' in activity
 assert 'android.R.drawable.ic_menu_copy' not in activity, 'Não usar ícone Android inexistente'
-print('1.0.32: ícone Copiar próprio e sem referência inválida: OK')
+print('1.0.33: ícone Copiar próprio e sem referência inválida: OK')
+
+# 1.0.33: novos controles, versionamento e regressão dos elementos reportados.
+for resource in ('ic_paste_address_xp.xml', 'ic_star_outline_xp.xml', 'ic_star_filled_xp.xml', 'ic_screenshot_xp.xml'):
+    assert (root / 'app/src/main/res/drawable' / resource).exists(), resource
+assert 'onProgressChange(GeckoSession s, int progress)' in activity
+assert 'line.setTag(item);' in activity and 'v.getTag()' in activity
+assert 'R.drawable.ic_paste_address_xp' in activity
+assert 'private void createTabNavigation' in activity
+assert 'private void captureVisiblePage()' in activity
+assert 'private void showDiagnostics()' in activity
+assert 'private void showPerformanceSettings()' in activity
+assert 'private void updateFavoriteAddressButton()' in activity
+assert (root / 'app/src/main/java/br/com/internetxp/DiagnosticLog.java').exists()
+assert (root / 'app/src/main/java/br/com/internetxp/SitePerformanceRules.java').exists()
+assert 'showAddFavoriteField' in (root / 'app/src/main/java/br/com/internetxp/HomePageView.java').read_text()
+print('1.0.33: recursos, URL estável, diagnóstico e novos vetores: OK')
+
+# 1.0.34: exportação de captura por SAF, ícones iguais e barra responsiva.
+for resource in ('ic_nav_back_xp.xml', 'ic_nav_forward_xp.xml', 'ic_nav_home_xp.xml',
+                 'ic_nav_tabs_xp.xml', 'ic_nav_menu_xp.xml'):
+    ElementTree.parse(root / 'app/src/main/res/drawable' / resource)
+assert 'navImage(bottomBar, R.drawable.ic_nav_back_xp' in activity
+assert 'navImage(bottomBar, R.drawable.ic_nav_forward_xp' in activity
+assert 'navImage(bottomBar, R.drawable.ic_nav_home_xp' in activity
+assert 'navImage(bottomBar, R.drawable.ic_nav_menu_xp' in activity
+assert 'icon.setImageResource(R.drawable.ic_nav_tabs_xp);' in activity
+assert 'private ImageView backIcon;' in activity and 'private ImageView forwardIcon;' in activity
+assert 'backIcon.setColorFilter(' in activity and 'forwardIcon.setColorFilter(' in activity
+assert 'footer.addView(loadColumn, new LinearLayout.LayoutParams(0, dp(28), 1));' in activity
+assert 'loadBarParams.rightMargin' not in activity
+assert 'REQUEST_SAVE_CAPTURE' in activity
+assert 'Intent.ACTION_CREATE_DOCUMENT' in activity and 'save.setType("image/png")' in activity
+assert 'private void exportScreenshot(File image)' in activity
+assert 'pendingCaptureExport = null;' in activity
+assert 'private void updatePasteButtonAvailability()' in activity
+assert 'if (!urlBox.hasFocus() || isFinishing() || isDestroyed()) return;' in activity
+assert '1.0.34' in (root/'AGENTS.md').read_text()
+print('1.0.34: ícones vetoriais, progresso adaptativo, SAF e sugestão estável: OK')

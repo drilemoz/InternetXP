@@ -14,6 +14,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.net.URI;
+import java.util.function.Consumer;
 import java.util.List;
 
 /** Nova aba nativa, leve, sem carregamento de site e com favoritos tocáveis. */
@@ -23,6 +24,8 @@ final class HomePageView extends FrameLayout {
         void addFavorite();
     }
     private final LinearLayout tiles;
+    private final LinearLayout inlineAdd;
+    private final EditText inlineAddress;
     private final FaviconRepository icons;
     private final Actions callbacks;
 
@@ -101,12 +104,51 @@ final class HomePageView extends FrameLayout {
         favoritesTitleLp.bottomMargin = dp(12);
         page.addView(favoritesTitle, favoritesTitleLp);
 
+        inlineAdd = new LinearLayout(context);
+        inlineAdd.setOrientation(LinearLayout.HORIZONTAL);
+        inlineAdd.setPadding(dp(10), dp(5), dp(10), dp(5));
+        inlineAdd.setBackground(bg(0xffeef5ff, 0xffafc5e3, 12));
+        inlineAdd.setVisibility(GONE);
+        inlineAddress = new EditText(context);
+        inlineAddress.setSingleLine(true);
+        inlineAddress.setTextSize(13);
+        inlineAddress.setHint("https://site.com");
+        inlineAddress.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        inlineAdd.addView(inlineAddress, new LinearLayout.LayoutParams(0, dp(45), 1));
+        TextView closeInline = new TextView(context);
+        closeInline.setText("×");
+        closeInline.setTextSize(26);
+        closeInline.setGravity(Gravity.CENTER);
+        closeInline.setOnClickListener(v -> inlineAdd.setVisibility(GONE));
+        inlineAdd.addView(closeInline, new LinearLayout.LayoutParams(dp(42), dp(45)));
+        LinearLayout.LayoutParams inlineLp = new LinearLayout.LayoutParams(-1, -2);
+        inlineLp.bottomMargin = dp(8);
+        page.addView(inlineAdd, inlineLp);
         tiles = new LinearLayout(context);
         tiles.setOrientation(LinearLayout.VERTICAL);
         page.addView(tiles);
         page.addView(new android.view.View(context), new LinearLayout.LayoutParams(1, 0, 1));
         setFocusableInTouchMode(true);
         requestFocus();
+    }
+
+    void showAddFavoriteField(Consumer<String> onAdd) {
+        inlineAdd.setVisibility(VISIBLE);
+        if (inlineAdd.getChildCount() > 2) inlineAdd.removeViewAt(2);
+        TextView save = new TextView(getContext());
+        save.setText("Salvar");
+        save.setTextSize(14);
+        save.setTextColor(0xff0d68c8);
+        save.setGravity(Gravity.CENTER);
+        save.setOnClickListener(v -> {
+            String value = inlineAddress.getText().toString().trim();
+            if (value.isEmpty()) { inlineAddress.setError("Digite o endereço"); return; }
+            onAdd.accept(value);
+            inlineAddress.setText("");
+            inlineAdd.setVisibility(GONE);
+        });
+        inlineAdd.addView(save, new LinearLayout.LayoutParams(dp(58), dp(45)));
+        inlineAddress.requestFocus();
     }
 
     void showFavorites(List<String> favorites) {

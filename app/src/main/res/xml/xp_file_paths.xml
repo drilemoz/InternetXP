@@ -2,4 +2,5 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
   <external-files-path name="xp_downloads" path="Download/" />
   <files-path name="xp_internal_downloads" path="Downloads/" />
+  <external-files-path name="xp_captures" path="Pictures/Capturas/" />
 </paths>

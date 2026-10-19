@@ -1,6 +1,26 @@
-# Internet XP v1.0.32 (versionCode 33)
+# Internet XP v1.0.34 (versionCode 35)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
+
+## 1.0.34: ergonomia e exportação de capturas (código-fonte)
+
+- Barra inferior com ícones vetoriais proporcionais para Voltar, Avançar, Abas, Baixar, Início e Menu, mantendo contagem separada das abas.
+- Barra real de progresso alinhada ao início de Extensões, sem largura fixa em dp ou percentual simulado.
+- Captura de tela da área visível pode agora ser compartilhada ou exportada para pasta escolhida via Storage Access Framework; o arquivo original permanece privado no aplicativo.
+- Barra de endereço: bloqueio de reabertura tardia da lista após perder o foco, navegação de sugestões com retorno visível em caso de exceção e Colar somente quando há conteúdo no clipboard.
+- Informações de segurança passam a fechar o teclado antes da abertura. GeckoView, extensões, histórico e privacidade preservados.
+- Pendente: compilação Gradle no GitHub Actions e testes funcionais de SAF, progressos, compatibilidade e permissões no Android real.
+
+## 1.0.33: navegação, falhas e desempenho (código-fonte)
+
+- Suporte a lista de sugestões com item vinculado à View selecionada; possível causa de crash mitigada. **Sem logcat não é possível provar a origem do fechamento reportado**.
+- Favoritos na barra, ícone Colar próprio, captura PNG da área visível, barra de carregamento do GeckoView com porcentagem real por aba.
+- Abas compactas, botões Nova/Privada, badge de quantidade separado e troca de posição Abas/Início no rodapé.
+- Tela de segurança detalhada (host, certificado, emissor, conteúdo misto) e registro local mínimo de falhas técnicas, compartilhável por texto sem URL/cookies.
+- Desempenho: pausa de mídia em abas inativas e modos de compatibilidade manuais para ChatGPT/Facebook. Estes **desligam antirrastreamento no domínio** e portanto reduzem privacidade; não são melhoria de velocidade comprovada.
+- O atalho Adicionar da página inicial agora abre campo embutido sem grande pop-up.
+- Capturas salvam no armazenamento próprio do app, em Pictures/Capturas e podem ser compartilhadas via FileProvider. Não capturam a barra do navegador.
+- Pendências: compilar APK no CI, testar Android real, verificar fechamento por logcat, teclado/permissões e comportamento de sites pesados.
 
 ## 1.0.32: correção de compilação do workflow 31
 
@@ -60,7 +80,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.32`, `versionCode=33`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.34`, `versionCode=35`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

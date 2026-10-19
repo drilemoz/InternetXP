@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.32";
-    public static final int VERSION_CODE = 33;
-    public static final String HEADLINE = "Correção do botão Copiar na barra de endereço.";
-    public static final String SUBTITLE = "Recurso gráfico próprio para Copiar endereço; preservados sugestões, favicons, extensões e telas próprias.";
+    public static final String VERSION_NAME = "1.0.34";
+    public static final int VERSION_CODE = 35;
+    public static final String HEADLINE = "Barra XP refinada e capturas exportáveis.";
+    public static final String SUBTITLE = "Ícones proporcionais, progresso alinhado, exportação PNG e sugestões com proteção adicional.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Copiar endereço corrigido", "Substituído o ícone Android inexistente por um recurso vetorial próprio do Internet XP, eliminando o erro do workflow 31."),
-        new Feature("02", "Copiar e colar", "Botões de copiar e colar aparecem só quando a barra de endereço está selecionada."),
-        new Feature("03", "Favicons no navegador", "Ícones HTTPS de sites nos resultados locais do endereço, histórico, favoritos e abas, com cache limitado."),
-        new Feature("04", "Telas próprias", "Menu, privacidade, histórico, favoritos, downloads, abas, configurações e Sobre abrem como telas com Voltar."),
-        new Feature("05", "Extensões preservadas", "A central de WebExtensions e os diálogos de confirmação e permissão permanecem intactos.")
+        new Feature("01", "Navegação inferior uniforme", "Ícones vetoriais de Voltar, Avançar, Abas, Início e Menu na mesma escala visual do botão Baixar."),
+        new Feature("02", "Rodapé mais preciso", "Barra de progresso real agora termina exatamente antes do atalho Extensões em diferentes tamanhos de tela."),
+        new Feature("03", "Salvar capturas onde quiser", "Após capturar um site, além de compartilhar a imagem é possível exportar PNG para uma pasta escolhida pelo Android."),
+        new Feature("04", "Edição e sugestões mais seguras", "Evita reabrir sugestões depois de perder o foco, informa falhas de navegação e só oferece Colar com conteúdo na área de transferência."),
+        new Feature("05", "Segurança ao editar endereços", "Botão Segurança fecha o teclado antes de abrir detalhes da conexão, evitando conflitos visuais.")
     };
 
     private ReleaseNotes() { }

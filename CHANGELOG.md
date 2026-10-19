@@ -1,3 +1,20 @@
+
+## 1.0.34 (versionCode 35)
+- Controles inferiores com vetores próprios e escala uniforme, mantendo barra ampliada e ordem Abas antes de Início.
+- Rodapé de carregamento real com comprimento fluido até o atalho Extensões, sem margem rígida de 90 dp.
+- Captura PNG com compartilhamento ou exportação explícita pelo seletor de arquivos Android; cópia privada preservada.
+- Evita repintura assíncrona das sugestões sem foco e trata erro de navegação ao selecionar um resultado sem expor URL.
+- Colar depende de conteúdo na área de transferência; detalhes de segurança fecham teclado antes de abrir.
+- Tela de Novidades, teste de regressão, documentos e workflow atualizados. Build Android real pendente.
+## 1.0.33 (versionCode 34)
+- Mitigação da seleção assíncrona de autocomplete, favicons preservados.
+- Progresso de carregamento real por aba, favoritos rápidos, Colar correto e captura PNG.
+- Abas reorganizadas e compactas, contador independente e Abas trocado com Início.
+- Diagnóstico local limitado, detalhe de segurança por tela e permissões.
+- Configurações de compatibilidade por domínio e suspensão de mídia reversíveis.
+- Formulário embutido para novo favorito na página inicial.
+- Sem compilação Gradle/Android no ambiente; validar em CI e no dispositivo.
+
 ## 1.0.32 (versionCode 33) - correção do ícone Copiar na barra de endereço
 - Workflow 31 falhou em `:app:compileDebugJavaWithJavac` com `cannot find symbol: ic_menu_copy` na linha 439 do MainActivity.
 - Removida a referência inválida `android.R.drawable.ic_menu_copy` e adicionado o vetor próprio `R.drawable.ic_copy_address_xp`, mantendo a ação de copiar e a visibilidade por foco.

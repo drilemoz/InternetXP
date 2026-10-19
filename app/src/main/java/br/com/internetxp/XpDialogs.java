@@ -105,6 +105,7 @@ final class XpDialogs {
         int widthDp = Math.min(450, Math.max(260, screenWidth - 24));
         window.setBackgroundDrawable(fill(context, Color.WHITE, BORDER, 17));
         window.setLayout(dp(context, widthDp), WindowManager.LayoutParams.WRAP_CONTENT);
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         window.setDimAmount(0.38f);
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         window.setWindowAnimations(android.R.style.Animation_Dialog);

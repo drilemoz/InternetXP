@@ -131,3 +131,18 @@
 - O Android não expõe `android.R.drawable.ic_menu_copy`: ícones adicionais precisam existir sob `R.drawable` no próprio app ou ser IDs públicos de API comprovada.
 - Botão Copiar agora aponta para `R.drawable.ic_copy_address_xp`; manter recurso vetorial validado e guarda no validador.
 - Em próximas revisões subir para 1.0.33/versionCode 34 e sincronizar Gradle, Novidades, workflow, README, CHANGELOG, docs/VALIDATION e testes.
+
+## 1.0.33: estabilidade, progresso e diagnóstico local
+- O valor de sugestões selecionadas deve vir do item vinculado à linha clicada, não de índice móvel do adapter. Falha reportada pelo usuário ainda precisa de logcat.
+- onProgressChange atualiza a aba real (0–100), sem porcentagem fictícia; evitar uso de timers para inventar progresso.
+- Capturas devem permanecer no diretório da aplicação e ser compartilhadas por FileProvider; não capturar dados sem gesto do usuário.
+- Logs de crashes não podem conter URLs, cookies, tokens nem mensagens arbitrárias de exceção.
+- Compatibilidade para ChatGPT e Facebook é opcional, transparente e reduz proteção contra rastreadores; não alegar otimização provada sem benchmark.
+- Próxima versão deve ser 1.0.34/versionCode 35 com metadados e Novidades sincronizados.
+
+## 1.0.34: refinamento da barra e armazenamento externo opt-in
+- Todas as seis ações da barra inferior usam ícones vetoriais na mesma escala; não reintroduzir emojis enormes nem contador unido ao ícone.
+- A barra de progresso deve medir a largura restante na linha antes de Extensões, sem margem fixa em dp, conservando medições GeckoView por aba.
+- Capturas de tela ficam inicialmente em diretório próprio; exportação para pasta externa só após gesto explícito e SAF ACTION_CREATE_DOCUMENT. Não usar permissões globais de armazenamento.
+- Resultados assíncronos do autocomplete não devem trazer o popup de volta quando o campo perde foco ou a Activity encerra. Não prometer que crash reportado foi eliminado sem teste físico/logcat.
+- A próxima alteração deverá incrementar para 1.0.35/versionCode 36 e sincronizar ReleaseNotes, Gradle, README, CHANGELOG, workflow e docs.
