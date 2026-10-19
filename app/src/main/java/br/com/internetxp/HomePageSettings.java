@@ -2,7 +2,7 @@ package br.com.internetxp;
 
 import java.net.URI;
 
-/** Normaliza endereços de página inicial, sem aceitar termos de busca como URLs. */
+/** Normaliza endereços de página inicial; aceita host local sem permitir pesquisa como URL. */
 final class HomePageSettings {
     static final String DEFAULT = "about:blank";
     private HomePageSettings() { }
@@ -10,16 +10,12 @@ final class HomePageSettings {
     static String normalize(String input) {
         if (input == null || input.trim().isEmpty() || DEFAULT.equalsIgnoreCase(input.trim())) return DEFAULT;
         String entered = input.trim();
-        if (entered.matches("(?s).*\\s+.*")) return DEFAULT;
-        if (!entered.regionMatches(true, 0, "https://", 0, 8)
-                && !entered.regionMatches(true, 0, "http://", 0, 7)
-                && !entered.matches("(?i)^[a-z0-9][a-z0-9.-]*\\.[a-z]{2,63}(?::[0-9]{1,5})?([/?#].*)?$")) return DEFAULT;
+        if (!BrowserAddress.isDirectAddress(entered)) return DEFAULT;
         String resolved = BrowserAddress.resolve(entered);
-        if (!TabSessionStore.restorable(resolved) || DEFAULT.equals(resolved)) return DEFAULT;
+        if (!TabSessionStore.restorable(resolved)) return DEFAULT;
         try {
             URI uri = new URI(resolved);
-            if (uri.getHost() == null || !uri.getHost().contains(".") || uri.getUserInfo() != null) return DEFAULT;
-            return resolved;
+            return uri.getHost() != null && uri.getRawUserInfo() == null ? resolved : DEFAULT;
         } catch (Exception ignored) { return DEFAULT; }
     }
 }

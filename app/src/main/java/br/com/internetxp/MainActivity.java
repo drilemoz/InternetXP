@@ -101,6 +101,7 @@ public final class MainActivity extends Activity {
     private static final String PREF_DOWNLOADS = "downloads";
     private static final String PREF_HISTORY_DETAILS = "history_details";
     private static final String PREF_OPEN_TABS = "open_tabs_v1";
+    private static final String PREF_OPEN_TABS_BACKUP = "open_tabs_v1_backup";
     private static final String PREF_TRACKING_PROTECTION = "tracking_protection_v1";
     private static final String PREF_HOME_PAGE = "home_page_v1";
     private static final int REQUEST_UPLOAD_FILES = 701;
@@ -179,6 +180,7 @@ public final class MainActivity extends Activity {
     private DownloadItem exportTarget;
     private static final int REQUEST_EXPORT_DOWNLOAD = 703;
     private static final int REQUEST_SAVE_CAPTURE = 704;
+    private static final int REQUEST_SAVE_DIAGNOSTIC = 705;
     private File pendingCaptureExport;
     private static final long DOWNLOAD_REFRESH_MS = 2000L;
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
@@ -198,8 +200,10 @@ public final class MainActivity extends Activity {
         boolean forward;
         boolean opened;
         boolean loaded;
+        boolean recoveryPending;
         boolean fullScreen;
         boolean loading;
+        final SiteLoadMetrics loadMetrics = new SiteLoadMetrics();
         int progress;
         final boolean privateMode;
         GeckoSession.ProgressDelegate.SecurityInformation securityInfo;
@@ -970,6 +974,14 @@ public final class MainActivity extends Activity {
 
     private void showPerformanceSettings() {
         ArrayList<MenuAction> actions = new ArrayList<>();
+        Tab measuring = current();
+        String timing = measuring == null ? "Sem aba ativa" : measuring.loadMetrics.summary();
+        actions.add(new MenuAction("◷", "Último carregamento: " + timing,
+                "Medição local pelo tempo entre início e fim informado pelo GeckoView. Não mede toda atividade JavaScript da página.",
+                () -> Toast.makeText(this, "Tempo apenas desta sessão; sem coleta de URLs.", Toast.LENGTH_LONG).show()));
+        actions.add(new MenuAction("⌂", "Servidores locais e Termux",
+                "Digite localhost:8000, 127.0.0.1:8000 ou o IP do dispositivo na rede Wi-Fi. O endereço HTTP não usa criptografia.",
+                this::showLocalSiteHelp));
         actions.add(new MenuAction("♫", "Pausar mídia em abas inativas: " + (suspendMediaInBackground ? "sim" : "não"),
                 "Reduz atividade de mídia ao trocar de aba. Pode interferir em áudio em segundo plano.", () -> {
                     suspendMediaInBackground = !suspendMediaInBackground;
@@ -994,6 +1006,14 @@ public final class MainActivity extends Activity {
         showModuleMenuDialog("Desempenho e compatibilidade", "Modo padrão recomendado. Ajustes de compatibilidade são opcionais e reversíveis.", actions);
     }
 
+    private void showLocalSiteHelp() {
+        ArrayList<MenuAction> options = new ArrayList<>();
+        options.add(new MenuAction("⌂", "Servidor neste celular", "http://127.0.0.1:8000 (Termux ou serviço Android local).", () -> navigate("http://127.0.0.1:8000")));
+        options.add(new MenuAction("♧", "Servidor em outro aparelho", "Digite o IP LAN na barra, por exemplo 192.168.1.20:8000. O serviço deve escutar na interface de rede e permitir conexões.",
+                () -> { closeModuleScreens(); focusAddressBar(true); }));
+        showModuleMenuDialog("Acesso local", "HTTP local não utiliza HTTPS. Não envie senhas ou dados sensíveis para servidores desconhecidos.", options);
+    }
+
     private void showDiagnostics() {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
@@ -1001,27 +1021,95 @@ public final class MainActivity extends Activity {
         addSecurityDetail(page, "Versão", ReleaseNotes.VERSION_NAME + " • versionCode " + ReleaseNotes.VERSION_CODE);
         addSecurityDetail(page, "Motor", "Mozilla GeckoView 158");
         addSecurityDetail(page, "Android", String.valueOf(Build.VERSION.SDK_INT));
+        addSecurityDetail(page, "Memória do aplicativo", DiagnosticLog.memorySummary(getApplicationContext()));
         addSecurityDetail(page, "Eventos locais recentes", DiagnosticLog.read(getApplicationContext()));
-        TextView share = text("Compartilhar relatório de diagnóstico  ›", 15, XP_BLUE);
-        share.setGravity(Gravity.CENTER);
-        share.setBackground(rounded(Color.WHITE, BORDER, 12));
+        addSecurityDetail(page, "Encerramentos anteriores do Android 11+", DiagnosticLog.recentExits(getApplicationContext()));
+        Tab failed = current();
+        if (failed != null && failed.recoveryPending) {
+            TextView recover = diagnosticAction("Recuperar aba atual  ›");
+            recover.setOnClickListener(v -> offerRecoverTab(failed));
+            page.addView(recover, new LinearLayout.LayoutParams(-1, dp(54)));
+            addSecurityDetail(page, "Recuperação", "Reabre apenas o endereço. Formulários, rolagem e dados JavaScript não são recuperados.");
+        }
+        TextView export = diagnosticAction("Salvar relatório técnico em ZIP  ›");
+        export.setOnClickListener(v -> exportDiagnosticZip());
+        page.addView(export, new LinearLayout.LayoutParams(-1, dp(54)));
+        TextView share = diagnosticAction("Compartilhar resumo em texto  ›");
         share.setOnClickListener(v -> {
             Intent send = new Intent(Intent.ACTION_SEND);
             send.setType("text/plain");
             send.putExtra(Intent.EXTRA_TEXT, DiagnosticLog.report(getApplicationContext(), ReleaseNotes.VERSION_NAME));
-            startActivity(Intent.createChooser(send, "Compartilhar relatório Internet XP"));
+            try { startActivity(Intent.createChooser(send, "Compartilhar relatório Internet XP")); }
+            catch (ActivityNotFoundException error) { Toast.makeText(this, "Nenhum aplicativo para compartilhar", Toast.LENGTH_SHORT).show(); }
         });
         page.addView(share, new LinearLayout.LayoutParams(-1, dp(54)));
         TextView clear = text("Limpar diagnóstico local", 14, XP_BLUE);
         clear.setGravity(Gravity.CENTER);
         clear.setOnClickListener(v -> new XpDialogs.Builder(this).setTitle("Limpar diagnóstico?")
-                .setMessage("Apaga somente eventos técnicos locais. Histórico e favoritos permanecem.")
+                .setMessage("Apaga somente eventos técnicos locais. O histórico do sistema Android pode continuar disponível; favoritos e navegação permanecem.")
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("Limpar", (d, w) -> { DiagnosticLog.clear(getApplicationContext()); popModuleScreen(); showDiagnostics(); }).show());
         page.addView(clear, new LinearLayout.LayoutParams(-1, dp(52)));
         ScrollView scroll = new ScrollView(this);
         scroll.addView(page);
-        showModuleScreen("Diagnósticos do navegador", "Relatórios sem cookies, senhas ou URLs completas", scroll);
+        showModuleScreen("Diagnósticos do navegador", "Relatórios locais sem URLs, cookies ou senhas", scroll);
+    }
+
+    private TextView diagnosticAction(String title) {
+        TextView button = text(title, 15, XP_BLUE);
+        button.setGravity(Gravity.CENTER);
+        button.setBackground(rounded(Color.WHITE, BORDER, 12));
+        return button;
+    }
+
+    private void exportDiagnosticZip() {
+        Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        save.addCategory(Intent.CATEGORY_OPENABLE);
+        save.setType("application/zip");
+        save.putExtra(Intent.EXTRA_TITLE, "Internet-XP-diagnostico.zip");
+        try { startActivityForResult(save, REQUEST_SAVE_DIAGNOSTIC); }
+        catch (ActivityNotFoundException | SecurityException error) {
+            Toast.makeText(this, "Seletor de arquivos indisponível", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void offerRecoverTab(Tab tab) {
+        if (tab == null || !tab.recoveryPending || !tabs.contains(tab)) return;
+        new XpDialogs.Builder(this).setTitle("Recuperar esta aba?")
+                .setMessage("O processo da página foi encerrado. Reabrir o endereço não recupera textos digitados, formulários ou o estado da página. Uma página com falha recorrente poderá encerrar novamente.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Reabrir", (d, w) -> recoverTab(tab)).show();
+    }
+
+    private void recoverTab(Tab tab) {
+        int index = tabs.indexOf(tab);
+        if (index < 0 || !tab.recoveryPending) return;
+        try {
+            if (view != null && view.getSession() == tab.session) view.releaseSession();
+            if (tab.session.isOpen()) tab.session.close();
+            tab.session.open(runtime);
+            attachExtensionActionListeners(tab.session);
+            tab.opened = true;
+            tab.loaded = true;
+            tab.loading = false;
+            tab.progress = 0;
+            tab.back = false;
+            tab.forward = false;
+            tab.fullScreen = false;
+            tab.securityInfo = null;
+            tab.recoveryPending = false;
+            // Restaura apenas URL válida. A configuração privada da GeckoSession é mantida.
+            String destination = TabSessionStore.restorable(tab.url) ? tab.url : HOME;
+            active = -1;
+            selectTab(index);
+            tab.session.loadUri(destination);
+            DiagnosticLog.record(getApplicationContext(), "RECUPERACAO_SOLICITADA");
+            Toast.makeText(this, "Página reaberta", Toast.LENGTH_SHORT).show();
+        } catch (RuntimeException error) {
+            tab.recoveryPending = true;
+            DiagnosticLog.record(getApplicationContext(), "RECUPERACAO_FALHOU");
+            Toast.makeText(this, "Não foi possível reabrir a aba", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void setHomePage(String chosen) {
@@ -1234,12 +1322,20 @@ public final class MainActivity extends Activity {
             @Override public void onCrash(GeckoSession s) {
                 DiagnosticLog.record(getApplicationContext(), "GECKOVIEW_CRASH");
                 tab.loading = false;
-                if (tab == current()) status.setText("Processo da página falhou • Diagnóstico no Menu");
+                tab.back = false;
+                tab.forward = false;
+                tab.opened = false; // GeckoView fechou a sessão; reabrir somente sob confirmação.
+                tab.recoveryPending = true;
+                if (tab == current()) status.setText("Página interrompida • Menu > Diagnósticos > Recuperar");
             }
             @Override public void onKill(GeckoSession s) {
                 DiagnosticLog.record(getApplicationContext(), "GECKOVIEW_KILL");
                 tab.loading = false;
-                if (tab == current()) status.setText("Processo da página encerrado • Diagnóstico no Menu");
+                tab.back = false;
+                tab.forward = false;
+                tab.opened = false; // GeckoView fechou a sessão; reabrir somente sob confirmação.
+                tab.recoveryPending = true;
+                if (tab == current()) status.setText("Página interrompida • Menu > Diagnósticos > Recuperar");
             }
             @Override public void onExternalResponse(GeckoSession s, WebResponse response) {
                 offerDownload(response, tab.privateMode);
@@ -1323,6 +1419,7 @@ public final class MainActivity extends Activity {
             @Override public void onPageStart(GeckoSession s, String uri) {
                 tab.securityInfo = null;
                 tab.loading = true;
+                tab.loadMetrics.started(android.os.SystemClock.elapsedRealtime());
                 tab.progress = 0;
                 if (tab == current()) {
                     updatePageProgress();
@@ -1340,6 +1437,7 @@ public final class MainActivity extends Activity {
             }
             @Override public void onPageStop(GeckoSession s, boolean success) {
                 tab.loading = false;
+                tab.loadMetrics.finished(android.os.SystemClock.elapsedRealtime(), success);
                 tab.progress = success ? 100 : tab.progress;
                 if (!success) DiagnosticLog.record(getApplicationContext(), "FALHA_CARREGAMENTO");
                 if (tab == current()) updatePageProgress();
@@ -1367,6 +1465,7 @@ public final class MainActivity extends Activity {
 
     private void selectTab(int index) {
         if (index < 0 || index >= tabs.size()) return;
+        if (tabs.get(index).recoveryPending) { offerRecoverTab(tabs.get(index)); return; }
         if (active == index && view.getSession() == tabs.get(index).session) return;
         GeckoSession old = view.releaseSession();
         if (old != null) old.setActive(false);
@@ -1399,7 +1498,9 @@ public final class MainActivity extends Activity {
 
     private boolean restoreTabs() {
         try {
-            JSONObject saved = new JSONObject(storage.getString(PREF_OPEN_TABS, "{}"));
+            JSONObject saved = readValidTabSnapshot(storage.getString(PREF_OPEN_TABS, ""));
+            if (saved == null) saved = readValidTabSnapshot(storage.getString(PREF_OPEN_TABS_BACKUP, ""));
+            if (saved == null) return false;
             JSONArray storedTabs = saved.optJSONArray("tabs");
             if (storedTabs == null) return false;
             for (int i = 0; i < storedTabs.length() && tabs.size() < TabSessionStore.MAX_TABS; i++) {
@@ -1419,6 +1520,20 @@ public final class MainActivity extends Activity {
             active = -1;
             return false;
         }
+    }
+
+    private JSONObject readValidTabSnapshot(String raw) {
+        try {
+            if (raw == null || raw.length() > 40000) return null;
+            JSONObject saved = new JSONObject(raw);
+            JSONArray items = saved.optJSONArray("tabs");
+            if (items == null || items.length() < 1 || items.length() > TabSessionStore.MAX_TABS) return null;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.optJSONObject(i);
+                if (item == null || !TabSessionStore.restorable(item.optString("url", ""))) return null;
+            }
+            return saved;
+        } catch (Exception ignored) { return null; }
     }
 
     private void saveTabs() {
@@ -1443,7 +1558,10 @@ public final class MainActivity extends Activity {
             }
             root.put("tabs", array);
             root.put("active", selectedNormal < 0 ? 0 : selectedNormal);
-            storage.edit().putString(PREF_OPEN_TABS, root.toString()).apply();
+            String previous = storage.getString(PREF_OPEN_TABS, "");
+            SharedPreferences.Editor editor = storage.edit().putString(PREF_OPEN_TABS, root.toString());
+            if (readValidTabSnapshot(previous) != null) editor.putString(PREF_OPEN_TABS_BACKUP, previous);
+            editor.apply();
         } catch (Exception ignored) { }
     }
 
@@ -2726,6 +2844,23 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_SAVE_DIAGNOSTIC) {
+            Uri destination = data == null ? null : data.getData();
+            if (resultCode == RESULT_OK && destination != null && "content".equals(destination.getScheme())) {
+                // Criar o relatório somente após o gesto do usuário. Sem acesso amplo a arquivos.
+                suggestionWorker.execute(() -> {
+                    try (java.io.OutputStream output = getContentResolver().openOutputStream(destination, "w")) {
+                        if (output == null) throw new java.io.IOException("Destino indisponível");
+                        DiagnosticLog.writeZip(getApplicationContext(), ReleaseNotes.VERSION_NAME, output);
+                        runOnUiThread(() -> Toast.makeText(this, "Diagnóstico ZIP salvo", Toast.LENGTH_SHORT).show());
+                    } catch (Exception error) {
+                        DiagnosticLog.record(getApplicationContext(), "EXPORTACAO_DIAGNOSTICO_FALHOU");
+                        runOnUiThread(() -> Toast.makeText(this, "Falha ao salvar diagnóstico", Toast.LENGTH_LONG).show());
+                    }
+                });
+            }
+            return;
+        }
         if (requestCode == REQUEST_SAVE_CAPTURE) {
             File source = pendingCaptureExport;
             pendingCaptureExport = null;

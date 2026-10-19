@@ -19,6 +19,7 @@ final class OnlineSuggestions {
         if (value == null) return false;
         String query = value.trim();
         if (query.length() < 2 || query.length() > 100) return false;
+        if (BrowserAddress.isDirectAddress(query)) return false;
         if (query.contains("://") || query.contains("/") || query.contains("\\") || query.contains("@")) return false;
         if (query.equalsIgnoreCase("localhost") || query.matches("[0-9.]+") || query.endsWith(".local")) return false;
         if (query.matches("(?i)^[a-z0-9-]+(\\.[a-z0-9.-]+)(:[0-9]+)?$")) return false;

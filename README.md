@@ -1,8 +1,23 @@
-# Internet XP v1.0.36 (versionCode 37)
+# Internet XP v1.0.38 (versionCode 39)
 
 Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. MinSdk 26, targetSdk 35.
 
-## 1.0.36: correção de compilação do workflow 34 (código-fonte)
+## 1.0.38: servidores locais e desempenho (código-fonte)
+- A barra reconhece `localhost:8000`, `127.0.0.1:8000`, `192.168.1.20:8080`, `[::1]:3000`, `raspberrypi:3000`, `.local` e `.lan`. Ao digitar sem esquema, servidores locais usam `http://` e sites públicos continuam em `https://`.
+- A página inicial aceita hosts locais válidos; termos de busca não viram URL. Endereços locais não são enviados ao autocomplete remoto.
+- Em **Configurações > Desempenho e sites**, veja o tempo da última navegação medido na aba e encontre dicas para Termux; as opções ChatGPT/Facebook são exceções opcionais de proteção antirrastreamento, não um ganho de desempenho comprovado.
+- O manifesto permite tráfego HTTP necessário para servidores na LAN. **HTTP não oferece criptografia**: use somente redes/servidores confiáveis; evite credenciais. O Internet XP não altera o servidor nem cria um automaticamente.
+- Em Termux no mesmo aparelho, um servidor ouvindo em `127.0.0.1:8000` deve estar iniciado; em outro aparelho use o IP daquele aparelho, com serviço ouvindo em `0.0.0.0` ou na interface LAN, e verifique firewall e isolamento Wi-Fi.
+- Ainda é necessário executar o build Gradle/GitHub Actions e testar o APK num Android físico. Veja [guia de servidores locais](docs/LOCAL_SERVERS.md) para testes práticos.
+
+## 1.0.37: diagnóstico e recuperação de sessões (código-fonte)
+- Reabertura **manual** de aba interrompida pelo GeckoView. Não restaura formulários, scroll, login ou estado JavaScript.
+- Diagnóstico de encerramentos do processo principal (Android 11+) com categorias oficiais, memória aproximada e registros locais mínimos.
+- Exportação de relatório ZIP via Storage Access Framework, sem permissões amplas de armazenamento nem envio automático.
+- Backup de snapshot válido das abas normais como fallback para JSON principal inválido; sessões privadas nunca são persistidas.
+- APK e testes físicos ainda dependem de compilação/validação no GitHub Actions.
+
+### Histórico da versão 1.0.36
 
 - O workflow **34**, executado com código 1.0.35, falhou em `:app:compileDebugJavaWithJavac` com quatro referências inválidas a `SecurityInformation.issuerCommonName` e `issuerOrganization` em `MainActivity.java`.
 - GeckoView 158 disponibiliza `SecurityInformation.certificate` (`X509Certificate`). A tela **Segurança da página** agora extrai emissor e titular com `getIssuerX500Principal().getName()` e `getSubjectX500Principal().getName()`; caso não exista certificado, mostra **Não disponível**.
@@ -95,7 +110,7 @@ Navegador Android com motor Mozilla **GeckoView 158** e aparência Internet XP. 
 
 ## Builds
 
-- `versionName=1.0.36`, `versionCode=37`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+- `versionName=1.0.38`, `versionCode=39`; publicações por ABI `armeabi-v7a`, `arm64-v8a`, `x86_64`.
 - Requer os quatro secrets Android: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 - O ZIP é o **código-fonte**, não um APK. O projeto contém workflow GitHub Actions para testes, lint e Release.
 - As operações de download continuam no gerenciador interno e não no DownloadManager do Android.

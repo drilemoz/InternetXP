@@ -1,3 +1,17 @@
+## 1.0.38: acesso local e desempenho
+- Verificar com `python3 tools/validate_project.py`, testes Python e JVM de `LocalAddressTest` e `SiteLoadMetricsTest`.
+- Em Android real, iniciar servidor no Termux (`python -m http.server 8000 --bind 127.0.0.1`) e abrir `127.0.0.1:8000` e `localhost:8000`; confirmar HTTP, navegação e retorno.
+- Em dois aparelhos no mesmo Wi-Fi, iniciar servidor na interface LAN e abrir `192.168.x.y:8000` no Internet XP. Verificar IP real, rede, firewall e isolamento do roteador.
+- Testar `[::1]:8000`, hostname com porta, URL HTTPS explícita, domínio público, portas inválidas, ausência de sugestões remotas para IP/localhost e página inicial local.
+- Conferir mensagens de insegurança HTTP no painel Segurança da página e não solicitar permissões automaticamente.
+- Em ChatGPT e Facebook, comparar tempo medido sem ativar exceção e com exceção opt-in, sabendo que a medição cobre somente o intervalo informado pelo GeckoView e não é um benchmark completo.
+- **Pendente**: CI Gradle, JUnit completo, Android lint, APK físico e compatibilidade GeckoView HTTP/HTTPS em rede local.
+
+## 1.0.37: diagnóstico, exportação e recuperação
+- Validador Python e testes Java dos rótulos de encerramento; sintaxe dos arquivos Java e XML; integridade do ZIP.
+- Ações do usuário para recuperar aba e exportar o ZIP, sem envio automático.
+- PENDENTE: compilação Gradle CI, execução de JUnit/Android lint e testes físicos após instalar o APK.
+
 ## 1.0.36: correção de campos removidos do GeckoView 158
 
 - Log da execução 34: falha de `:app:compileDebugJavaWithJavac` em `MainActivity.java` ao referenciar os antigos campos `SecurityInformation.issuerCommonName` e `SecurityInformation.issuerOrganization`.

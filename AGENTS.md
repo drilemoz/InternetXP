@@ -158,3 +158,17 @@
 - Nunca voltar a acessar campos ausentes; validar a superfície da API pela documentação da versão fixada no Gradle e pelo workflow Android real.
 - Tratar certificado ausente sem inventar emissor, titular ou estado verificado; preservar separação de indicadores `isSecure`, `isException` e conteúdo misto.
 - Na próxima alteração, avançar para 1.0.37/versionCode 38 e sincronizar todos os metadados, docs e Novidades.
+
+## 1.0.37: diagnóstico e recuperação de abas
+- Na falha/kill do GeckoView, não recarregar automaticamente. Oferecer recuperação manual, preservar modo privado da GeckoSession e reabrir apenas URL válida; sem prometer recuperação de estado JS/formulários.
+- O diagnóstico usa ApplicationExitInfo a partir da API 30 com **somente** códigos, data e hora, e apenas do processo principal; nunca exportar descrições/stacktraces que possam incluir URLs, tokens ou dados pessoais.
+- Relatório ZIP gerado sob gesto explícito via SAF, sem envio automático nem permissões amplas. Limpar eventos do app não remove histórico Android.
+- Backup de URLs só de abas normais e sempre validado; nunca guardar estado de abas privadas.
+- Próxima versão 1.0.38/versionCode 39. Manter Novidades, validações, Gradle, README, CHANGELOG, workflow e docs sincronizados.
+
+## 1.0.38: navegação local e diagnóstico de carregamento
+- `BrowserAddress` trata localhost/127.0.0.1/IPs privados/IPv6 locais sem esquema usando HTTP, domínios públicos continuam HTTPS. Endereços explícitos preservam o protocolo. Valide portas e não transforme busca comum em URL.
+- O manifesto permite HTTP para servidores locais e LAN; isso também permite HTTP explícito em domínios externos. Exibir aviso de conexão insegura e nunca presumir TLS, autenticação nem rede confiável.
+- Endereços locais não podem ser enviados ao provedor de sugestões; `HomePageSettings` pode aceitar localhost/IPv4/IPv6 válidos.
+- `SiteLoadMetrics` mede início/fim reportados pelo GeckoView, sem logs de URL e sem alegar aceleração por desativar antirrastreamento. Preservar comportamento dos ajustes ChatGPT/Facebook e de mídia.
+- Na próxima modificação subir para 1.0.39/versionCode 40, sincronizando Gradle, ReleaseNotes, README, CHANGELOG, workflow, AGENTS e docs/VALIDATION.

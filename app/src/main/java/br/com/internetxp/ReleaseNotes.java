@@ -4,10 +4,10 @@ package br.com.internetxp;
  * Atualizar junto de TODA mudança do versionCode e do CHANGELOG.
  */
 public final class ReleaseNotes {
-    public static final String VERSION_NAME = "1.0.36";
-    public static final int VERSION_CODE = 37;
-    public static final String HEADLINE = "Detalhes de segurança compatíveis com GeckoView 158.";
-    public static final String SUBTITLE = "Correção de compilação da tela Segurança da página, mantendo as melhorias recentes em abas e favoritos.";
+    public static final String VERSION_NAME = "1.0.38";
+    public static final int VERSION_CODE = 39;
+    public static final String HEADLINE = "Acesso a servidores locais e diagnóstico de carregamento.";
+    public static final String SUBTITLE = "Navegue em localhost:8000, IPs da rede e serviços do Termux; medições locais e modos de compatibilidade configuráveis.";
 
     public static final class Feature {
         public final String number;
@@ -21,11 +21,11 @@ public final class ReleaseNotes {
     }
 
     public static final Feature[] FEATURES = {
-        new Feature("01", "Compilação da segurança corrigida", "Informações do certificado usam a API X.509 disponível no GeckoView 158."),
-        new Feature("02", "Emissor e titular reais", "Detalhes exibem os nomes completos do emissor e titular quando o certificado está disponível."),
-        new Feature("03", "Ausência de certificado tratada", "Sites sem certificado disponível mostram aviso explícito, sem inventar dados de segurança."),
-        new Feature("04", "Abas e favoritos preservados", "Mantidos gerenciador de favoritos, reabertura limitada de abas e indicadores do navegador."),
-        new Feature("05", "Regressão de API verificada", "Validações detectam os campos GeckoView antigos antes do build e sincronizam esta versão.")
+        new Feature("01", "Localhost e rede Wi-Fi", "Reconhece 127.0.0.1:8000, localhost:8000, IPs privados, IPv6 local e hosts da rede."),
+        new Feature("02", "HTTP local", "Usa HTTP por padrão para servidores locais; endereços HTTPS explícitos continuam respeitados."),
+        new Feature("03", "Página inicial local", "Permite configurar serviços do Termux e endereços LAN como página inicial, com validação."),
+        new Feature("04", "Desempenho visível", "Informa tempo de carregamento da aba, em memória, junto aos ajustes ChatGPT/Facebook e mídia em segundo plano."),
+        new Feature("05", "Privacidade do autocompletar", "Não envia endereços locais digitados para o serviço online de sugestões.")
     };
 
     private ReleaseNotes() { }

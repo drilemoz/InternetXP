@@ -1,4 +1,18 @@
 
+## 1.0.38 (versionCode 39)
+- Corrigido reconhecimento de `127.0.0.1:8000`, `localhost`, nomes locais, IPv4 privado e IPv6 local, com preferência por HTTP apenas para destinos locais sem esquema. URLs explicitamente HTTPS continuam intactas.
+- Manifesto permite tráfego HTTP para servidores locais/LAN; alerta de segurança para conexão sem criptografia.
+- Página inicial aceita URL local válida. Autocomplete remoto não consulta servidores locais digitados.
+- Adicionadas medição local em memória do tempo de carregamento e ajuda de Termux em Configurações > Desempenho e compatibilidade. Mantidos os modos opcionais ChatGPT/Facebook.
+- Testes de endereços locais, IPv6, portas e segurança, medição de tempo, versionamento, Novidades e workflow atualizados. Compilação Android completa pendente.
+
+## 1.0.37 (versionCode 38)
+- Nova tela de diagnóstico mostra motivos de encerramento do Android 11+ e memória aproximada, sem descrições livres, URLs ou dados de páginas.
+- Exportação manual de ZIP técnico via seletor do Android; nenhum compartilhamento automático.
+- Recuperação por confirmação da aba interrompida pelo GeckoView, reabrindo apenas URL, com aviso sobre estado não restaurado.
+- Fallback para último snapshot válido de abas normais; abas privadas não são persistidas.
+- Atualizados versionCode/versionName, tela de Novidades, validação do projeto e GitHub Actions. Build Android real pendente.
+
 ## 1.0.36 (versionCode 37)
 - Corrigida a falha de compilação no workflow 34: campos `issuerCommonName`/`issuerOrganization` inexistentes no GeckoView 158.
 - Detalhes de segurança usam o certificado X.509 fornecido por `SecurityInformation.certificate` para consultar emissor e titular, com fallback explícito quando ausente.
@@ -76,6 +90,13 @@
 - Atualizadas tela de Novidades, README, AGENTS, workflow, validações e versão sequencial.
 
 # CHANGELOG
+
+## 1.0.37 (versionCode 38)
+- Recuperação manual de aba interrompida pelo processo GeckoView, preservando isolamento privado.
+- Diagnóstico aprimorado: últimos encerramentos Android 11+, memória aproximada e ZIP local sem dados de navegação.
+- Backup de último snapshot válido de URLs de abas normais.
+- Metadados da versão e tela Novidades sincronizados.
+
 
 ## 1.0.26 (versionCode 27) - pop-ups alinhados ao menu XP
 - Padronizado o visual de pop-ups e caixas de diálogo para combinar com o menu principal XP Moderno.
